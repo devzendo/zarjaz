@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.devzendo</groupId>
+    <artifactId>zarjaz</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+
+    <description>Asynchronous RPC with dynamic proxies.
+        (Apache License v2) 2015 Matt Gumbley, DevZendo.org
+    </description>
+
+    <url>http://www.devzendo.org/content/zarjaz</url>
+
+    <organization>
+        <name>DevZendo.org</name>
+        <url>http://devzendo.org/</url>
+    </organization>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <scm>
+        <url>https://bitbucket.org/devzendo/zarjaz</url>
+        <connection>scm:hg:https://bitbucket.org/devzendo/zarjaz</connection>
+        <developerConnection>
+            scm:hg:https://bitbucket.org/devzendo/zarjaz
+        </developerConnection>
+    </scm>
+    <developers>
+        <developer>
+            <id>matt.gumbley</id>
+            <name>Matt Gumbley</name>
+            <email>matt.gumbley@devzendo.org</email>
+        </developer>
+    </developers>
+
+    <parent>
+        <groupId>org.sonatype.oss</groupId>
+        <artifactId>oss-parent</artifactId>
+        <version>7</version>
+    </parent>
+
+    <modules>
+        <module>zarjaz-api</module>
+        <module>zarjaz-core</module>
+        <module>zarjaz-netty</module>
+        <module>zarjaz-servlet</module>
+        <module>zarjaz-jxta</module>
+        <module>zarjaz-scala</module>
+    </modules>
+
+</project>
