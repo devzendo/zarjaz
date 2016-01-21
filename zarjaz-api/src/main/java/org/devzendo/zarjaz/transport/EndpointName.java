@@ -1,6 +1,6 @@
 package org.devzendo.zarjaz.transport;
 
-import org.devzendo.zarjaz.types.RepresentationType;
+import org.devzendo.commoncode.types.RepresentationType;
 
 import java.util.regex.Pattern;
 
