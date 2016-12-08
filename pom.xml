@@ -10,7 +10,7 @@
     <packaging>pom</packaging>
 
     <description>Asynchronous RPC with dynamic proxies.
-        (Apache License v2) 2015 Matt Gumbley, DevZendo.org
+        (Apache License v2) 2015-2016 Matt Gumbley, DevZendo.org
     </description>
 
     <url>http://www.devzendo.org/content/zarjaz</url>

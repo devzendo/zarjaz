@@ -9,25 +9,27 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
- * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org <http://devzendo.org>
- * <p/>
+ * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * <p/>
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-class NullTransport implements Transport {
+class NullTransport extends AbstractTransport implements Transport {
     private static final Logger logger = LoggerFactory.getLogger(NullTransport.class);
 
     final Map<NamedInterface, Object> implementations = new HashMap<>();
@@ -46,7 +48,6 @@ class NullTransport implements Transport {
 
         synchronized (implementations) {
             final NamedInterface namedInterface = new NamedInterface(name, interfaceClass);
-            logger.debug("namedInterface has hashCode " + namedInterface.hashCode());
             if (implementations.containsKey(namedInterface)) {
                 throw new RegistrationException("The EndpointName '" + name + "' is already registered");
             }
@@ -55,9 +56,35 @@ class NullTransport implements Transport {
         }
     }
 
+    // TODO this should be useful for all server-side transports, surely?
+    private static class NullTransportInvocationHandler implements TransportInvocationHandler {
+
+        private final Object impl;
+
+        public NullTransportInvocationHandler(final Object impl) {
+            this.impl = impl;
+        }
+
+        @Override
+        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future) {
+            final Class[] argClasses = objectsToClasses(args);
+            try {
+                final Method implMethod = impl.getClass().getMethod(method.getName(), argClasses);
+            } catch (final NoSuchMethodException e) {
+                final String msg = "No such method '" + method.getName() + " with args [" + classesToClassNames(argClasses) + "]: " + e.getMessage();
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+        }
+
+    }
+
+    // Plan is that the TransportInvocationHandler is the client-side part that varies here, so that this
+    // createClientProxy method could be in an abstract base transport class?
     public <T> T createClientProxy(final EndpointName name, final Class<T> interfaceClass) {
         logger.info("Creating client proxy of " + name + " with interface " + interfaceClass.getName());
-        final CompletionInvocationHandler cih = new CompletionInvocationHandler(name, interfaceClass);
+        // TODO validate the client interface?
+        final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(name, interfaceClass);
+        final CompletionInvocationHandler cih = new CompletionInvocationHandler(name, interfaceClass, transportInvocationHandler);
         InvocationHandler handler = new InvocationHandler() {
             @Override
             public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
@@ -68,6 +95,18 @@ class NullTransport implements Transport {
                 new Class<?>[]{interfaceClass},
                 handler);
         return proxy;
+    }
+
+    private <T> TransportInvocationHandler createTransportInvocationHandler(EndpointName name, Class<T> interfaceClass) {
+        // TODO generally, how does a remote client know that a named interface exists?
+        synchronized (implementations) {
+            final NamedInterface namedInterface = new NamedInterface(name, interfaceClass);
+            if (!implementations.containsKey(namedInterface)) {
+                throw new RegistrationException("The EndpointName '" + name + "' is not registered");
+            }
+
+            return new NullTransportInvocationHandler(implementations.get(namedInterface));
+        }
     }
 
     public void start() {

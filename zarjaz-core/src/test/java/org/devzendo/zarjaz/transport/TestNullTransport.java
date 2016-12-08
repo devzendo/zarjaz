@@ -81,6 +81,11 @@ public class TestNullTransport {
     }
 
     @Test
+    public void clientProxyRequestedForUnboundNameDisallowed() {
+        // TODO
+    }
+
+    @Test
     public void roundTripWithoutTimeout() {
         final DefaultPrimeGenerator serverImplementation = new DefaultPrimeGenerator();
 
