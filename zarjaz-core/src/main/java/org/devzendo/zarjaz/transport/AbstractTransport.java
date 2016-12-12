@@ -27,6 +27,22 @@ public abstract class AbstractTransport {
         return out;
     }
 
+    static protected String joinedClassNames(final Class[] argClasses) {
+        final StringBuilder sb = new StringBuilder();
+        sb.append('(');
+        if (argClasses != null) {
+            for (int i=0; i<argClasses.length; i++) {
+                sb.append(argClasses[i].getSimpleName());
+                if (i != (argClasses.length - 1)) {
+                    sb.append(", ");
+                }
+            }
+
+        }
+        sb.append(')');
+        return sb.toString();
+    }
+
     static protected String[] classesToClassNames(final Class[] argClasses) {
         if (argClasses == null) {
             return null;

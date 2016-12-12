@@ -52,4 +52,35 @@ public class TestAbstractTransport {
         final String[] names = AbstractTransport.classesToClassNames(new Class[] { String.class, Integer.class, Boolean.class, Character.class });
         assertThat(names, arrayContaining(new String[] { "String", "Integer", "Boolean", "Character" }));
     }
+
+    @Test
+    public void joinedClassesToClassNamesNull() {
+        final String joined = AbstractTransport.joinedClassNames(null);
+        assertThat(joined, equalTo("()"));
+    }
+
+    @Test
+    public void joinedClassesToClassNamesEmpty() {
+        final String joined = AbstractTransport.joinedClassNames(new Class[0]);
+        assertThat(joined, equalTo("()"));
+    }
+
+    @Test
+    public void joinedClassesToClassNamesOne() {
+        final String joined = AbstractTransport.joinedClassNames(new Class[] {String.class});
+        assertThat(joined, equalTo("(String)"));
+    }
+
+    @Test
+    public void joinedClassesToClassNamesTwo() {
+        final String joined = AbstractTransport.joinedClassNames(new Class[] {String.class, Integer.class});
+        assertThat(joined, equalTo("(String, Integer)"));
+    }
+
+    @Test
+    public void joinedClassesToClassNamesThree() {
+        final String joined = AbstractTransport.joinedClassNames(new Class[] {String.class, Integer.class, Void.class});
+        assertThat(joined, equalTo("(String, Integer, Void)"));
+    }
+
 }
