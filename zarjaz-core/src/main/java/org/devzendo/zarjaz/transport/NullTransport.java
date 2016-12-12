@@ -67,12 +67,13 @@ class NullTransport extends AbstractTransport implements Transport {
 
         @Override
         public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future) {
+            String methodName = method.getName();
             final Class[] argClasses = objectsToClasses(args);
             try {
-                final Method implMethod = impl.getClass().getMethod(method.getName(), argClasses);
+                final Method implMethod = impl.getClass().getMethod(methodName, argClasses);
             } catch (final NoSuchMethodException e) {
-                final String msg = "No such method '" + method.getName() + " with args [" + classesToClassNames(argClasses) + "]: " + e.getMessage();
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                final String msg = "No such method '" + methodName + "' with arg classes [" + classesToClassNames(argClasses) + "]: " + e.getMessage();
+                logger.error(msg, e);
             }
         }
 

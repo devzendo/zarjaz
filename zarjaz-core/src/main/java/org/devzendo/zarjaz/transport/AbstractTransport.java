@@ -17,12 +17,25 @@ package org.devzendo.zarjaz.transport;
  */
 public abstract class AbstractTransport {
     static protected Class[] objectsToClasses(final Object[] args) {
-        return new Class[0];  //To change body of created methods use File | Settings | File Templates.
+        if (args == null) {
+            return null;
+        }
+        final Class[] out = new Class[args.length];
+        for (int i=0; i<args.length; i++) {
+            out[i] = args[i].getClass();
+        }
+        return out;
     }
 
     static protected String[] classesToClassNames(final Class[] argClasses) {
-        //To change body of created methods use File | Settings | File Templates.
-        return new String[0];
+        if (argClasses == null) {
+            return null;
+        }
+        final String[] out = new String[argClasses.length];
+        for (int i=0; i<argClasses.length; i++) {
+            out[i] = argClasses[i].getSimpleName();
+        }
+        return out;
     }
 
 }

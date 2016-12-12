@@ -1,13 +1,9 @@
 package org.devzendo.zarjaz.transport;
 
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
 import org.junit.Test;
 
-import static org.devzendo.zarjaz.transport.AbstractTransport.objectsToClasses;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.*;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org <http://devzendo.org>
@@ -27,6 +23,33 @@ import static org.hamcrest.Matchers.hasSize;
 public class TestAbstractTransport {
     @Test
     public void emptyObjectsToClasses() {
-        assertThat(objectsToClasses(new Object[0]).length, equalTo(0));
+        assertThat(AbstractTransport.objectsToClasses(new Object[0]).length, equalTo(0));
+    }
+
+    @Test
+    public void nullObjectsToClasses() {
+        assertThat(AbstractTransport.objectsToClasses(null), nullValue());
+    }
+
+    @Test
+    public void objectsToClasses() {
+        final Class[] classes = AbstractTransport.objectsToClasses(new Object[] {"hello", Integer.valueOf(3), Boolean.TRUE, Character.valueOf('a')});
+        assertThat(classes, arrayContaining(String.class, Integer.class, Boolean.class, Character.class));
+    }
+
+    @Test
+    public void emptyClassesToClassNames() {
+        assertThat(AbstractTransport.classesToClassNames(new Class[0]).length, equalTo(0));
+    }
+
+    @Test
+    public void nullClassesToClassNames() {
+        assertThat(AbstractTransport.classesToClassNames(null), nullValue());
+    }
+
+    @Test
+    public void classesToClassNames() {
+        final String[] names = AbstractTransport.classesToClassNames(new Class[] { String.class, Integer.class, Boolean.class, Character.class });
+        assertThat(names, arrayContaining(new String[] { "String", "Integer", "Boolean", "Character" }));
     }
 }
