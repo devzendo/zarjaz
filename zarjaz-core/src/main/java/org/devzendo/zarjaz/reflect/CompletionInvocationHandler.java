@@ -43,8 +43,12 @@ public class CompletionInvocationHandler<T> {
             logger.debug("Invoking " + method.getDeclaringClass().getName() + "." + method.getName());
         }
 
+        // TODO this needs replacing with a timeout scheduler
+        // And every response needs to reuse this logic. Synchronous calls can get.
+
         final CompletableFuture<Object> future = new CompletableFuture<Object>();
 
+        // TODO could block indefinitely?
         transportHandler.invoke(method, args, future);
 
         if (method.getReturnType().isAssignableFrom(Future.class)) {

@@ -85,18 +85,20 @@ public class TestNullTransport {
         // TODO
     }
 
-    @Test
+    @Test(timeout = 2000L)
     public void roundTripWithoutTimeout() {
         final DefaultPrimeGenerator serverImplementation = new DefaultPrimeGenerator();
 
-        nullTransport.registerServerImplementation(new EndpointName("primes"), PrimeGenerator.class, serverImplementation);
+        EndpointName primesEndpointName = new EndpointName("primes");
+        nullTransport.registerServerImplementation(primesEndpointName, PrimeGenerator.class, serverImplementation);
         Mockito.verify(clientValidator).validateClientInterface(PrimeGenerator.class);
         Mockito.verify(serverValidator).validateServerImplementation(PrimeGenerator.class, serverImplementation);
 
-//        final PrimeGenerator clientProxy = nullTransport.createClientProxy("primes", PrimeGenerator.class);
-//
-//        nullTransport.start();
-//
-//        assertThat(clientProxy.generateNextPrimeMessage(userName), equalTo("Hello Matt, the next prime is 2"));
+        final PrimeGenerator clientProxy = nullTransport.createClientProxy(primesEndpointName, PrimeGenerator.class);
+
+        nullTransport.start();
+
+        assertThat(clientProxy.generateNextPrimeMessage(userName), equalTo("Hello Matt, the next prime is 2"));
+        assertThat(clientProxy.generateNextPrimeMessage(userName), equalTo("Hello Matt, the next prime is 3"));
     }
 }

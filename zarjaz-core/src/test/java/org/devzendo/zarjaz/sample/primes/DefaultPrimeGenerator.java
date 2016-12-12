@@ -18,7 +18,7 @@ package org.devzendo.zarjaz.sample.primes;
 public class DefaultPrimeGenerator implements PrimeGenerator
 {
     final int[] primes = { 2, 3, 5, 7, 9, 11, 13, 17, 19 }; // etc., etc...
-    int primeIndex = 0;
+    int primeIndex = 8;
 
     public synchronized String generateNextPrimeMessage(String userName) {
         if (primeIndex == 8) {

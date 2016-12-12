@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
@@ -69,11 +70,32 @@ class NullTransport extends AbstractTransport implements Transport {
         public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future) {
             String methodName = method.getName();
             final Class[] argClasses = objectsToClasses(args);
+            if (logger.isDebugEnabled()) {
+                // TODO would be useful to log the endpoint name here
+                logger.debug("Invoking method: " + method.getReturnType().getSimpleName() + " " + methodName + joinedClassNames(argClasses));
+            }
             try {
                 final Method implMethod = impl.getClass().getMethod(methodName, argClasses);
+                final Object returnValue = implMethod.invoke(impl, args);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Invocation completed with return: '" + returnValue + "'");
+                }
+                future.complete(returnValue);
             } catch (final NoSuchMethodException e) {
-                final String msg = "No such method '" + methodName + "' with arg classes [" + classesToClassNames(argClasses) + "]: " + e.getMessage();
+                // TODO not sure how to test this
+                final String msg = "No such method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
                 logger.error(msg, e);
+                future.completeExceptionally(e);
+            } catch (final IllegalAccessException e) {
+                // TODO not sure how to test this
+                final String msg = "Illegal access exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                logger.error(msg, e);
+                future.completeExceptionally(e);
+            } catch (final InvocationTargetException e) {
+                // TODO not sure how to test this
+                final String msg = "Invocation target exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                logger.error(msg, e);
+                future.completeExceptionally(e);
             }
         }
 
