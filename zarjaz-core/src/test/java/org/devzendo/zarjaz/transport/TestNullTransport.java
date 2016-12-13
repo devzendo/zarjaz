@@ -21,6 +21,10 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.runners.MockitoJUnit44Runner;
 import org.mockito.runners.MockitoJUnitRunner;
 
+import java.lang.invoke.MethodHandle;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -100,5 +104,24 @@ public class TestNullTransport {
 
         assertThat(clientProxy.generateNextPrimeMessage(userName), equalTo("Hello Matt, the next prime is 2"));
         assertThat(clientProxy.generateNextPrimeMessage(userName), equalTo("Hello Matt, the next prime is 3"));
+    }
+
+    @Test(timeout = 2000L)
+    public void roundTripWithoutTimeoutAsynchronously() throws ExecutionException, InterruptedException {
+        final DefaultPrimeGenerator serverImplementation = new DefaultPrimeGenerator();
+
+        EndpointName primesEndpointName = new EndpointName("primes");
+        nullTransport.registerServerImplementation(primesEndpointName, PrimeGenerator.class, serverImplementation);
+        Mockito.verify(clientValidator).validateClientInterface(PrimeGenerator.class);
+        Mockito.verify(serverValidator).validateServerImplementation(PrimeGenerator.class, serverImplementation);
+
+        final PrimeGenerator clientProxy = nullTransport.createClientProxy(primesEndpointName, PrimeGenerator.class);
+
+        nullTransport.start();
+
+        final Future<String> first = clientProxy.generateNextPrimeMessageAsynchronously(userName);
+        assertThat(first.get(), equalTo("Hello Matt, the next prime is 2"));
+        final Future<String> second = clientProxy.generateNextPrimeMessageAsynchronously(userName);
+        assertThat(second.get(), equalTo("Hello Matt, the next prime is 3"));
     }
 }

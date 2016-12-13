@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -75,12 +77,26 @@ class NullTransport extends AbstractTransport implements Transport {
                 logger.debug("Invoking method: " + method.getReturnType().getSimpleName() + " " + methodName + joinedClassNames(argClasses));
             }
             try {
+                // Serialisation, transfer, setting a completion handler would happen here.
                 final Method implMethod = impl.getClass().getMethod(methodName, argClasses);
                 final Object returnValue = implMethod.invoke(impl, args);
                 if (logger.isDebugEnabled()) {
                     logger.debug("Invocation completed with return: '" + returnValue + "'");
                 }
-                future.complete(returnValue);
+
+                // Handle methods that are declared asynchronously.
+                if (method.getReturnType().isAssignableFrom(Future.class)) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Method was asynchronous, passing future contents on...");
+                    }
+                    final Future<?> thing = (Future)returnValue;
+                    future.complete(thing.get());
+                } else {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Method was synchronous, returning value on...");
+                    }
+                    future.complete(returnValue);
+                }
             } catch (final NoSuchMethodException e) {
                 // TODO not sure how to test this
                 final String msg = "No such method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
@@ -94,6 +110,16 @@ class NullTransport extends AbstractTransport implements Transport {
             } catch (final InvocationTargetException e) {
                 // TODO not sure how to test this
                 final String msg = "Invocation target exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                logger.error(msg, e);
+                future.completeExceptionally(e);
+            } catch (final InterruptedException e) {
+                // TODO not sure how to test this
+                final String msg = "Interrupted exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                logger.error(msg, e);
+                future.completeExceptionally(e);
+            } catch (final ExecutionException e) {
+                // TODO not sure how to test this
+                final String msg = "Execution exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
                 logger.error(msg, e);
                 future.completeExceptionally(e);
             }

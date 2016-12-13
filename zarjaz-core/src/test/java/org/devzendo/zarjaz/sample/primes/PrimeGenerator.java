@@ -1,5 +1,7 @@
 package org.devzendo.zarjaz.sample.primes;
 
+import java.util.concurrent.Future;
+
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org <http://devzendo.org>
  * <p/>
@@ -18,4 +20,5 @@ package org.devzendo.zarjaz.sample.primes;
 public interface PrimeGenerator {
 
     String generateNextPrimeMessage(String userName);
+    Future<String> generateNextPrimeMessageAsynchronously(String userName);
 }
