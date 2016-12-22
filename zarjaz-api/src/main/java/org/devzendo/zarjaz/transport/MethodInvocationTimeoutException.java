@@ -1,7 +1,7 @@
-package org.devzendo.zarjaz.reflect;
+package org.devzendo.zarjaz.transport;
 
 /**
- * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
+ * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@ package org.devzendo.zarjaz.reflect;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class InvocationException extends RuntimeException {
-    public InvocationException(final String message, final Throwable cause) {
-        super(message, cause);
+public class MethodInvocationTimeoutException extends RuntimeException {
+    public MethodInvocationTimeoutException(final String message) {
+        super(message);
     }
 }

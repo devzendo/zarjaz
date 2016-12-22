@@ -98,6 +98,7 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
 
         // Copy to arraylist to prevent concurrent modification exceptions
         assertThat(new ArrayList<>(capturingAppender.getEvents()), hasSize(1));
+        // TODO use the IsLoggingEvent matcher in the zarjaz.logging package here...?
         final LoggingEvent loggingEvent = capturingAppender.getEvents().get(0);
         assertThat(loggingEvent.getLevel(), equalTo(Level.WARN));
         assertThat(loggingEvent.getMessage().toString(), Matchers.containsString("Timeout handler threw IllegalStateException: Boom"));

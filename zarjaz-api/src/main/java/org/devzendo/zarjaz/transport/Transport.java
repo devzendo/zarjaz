@@ -19,7 +19,8 @@ public interface Transport {
 
     <T> void registerServerImplementation(EndpointName name, Class<T> interfaceClass, T implementation);
 
-    <T> T createClientProxy(EndpointName name, Class<T> interfaceClass);
+    <T> T createClientProxy(EndpointName name, Class<T> interfaceClass, long methodTimeoutMilliseconds);
+    // TODO need a mechanism for setting/overriding timeouts for specific methods.
 
     /**
      * Start allowing calls to server implementations.
@@ -30,4 +31,5 @@ public interface Transport {
      * Shut down all server implementations and client proxies.
      */
     void stop();
+
 }

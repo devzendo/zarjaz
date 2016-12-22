@@ -1,6 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
 import org.devzendo.zarjaz.reflect.CompletionInvocationHandler;
+import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.slf4j.Logger;
@@ -38,10 +39,16 @@ class NullTransport extends AbstractTransport implements Transport {
     final Map<NamedInterface, Object> implementations = new HashMap<>();
     private final ServerImplementationValidator serverImplementationValidator;
     private final ClientInterfaceValidator clientInterfaceValidator;
+    private final TimeoutScheduler timeoutScheduler;
 
     public NullTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator) {
+        this(serverImplementationValidator, clientInterfaceValidator, new TimeoutScheduler());
+    }
+
+    public NullTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler) {
         this.serverImplementationValidator = serverImplementationValidator;
         this.clientInterfaceValidator = clientInterfaceValidator;
+        this.timeoutScheduler = timeoutScheduler;
     }
 
     public <T> void registerServerImplementation(final EndpointName name, final Class<T> interfaceClass, final T implementation) {
@@ -81,6 +88,7 @@ class NullTransport extends AbstractTransport implements Transport {
                 final Method implMethod = impl.getClass().getMethod(methodName, argClasses);
                 final Object returnValue = implMethod.invoke(impl, args);
                 if (logger.isDebugEnabled()) {
+                    // TODO logging the return could violate security... we don't know what we could be logging.
                     logger.debug("Invocation completed with return: '" + returnValue + "'");
                 }
 
@@ -129,21 +137,26 @@ class NullTransport extends AbstractTransport implements Transport {
 
     // Plan is that the TransportInvocationHandler is the client-side part that varies here, so that this
     // createClientProxy method could be in an abstract base transport class?
-    public <T> T createClientProxy(final EndpointName name, final Class<T> interfaceClass) {
-        logger.info("Creating client proxy of " + name + " with interface " + interfaceClass.getName());
-        // TODO validate the client interface?
+
+    @Override
+    public <T> T createClientProxy(EndpointName name, Class<T> interfaceClass, long methodTimeoutMilliseconds) {
+        logger.info("Creating client proxy of " + name + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
+        clientInterfaceValidator.validateClientInterface(interfaceClass);
         final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(name, interfaceClass);
-        final CompletionInvocationHandler cih = new CompletionInvocationHandler(name, interfaceClass, transportInvocationHandler);
-        InvocationHandler handler = new InvocationHandler() {
-            @Override
-            public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
-                return cih.invoke(proxy, method, args);
-            }
-        };
-        T proxy = (T) Proxy.newProxyInstance(interfaceClass.getClassLoader(),
+        final CompletionInvocationHandler cih = new CompletionInvocationHandler(timeoutScheduler, name, interfaceClass, transportInvocationHandler, methodTimeoutMilliseconds);
+        return createProxy(interfaceClass, cih);
+    }
+
+    private <T> T createProxy(Class<T> interfaceClass, final CompletionInvocationHandler cih) {
+        // TODO not sure we need the new InvocationHandler here, isn't the CompletionInvocationHandler an InvocationHandler?
+        return (T) Proxy.newProxyInstance(interfaceClass.getClassLoader(),
                 new Class<?>[]{interfaceClass},
-                handler);
-        return proxy;
+                new InvocationHandler() {
+                    @Override
+                    public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
+                        return cih.invoke(proxy, method, args);
+                    }
+                });
     }
 
     private <T> TransportInvocationHandler createTransportInvocationHandler(EndpointName name, Class<T> interfaceClass) {
@@ -159,10 +172,12 @@ class NullTransport extends AbstractTransport implements Transport {
     }
 
     public void start() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        timeoutScheduler.start();
     }
 
     public void stop() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        if (timeoutScheduler.isStarted()) {
+            timeoutScheduler.stop();
+        }
     }
 }

@@ -99,6 +99,7 @@ public class TimeoutScheduler {
 
     public void start() {
         started.set(true);
+        // TODO perhaps a usage count would be better here, increment?
     }
 
     public boolean isStarted() {
