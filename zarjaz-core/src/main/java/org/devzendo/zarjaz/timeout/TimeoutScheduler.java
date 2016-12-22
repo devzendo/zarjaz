@@ -1,12 +1,12 @@
 package org.devzendo.zarjaz.timeout;
 
+import org.devzendo.zarjaz.concurrency.DaemonThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -27,37 +27,13 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TimeoutScheduler {
     private static final Logger logger = LoggerFactory.getLogger(TimeoutScheduler.class);
 
-    static class DaemonThreadFactory implements ThreadFactory {
-        private final ThreadGroup group;
-        private final AtomicInteger threadNumber = new AtomicInteger(1);
-        private final String namePrefix;
-
-        DaemonThreadFactory() {
-            SecurityManager s = System.getSecurityManager();
-            group = (s != null) ? s.getThreadGroup() :
-                    Thread.currentThread().getThreadGroup();
-            namePrefix = "zarjaz-timeout-scheduler-thread-";
-        }
-
-        public Thread newThread(Runnable r) {
-            Thread t = new Thread(group, r,
-                    namePrefix + threadNumber.getAndIncrement(),
-                    0);
-            if (!t.isDaemon())
-                t.setDaemon(true);
-            if (t.getPriority() != Thread.NORM_PRIORITY)
-                t.setPriority(Thread.NORM_PRIORITY);
-            return t;
-        }
-    }
-
     private final AtomicBoolean started = new AtomicBoolean(false);
     private final Map<TimeoutId, ScheduledFuture<?>> activeTimeouts = new ConcurrentHashMap<>();
     private final AtomicLong timeoutIdCount = new AtomicLong(0);
     private final ScheduledThreadPoolExecutor executor;
 
     public TimeoutScheduler() {
-        executor = new ScheduledThreadPoolExecutor(10, new DaemonThreadFactory());
+        executor = new ScheduledThreadPoolExecutor(10, new DaemonThreadFactory("zarjaz-timeout-scheduler-thread-"));
         executor.setRemoveOnCancelPolicy(true);
         executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
     }

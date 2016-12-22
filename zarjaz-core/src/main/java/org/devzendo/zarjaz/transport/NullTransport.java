@@ -11,7 +11,6 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -37,18 +36,13 @@ class NullTransport extends AbstractTransport implements Transport {
     private static final Logger logger = LoggerFactory.getLogger(NullTransport.class);
 
     final Map<NamedInterface, Object> implementations = new HashMap<>();
-    private final ServerImplementationValidator serverImplementationValidator;
-    private final ClientInterfaceValidator clientInterfaceValidator;
-    private final TimeoutScheduler timeoutScheduler;
 
     public NullTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator) {
         this(serverImplementationValidator, clientInterfaceValidator, new TimeoutScheduler());
     }
 
     public NullTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler) {
-        this.serverImplementationValidator = serverImplementationValidator;
-        this.clientInterfaceValidator = clientInterfaceValidator;
-        this.timeoutScheduler = timeoutScheduler;
+        super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler);
     }
 
     public <T> void registerServerImplementation(final EndpointName name, final Class<T> interfaceClass, final T implementation) {
