@@ -9,7 +9,10 @@ import org.devzendo.zarjaz.sample.timeout.TimeoutGenerator;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -198,7 +201,6 @@ public class TestNullTransport {
     }
 
     @Test(timeout = 3000L)
-    @Ignore // need more work to prevent client-side blockage; this commit is big enough...
     public void timeoutOnClientSideTimesOutCorrectly() {
         nullTransport.registerServerImplementation(new EndpointName("timeout"), TimeoutGenerator.class, new DefaultTimeoutGenerator());
 
@@ -212,10 +214,9 @@ public class TestNullTransport {
             clientProxy.sleepFor(1000L);
             // expecting an exception here!
         } catch (final MethodInvocationTimeoutException e) {
-            // ignore exception in this test
             final long stop = System.currentTimeMillis();
-
             long duration = stop - start;
+
             logger.info("Call with timeout round-trip was " + duration + " ms");
             assertThat(duration, greaterThanOrEqualTo(500L));
             assertThat(duration, lessThan(750L)); // if it takes more than 250ms over the timeout, we're doing something wrong

@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.zarjaz.concurrency.DaemonThreadFactory;
 import org.devzendo.zarjaz.reflect.CompletionInvocationHandler;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
@@ -13,9 +14,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -34,15 +33,20 @@ import java.util.concurrent.Future;
  */
 class NullTransport extends AbstractTransport implements Transport {
     private static final Logger logger = LoggerFactory.getLogger(NullTransport.class);
+    private final ThreadPoolExecutor executor;
 
     final Map<NamedInterface, Object> implementations = new HashMap<>();
 
+    // TODO not sure this ctor is needed - need one with everything supplied, and with nothing supplied?
     public NullTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator) {
         this(serverImplementationValidator, clientInterfaceValidator, new TimeoutScheduler());
     }
 
     public NullTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler) {
         super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler);
+        this.executor = new ThreadPoolExecutor(5, 10, 2000L, TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<Runnable>(10),
+                new DaemonThreadFactory("zarjaz-null-transport-invoker-thread-"));
     }
 
     public <T> void registerServerImplementation(final EndpointName name, final Class<T> interfaceClass, final T implementation) {
@@ -63,75 +67,82 @@ class NullTransport extends AbstractTransport implements Transport {
     // TODO this should be useful for all server-side transports, surely?
     private static class NullTransportInvocationHandler implements TransportInvocationHandler {
 
+        private final ThreadPoolExecutor executor;
         private final Object impl;
 
-        public NullTransportInvocationHandler(final Object impl) {
+        public NullTransportInvocationHandler(final ThreadPoolExecutor executor, final Object impl) {
+            this.executor = executor;
             this.impl = impl;
         }
 
         @Override
         public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future) {
-            String methodName = method.getName();
-            final Class[] argClasses = objectsToClasses(args);
-            if (logger.isDebugEnabled()) {
-                // TODO would be useful to log the endpoint name here
-                logger.debug("Invoking method: " + method.getReturnType().getSimpleName() + " " + methodName + joinedClassNames(argClasses));
-            }
-            try {
-                // Serialisation, transfer, setting a completion handler would happen here.
-                final Method implMethod = impl.getClass().getMethod(methodName, argClasses);
-                final Object returnValue = implMethod.invoke(impl, args);
-                if (logger.isDebugEnabled()) {
-                    // TODO logging the return could violate security... we don't know what we could be logging.
-                    logger.debug("Invocation completed with return: '" + returnValue + "'");
-                }
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    String methodName = method.getName();
+                    final Class[] argClasses = objectsToClasses(args);
+                    if (logger.isDebugEnabled()) {
+                        // TODO would be useful to log the endpoint name here
+                        logger.debug("Invoking method: " + method.getReturnType().getSimpleName() + " " + methodName + joinedClassNames(argClasses));
+                    }
+                    try {
+                        // Serialisation, transfer, setting a completion handler would happen here.
+                        final Method implMethod = impl.getClass().getMethod(methodName, argClasses);
+                        final Object returnValue = implMethod.invoke(impl, args);
+                        if (logger.isDebugEnabled()) {
+                            // TODO logging the return could violate security... we don't know what we could be logging.
+                            logger.debug("Invocation completed with return: '" + returnValue + "'");
+                        }
 
-                // Handle methods that are declared asynchronously.
-                if (method.getReturnType().isAssignableFrom(Future.class)) {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Method was asynchronous, passing future contents on...");
+                        // Handle methods that are declared asynchronously.
+                        if (method.getReturnType().isAssignableFrom(Future.class)) {
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("Method was asynchronous, passing future contents on...");
+                            }
+                            final Future<?> thing = (Future)returnValue;
+                            future.complete(thing.get());
+                        } else {
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("Method was synchronous, returning value on...");
+                            }
+                            future.complete(returnValue);
+                        }
+                    } catch (final NoSuchMethodException e) {
+                        // TODO not sure how to test this
+                        final String msg = "No such method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                        logger.error(msg, e);
+                        future.completeExceptionally(e);
+                    } catch (final IllegalAccessException e) {
+                        // TODO not sure how to test this
+                        final String msg = "Illegal access exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                        logger.error(msg, e);
+                        future.completeExceptionally(e);
+                    } catch (final InvocationTargetException e) {
+                        // TODO not sure how to test this
+                        final String msg = "Invocation target exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                        logger.error(msg, e);
+                        future.completeExceptionally(e);
+                    } catch (final InterruptedException e) {
+                        // TODO not sure how to test this
+                        final String msg = "Interrupted exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                        logger.error(msg, e);
+                        future.completeExceptionally(e);
+                    } catch (final ExecutionException e) {
+                        // TODO not sure how to test this
+                        final String msg = "Execution exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                        logger.error(msg, e);
+                        future.completeExceptionally(e);
                     }
-                    final Future<?> thing = (Future)returnValue;
-                    future.complete(thing.get());
-                } else {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Method was synchronous, returning value on...");
-                    }
-                    future.complete(returnValue);
                 }
-            } catch (final NoSuchMethodException e) {
-                // TODO not sure how to test this
-                final String msg = "No such method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
-                logger.error(msg, e);
-                future.completeExceptionally(e);
-            } catch (final IllegalAccessException e) {
-                // TODO not sure how to test this
-                final String msg = "Illegal access exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
-                logger.error(msg, e);
-                future.completeExceptionally(e);
-            } catch (final InvocationTargetException e) {
-                // TODO not sure how to test this
-                final String msg = "Invocation target exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
-                logger.error(msg, e);
-                future.completeExceptionally(e);
-            } catch (final InterruptedException e) {
-                // TODO not sure how to test this
-                final String msg = "Interrupted exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
-                logger.error(msg, e);
-                future.completeExceptionally(e);
-            } catch (final ExecutionException e) {
-                // TODO not sure how to test this
-                final String msg = "Execution exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
-                logger.error(msg, e);
-                future.completeExceptionally(e);
-            }
+            });
+            // TODO handle exhaustion
         }
 
     }
 
     // Plan is that the TransportInvocationHandler is the client-side part that varies here, so that this
     // createClientProxy method could be in an abstract base transport class?
-
     @Override
     public <T> T createClientProxy(EndpointName name, Class<T> interfaceClass, long methodTimeoutMilliseconds) {
         logger.info("Creating client proxy of " + name + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
@@ -161,7 +172,7 @@ class NullTransport extends AbstractTransport implements Transport {
                 throw new RegistrationException("The EndpointName '" + name + "' is not registered");
             }
 
-            return new NullTransportInvocationHandler(implementations.get(namedInterface));
+            return new NullTransportInvocationHandler(executor, implementations.get(namedInterface));
         }
     }
 

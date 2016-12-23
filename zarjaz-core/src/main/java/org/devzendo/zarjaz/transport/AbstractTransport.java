@@ -1,11 +1,8 @@
 package org.devzendo.zarjaz.transport;
 
-import org.devzendo.zarjaz.concurrency.DaemonThreadFactory;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
-
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -65,12 +62,10 @@ public abstract class AbstractTransport {
     protected final ServerImplementationValidator serverImplementationValidator;
     protected final ClientInterfaceValidator clientInterfaceValidator;
     protected final TimeoutScheduler timeoutScheduler;
-    protected final ScheduledThreadPoolExecutor executor;
 
     public AbstractTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler) {
         this.serverImplementationValidator = serverImplementationValidator;
         this.clientInterfaceValidator = clientInterfaceValidator;
         this.timeoutScheduler = timeoutScheduler;
-        this.executor = new ScheduledThreadPoolExecutor(10, new DaemonThreadFactory("zarjaz-transport-invoker-thread-"));
     }
 }
