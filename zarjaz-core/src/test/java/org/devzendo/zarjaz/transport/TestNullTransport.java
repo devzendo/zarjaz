@@ -14,6 +14,9 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
@@ -21,9 +24,13 @@ import org.mockito.junit.MockitoRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.fail;
@@ -43,6 +50,7 @@ import static org.junit.Assert.fail;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@RunWith(Parameterized.class)
 public class TestNullTransport {
     private static final Logger logger = LoggerFactory.getLogger(TestNullTransport.class);
 
@@ -50,7 +58,20 @@ public class TestNullTransport {
         BasicConfigurator.configure();
     }
 
-    final String userName = "Matt";
+    @Parameters
+    public static Collection<Class> data() {
+        return asList(NullTransport.class);
+    }
+
+    private final String userName = "Matt";
+    private final Class<? extends Transport> transportClass;
+    private TimeoutScheduler timeoutScheduler;
+    private Transport nullTransport;
+
+    // runs before mocks initialised, so do real construction in @Before.
+    public TestNullTransport(final Class<? extends Transport> transportClass) {
+        this.transportClass = transportClass;
+    }
 
     @Mock
     ClientInterfaceValidator clientValidator;
@@ -64,13 +85,11 @@ public class TestNullTransport {
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-    TimeoutScheduler timeoutScheduler;
-    Transport nullTransport;
-
     @Before
-    public void setUp() {
+    public void setUp() throws IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException {
         timeoutScheduler = new TimeoutScheduler();
-        nullTransport = new NullTransport(serverValidator, clientValidator, timeoutScheduler);
+        final Constructor<? extends Transport> constructor = transportClass.getConstructor(ServerImplementationValidator.class, ClientInterfaceValidator.class, TimeoutScheduler.class);
+        nullTransport = constructor.newInstance(serverValidator, clientValidator, timeoutScheduler);
     }
 
     @After
