@@ -6,7 +6,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
 /**
- * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org <http://devzendo.org>
+ * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
  * <p/>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,5 +82,4 @@ public class TestAbstractTransport {
         final String joined = AbstractTransport.joinedClassNames(new Class[] {String.class, Integer.class, Void.class});
         assertThat(joined, equalTo("(String, Integer, Void)"));
     }
-
 }
