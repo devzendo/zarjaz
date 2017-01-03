@@ -51,8 +51,8 @@ import static org.junit.Assert.fail;
  * limitations under the License.
  */
 @RunWith(Parameterized.class)
-public class TestNullTransport {
-    private static final Logger logger = LoggerFactory.getLogger(TestNullTransport.class);
+public class TestTransports {
+    private static final Logger logger = LoggerFactory.getLogger(TestTransports.class);
 
     {
         BasicConfigurator.configure();
@@ -69,7 +69,7 @@ public class TestNullTransport {
     private Transport transport;
 
     // runs before mocks initialised, so do real construction in @Before.
-    public TestNullTransport(final Class<? extends Transport> transportClass) {
+    public TestTransports(final Class<? extends Transport> transportClass) {
         this.transportClass = transportClass;
     }
 
