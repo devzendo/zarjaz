@@ -14,8 +14,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +42,6 @@ import static org.hamcrest.Matchers.*;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@RunWith(MockitoJUnitRunner.class)
 public class TestCompletionInvocationHandler extends LoggingUnittestCase {
 
     private static final Logger logger = LoggerFactory.getLogger(TestCompletionInvocationHandler.class);
@@ -58,6 +57,9 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
 
     private Method getNameMethod;
     private final Object[] noArgs = new Object[0];
+
+    @Rule
+    public MockitoRule mockitoRule = MockitoJUnit.rule();
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();

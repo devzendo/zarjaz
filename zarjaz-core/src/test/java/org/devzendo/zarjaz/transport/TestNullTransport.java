@@ -14,10 +14,10 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +43,6 @@ import static org.junit.Assert.fail;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@RunWith(MockitoJUnitRunner.class)
 public class TestNullTransport {
     private static final Logger logger = LoggerFactory.getLogger(TestNullTransport.class);
 
@@ -53,9 +52,14 @@ public class TestNullTransport {
 
     final String userName = "Matt";
 
-    @Mock ClientInterfaceValidator clientValidator;
+    @Mock
+    ClientInterfaceValidator clientValidator;
 
-    @Mock ServerImplementationValidator serverValidator;
+    @Mock
+    ServerImplementationValidator serverValidator;
+
+    @Rule
+    public MockitoRule mockitoRule = MockitoJUnit.rule();
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
