@@ -84,7 +84,7 @@ public abstract class AbstractTransport {
                 new DaemonThreadFactory("zarjaz-" + transportName + "-transport-invoker-thread-"));
     }
 
-    public <T> void registerServerImplementation(final EndpointName name, final Class<T> interfaceClass, final T implementation) {
+    public final <T> void registerServerImplementation(final EndpointName name, final Class<T> interfaceClass, final T implementation) {
         logger.info("Registering server implementation of " + name + " with interface " + interfaceClass.getName());
         clientInterfaceValidator.validateClientInterface(interfaceClass);
         serverImplementationValidator.validateServerImplementation(interfaceClass, implementation);

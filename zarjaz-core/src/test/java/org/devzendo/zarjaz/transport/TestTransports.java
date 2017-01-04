@@ -24,7 +24,6 @@ import org.mockito.junit.MockitoRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.concurrent.ExecutionException;
@@ -88,8 +87,9 @@ public class TestTransports {
     @Before
     public void setUp() throws IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException {
         timeoutScheduler = new TimeoutScheduler();
-        final Constructor<? extends Transport> constructor = transportClass.getConstructor(ServerImplementationValidator.class, ClientInterfaceValidator.class, TimeoutScheduler.class);
-        transport = constructor.newInstance(serverValidator, clientValidator, timeoutScheduler);
+        if (transportClass.equals(NullTransport.class)) {
+            transport = new NullTransport(serverValidator, clientValidator, timeoutScheduler);
+        }
     }
 
     @After

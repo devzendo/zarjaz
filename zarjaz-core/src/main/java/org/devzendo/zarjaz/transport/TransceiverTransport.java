@@ -29,22 +29,19 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     }
 
     @Override
-    public <T> void registerServerImplementation(EndpointName name, Class<T> interfaceClass, T implementation) {
-
-    }
-
-    @Override
     public <T> T createClientProxy(EndpointName name, Class<T> interfaceClass, long methodTimeoutMilliseconds) {
         return null;
     }
 
     @Override
     public void start() {
-
+        super.start();
+        // TODO start transceiver?
     }
 
     @Override
     public void stop() {
-
+        // TODO stop transceiver?
+        super.stop();
     }
 }
