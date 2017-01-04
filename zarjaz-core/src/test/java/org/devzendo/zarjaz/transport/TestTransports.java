@@ -19,6 +19,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.internal.matchers.Null;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.slf4j.Logger;
@@ -65,7 +66,8 @@ public class TestTransports {
     private final String userName = "Matt";
     private final Class<? extends Transport> transportClass;
     private TimeoutScheduler timeoutScheduler;
-    private Transport transport;
+    private Transport clientTransport;
+    private Transport serverTransport;
 
     // runs before mocks initialised, so do real construction in @Before.
     public TestTransports(final Class<? extends Transport> transportClass) {
@@ -88,16 +90,20 @@ public class TestTransports {
     public void setUp() throws IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException {
         timeoutScheduler = new TimeoutScheduler();
         if (transportClass.equals(NullTransport.class)) {
-            transport = new NullTransport(serverValidator, clientValidator, timeoutScheduler);
+            clientTransport = new NullTransport(serverValidator, clientValidator, timeoutScheduler);
+            serverTransport = clientTransport;
         } else if (transportClass.equals((TransceiverTransport.class))) {
-            transport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler);
+            clientTransport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler);
         }
     }
 
     @After
     public void tearDown() {
-        if (transport != null) {
-            transport.stop();
+        if (clientTransport != null) {
+            clientTransport.stop();
+        }
+        if (serverTransport != null) {
+            serverTransport.stop();
         }
     }
 
@@ -108,8 +114,8 @@ public class TestTransports {
         thrown.expect(RegistrationException.class);
         thrown.expectMessage("The EndpointName 'primes' is already registered");
 
-        transport.registerServerImplementation(new EndpointName("primes"), PrimeGenerator.class, serverImplementation);
-        transport.registerServerImplementation(new EndpointName("primes"), PrimeGenerator.class, serverImplementation);
+        serverTransport.registerServerImplementation(new EndpointName("primes"), PrimeGenerator.class, serverImplementation);
+        serverTransport.registerServerImplementation(new EndpointName("primes"), PrimeGenerator.class, serverImplementation);
     }
 
     @Test
@@ -117,7 +123,7 @@ public class TestTransports {
         final DefaultTimeoutGenerator serverImplementation = new DefaultTimeoutGenerator();
 
         EndpointName timeoutEndpointName = new EndpointName("timeout");
-        transport.registerServerImplementation(timeoutEndpointName, TimeoutGenerator.class, serverImplementation);
+        serverTransport.registerServerImplementation(timeoutEndpointName, TimeoutGenerator.class, serverImplementation);
         Mockito.verify(clientValidator).validateClientInterface(TimeoutGenerator.class);
         Mockito.verify(serverValidator).validateServerImplementation(TimeoutGenerator.class, serverImplementation);
     }
@@ -127,10 +133,12 @@ public class TestTransports {
         final DefaultTimeoutGenerator serverImplementation = new DefaultTimeoutGenerator();
 
         EndpointName timeoutEndpointName = new EndpointName("timeout");
-        // for the null transport, the impl has to be registered even tho only interested in the 'client' side.
-        transport.registerServerImplementation(timeoutEndpointName, TimeoutGenerator.class, serverImplementation);
+        // for the null clientTransport, the impl has to be registered even tho only interested in the 'client' side.
+        if (clientTransport instanceof NullTransport) {
+            clientTransport.registerServerImplementation(timeoutEndpointName, TimeoutGenerator.class, serverImplementation);
+        }
 
-        final TimeoutGenerator clientProxy = transport.createClientProxy(timeoutEndpointName, TimeoutGenerator.class, 500L);
+        final TimeoutGenerator clientProxy = clientTransport.createClientProxy(timeoutEndpointName, TimeoutGenerator.class, 500L);
         Mockito.verify(clientValidator, Mockito.times(2)).validateClientInterface(TimeoutGenerator.class);
     }
 
@@ -148,23 +156,23 @@ public class TestTransports {
     public void cannotMakeClientCallsAfterStopped() {
         // TODO
     }
-    // TODO but stopping the transport will stop the timeoutscheduler - what if it is shared?
+    // TODO but stopping the clientTransport will stop the timeoutscheduler - what if it is shared?
     // usage count in the scheduler would work...
-    // Perhaps if you pass it in, it is used in a 'shared' mode, where it is not stopped when the transport
-    // is stopped - but if you construct the transport without passing in the scheduler, it is stopped.
+    // Perhaps if you pass it in, it is used in a 'shared' mode, where it is not stopped when the clientTransport
+    // is stopped - but if you construct the clientTransport without passing in the scheduler, it is stopped.
 
     @Test(timeout = 2000L)
     public void timeoutSchedulerExpectationsOnStartingAndStoppingTransport() {
         assertThat(timeoutScheduler.isStarted(), equalTo(false));
 
         ThreadUtils.waitNoInterruption(250L);
-        transport.start();
+        clientTransport.start();
         ThreadUtils.waitNoInterruption(250L);
 
         assertThat(timeoutScheduler.isStarted(), equalTo(true));
 
         ThreadUtils.waitNoInterruption(250L);
-        transport.stop();
+        clientTransport.stop();
         ThreadUtils.waitNoInterruption(250L);
 
         assertThat(timeoutScheduler.isStarted(), equalTo(false));
@@ -175,13 +183,13 @@ public class TestTransports {
         final DefaultPrimeGenerator serverImplementation = new DefaultPrimeGenerator();
 
         EndpointName primesEndpointName = new EndpointName("primes");
-        transport.registerServerImplementation(primesEndpointName, PrimeGenerator.class, serverImplementation);
+        serverTransport.registerServerImplementation(primesEndpointName, PrimeGenerator.class, serverImplementation);
         Mockito.verify(clientValidator).validateClientInterface(PrimeGenerator.class);
         Mockito.verify(serverValidator).validateServerImplementation(PrimeGenerator.class, serverImplementation);
 
-        final PrimeGenerator clientProxy = transport.createClientProxy(primesEndpointName, PrimeGenerator.class, 500L);
+        final PrimeGenerator clientProxy = clientTransport.createClientProxy(primesEndpointName, PrimeGenerator.class, 500L);
 
-        transport.start();
+        clientTransport.start();
 
         assertThat(clientProxy.generateNextPrimeMessage(userName), equalTo("Hello Matt, the next prime is 2"));
         assertThat(clientProxy.generateNextPrimeMessage(userName), equalTo("Hello Matt, the next prime is 3"));
@@ -192,13 +200,13 @@ public class TestTransports {
         final DefaultPrimeGenerator serverImplementation = new DefaultPrimeGenerator();
 
         EndpointName primesEndpointName = new EndpointName("primes");
-        transport.registerServerImplementation(primesEndpointName, PrimeGenerator.class, serverImplementation);
+        serverTransport.registerServerImplementation(primesEndpointName, PrimeGenerator.class, serverImplementation);
         Mockito.verify(clientValidator).validateClientInterface(PrimeGenerator.class);
         Mockito.verify(serverValidator).validateServerImplementation(PrimeGenerator.class, serverImplementation);
 
-        final PrimeGenerator clientProxy = transport.createClientProxy(primesEndpointName, PrimeGenerator.class, 500L);
+        final PrimeGenerator clientProxy = clientTransport.createClientProxy(primesEndpointName, PrimeGenerator.class, 500L);
 
-        transport.start();
+        clientTransport.start();
 
         final Future<String> first = clientProxy.generateNextPrimeMessageAsynchronously(userName);
         assertThat(first.get(), equalTo("Hello Matt, the next prime is 2"));
@@ -208,12 +216,11 @@ public class TestTransports {
 
     @Test(timeout = 4000L)
     public void timeoutOnClientSideThrowsAppropriateException() {
+        serverTransport.registerServerImplementation(new EndpointName("timeout"), TimeoutGenerator.class, new DefaultTimeoutGenerator());
 
-        transport.registerServerImplementation(new EndpointName("timeout"), TimeoutGenerator.class, new DefaultTimeoutGenerator());
+        final TimeoutGenerator clientProxy = clientTransport.createClientProxy(new EndpointName("timeout"), TimeoutGenerator.class, 500L);
 
-        final TimeoutGenerator clientProxy = transport.createClientProxy(new EndpointName("timeout"), TimeoutGenerator.class, 500L);
-
-        transport.start();
+        clientTransport.start();
 
         thrown.expect(MethodInvocationTimeoutException.class);
         thrown.expectMessage("method call [timeout] 'sleepFor' timed out after 500ms");
@@ -227,11 +234,11 @@ public class TestTransports {
 
     @Test(timeout = 3000L)
     public void timeoutOnClientSideTimesOutCorrectly() {
-        transport.registerServerImplementation(new EndpointName("timeout"), TimeoutGenerator.class, new DefaultTimeoutGenerator());
+        serverTransport.registerServerImplementation(new EndpointName("timeout"), TimeoutGenerator.class, new DefaultTimeoutGenerator());
 
-        final TimeoutGenerator clientProxy = transport.createClientProxy(new EndpointName("timeout"), TimeoutGenerator.class, 500L);
+        final TimeoutGenerator clientProxy = clientTransport.createClientProxy(new EndpointName("timeout"), TimeoutGenerator.class, 500L);
 
-        transport.start();
+        clientTransport.start();
 
         final long start = System.currentTimeMillis();
         try {
