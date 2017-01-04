@@ -24,8 +24,12 @@ import org.slf4j.LoggerFactory;
 public class TransceiverTransport extends AbstractTransport implements Transport {
     private static final Logger logger = LoggerFactory.getLogger(TransceiverTransport.class);
 
+    public TransceiverTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler) {
+        this(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, "transceiver");
+    }
+
     public TransceiverTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler, String transportName) {
-        super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, "transceiver");
+        super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transportName);
     }
 
     @Override

@@ -89,6 +89,8 @@ public class TestTransports {
         timeoutScheduler = new TimeoutScheduler();
         if (transportClass.equals(NullTransport.class)) {
             transport = new NullTransport(serverValidator, clientValidator, timeoutScheduler);
+        } else if (transportClass.equals((TransceiverTransport.class))) {
+            transport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler);
         }
     }
 
