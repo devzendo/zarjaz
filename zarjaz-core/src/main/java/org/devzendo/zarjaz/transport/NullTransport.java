@@ -1,6 +1,5 @@
 package org.devzendo.zarjaz.transport;
 
-import org.devzendo.zarjaz.concurrency.DaemonThreadFactory;
 import org.devzendo.zarjaz.reflect.CompletionInvocationHandler;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
@@ -12,9 +11,10 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -33,9 +33,6 @@ import java.util.concurrent.*;
  */
 class NullTransport extends AbstractTransport implements Transport {
     private static final Logger logger = LoggerFactory.getLogger(NullTransport.class);
-    private final ThreadPoolExecutor executor;
-
-    final Map<NamedInterface, Object> implementations = new HashMap<>();
 
     // TODO not sure this ctor is needed - need one with everything supplied, and with nothing supplied?
     public NullTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator) {
@@ -43,25 +40,7 @@ class NullTransport extends AbstractTransport implements Transport {
     }
 
     public NullTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler) {
-        super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler);
-        this.executor = new ThreadPoolExecutor(5, 10, 2000L, TimeUnit.MILLISECONDS,
-                new ArrayBlockingQueue<Runnable>(10),
-                new DaemonThreadFactory("zarjaz-null-transport-invoker-thread-"));
-    }
-
-    public <T> void registerServerImplementation(final EndpointName name, final Class<T> interfaceClass, final T implementation) {
-        logger.info("Registering server implementation of " + name + " with interface " + interfaceClass.getName());
-        clientInterfaceValidator.validateClientInterface(interfaceClass);
-        serverImplementationValidator.validateServerImplementation(interfaceClass, implementation);
-
-        synchronized (implementations) {
-            final NamedInterface namedInterface = new NamedInterface(name, interfaceClass);
-            if (implementations.containsKey(namedInterface)) {
-                throw new RegistrationException("The EndpointName '" + name + "' is already registered");
-            }
-
-            implementations.put(namedInterface, implementation);
-        }
+        super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, "null");
     }
 
     // TODO this should be useful for all server-side transports, surely?
@@ -138,7 +117,6 @@ class NullTransport extends AbstractTransport implements Transport {
             });
             // TODO handle exhaustion
         }
-
     }
 
     // Plan is that the TransportInvocationHandler is the client-side part that varies here, so that this
@@ -173,16 +151,6 @@ class NullTransport extends AbstractTransport implements Transport {
             }
 
             return new NullTransportInvocationHandler(executor, implementations.get(namedInterface));
-        }
-    }
-
-    public void start() {
-        timeoutScheduler.start();
-    }
-
-    public void stop() {
-        if (timeoutScheduler.isStarted()) {
-            timeoutScheduler.stop();
         }
     }
 }

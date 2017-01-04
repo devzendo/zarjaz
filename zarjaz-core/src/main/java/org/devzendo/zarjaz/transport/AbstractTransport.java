@@ -1,8 +1,17 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.zarjaz.concurrency.DaemonThreadFactory;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -20,6 +29,7 @@ import org.devzendo.zarjaz.validation.ServerImplementationValidator;
  * limitations under the License.
  */
 public abstract class AbstractTransport {
+    private static final Logger logger = LoggerFactory.getLogger(AbstractTransport.class);
 
     static protected Class[] objectsToClasses(final Object[] args) {
         if (args == null) {
@@ -62,10 +72,40 @@ public abstract class AbstractTransport {
     protected final ServerImplementationValidator serverImplementationValidator;
     protected final ClientInterfaceValidator clientInterfaceValidator;
     protected final TimeoutScheduler timeoutScheduler;
+    protected final ThreadPoolExecutor executor;
+    final Map<NamedInterface, Object> implementations = new HashMap<>();
 
-    public AbstractTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler) {
+    public AbstractTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final String transportName) {
         this.serverImplementationValidator = serverImplementationValidator;
         this.clientInterfaceValidator = clientInterfaceValidator;
         this.timeoutScheduler = timeoutScheduler;
+        this.executor = new ThreadPoolExecutor(5, 10, 2000L, TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<Runnable>(10),
+                new DaemonThreadFactory("zarjaz-" + transportName + "-transport-invoker-thread-"));
+    }
+
+    public <T> void registerServerImplementation(final EndpointName name, final Class<T> interfaceClass, final T implementation) {
+        logger.info("Registering server implementation of " + name + " with interface " + interfaceClass.getName());
+        clientInterfaceValidator.validateClientInterface(interfaceClass);
+        serverImplementationValidator.validateServerImplementation(interfaceClass, implementation);
+
+        synchronized (implementations) {
+            final NamedInterface namedInterface = new NamedInterface(name, interfaceClass);
+            if (implementations.containsKey(namedInterface)) {
+                throw new RegistrationException("The EndpointName '" + name + "' is already registered");
+            }
+
+            implementations.put(namedInterface, implementation);
+        }
+    }
+
+    public void start() {
+        timeoutScheduler.start();
+    }
+
+    public void stop() {
+        if (timeoutScheduler.isStarted()) {
+            timeoutScheduler.stop();
+        }
     }
 }
