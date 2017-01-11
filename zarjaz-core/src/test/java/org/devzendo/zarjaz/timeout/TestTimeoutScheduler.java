@@ -45,7 +45,7 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
 
     @After
     public void stopScheduler() {
-        if (ts.isStarted()) {
+        while (ts.isStarted()) {
             ts.stop();
         }
     }
@@ -200,6 +200,59 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
 
     @Test
     public void cannotScheduleIfStopped() {
+        ts.start();
+        waitNoInterruption(100);
+        ts.stop();
+        waitNoInterruption(100);
+
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Cannot schedule when scheduler is stopped");
+
+        ts.schedule(500, () -> {});
+    }
+
+    @Test
+    public void stopStillSchedulesIfUsageCountIsNonZero() {
+        ts.start();
+        waitNoInterruption(100);
+        ts.start();
+        waitNoInterruption(100);
+        ts.stop();
+        waitNoInterruption(100);
+
+        boolean[] handled = new boolean[] { false };
+
+        ts.schedule(300, () -> handled[0] = true);
+
+        waitNoInterruption(1000L);
+
+        assertThat(handled[0], equalTo(true));
+        assertThat(ts.isStarted(), equalTo(true)); // will be shut down fully in After.
+    }
+
+    @Test
+    public void stopOnlyStopsWhenUsageCountIsZero() {
+        ts.start();
+        waitNoInterruption(100);
+        ts.start();
+        waitNoInterruption(100);
+        ts.stop();
+        waitNoInterruption(100);
+        ts.stop();
+        waitNoInterruption(100);
+
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Cannot schedule when scheduler is stopped");
+
+        ts.schedule(500, () -> {});
+    }
+
+    @Test
+    public void stopOnlyStopsWhenUsageCountIsZeroAndCanInterleaveStartsAndStops() {
+        ts.start();
+        waitNoInterruption(100);
+        ts.stop();
+        waitNoInterruption(100);
         ts.start();
         waitNoInterruption(100);
         ts.stop();

@@ -5,8 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -27,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TimeoutScheduler {
     private static final Logger logger = LoggerFactory.getLogger(TimeoutScheduler.class);
 
-    private final AtomicBoolean started = new AtomicBoolean(false);
+    private final AtomicInteger usageCount = new AtomicInteger(0);
     private final Map<TimeoutId, ScheduledFuture<?>> activeTimeouts = new ConcurrentHashMap<>();
     private final AtomicLong timeoutIdCount = new AtomicLong(0);
     private final ScheduledThreadPoolExecutor executor;
@@ -39,7 +42,7 @@ public class TimeoutScheduler {
     }
 
     public TimeoutId schedule(final long millisecondsFromNow, final Runnable runnable) {
-        if (!started.get()) {
+        if (usageCount.get() == 0) {
             throw new IllegalStateException("Cannot schedule when scheduler is stopped");
         }
 
@@ -61,7 +64,7 @@ public class TimeoutScheduler {
     }
 
     public boolean cancel(final TimeoutId timeoutId) {
-        if (!started.get()) {
+        if (usageCount.get() == 0) {
             throw new IllegalStateException("Cannot cancel when scheduler is stopped");
         }
 
@@ -74,20 +77,23 @@ public class TimeoutScheduler {
     }
 
     public void start() {
-        started.set(true);
-        // TODO perhaps a usage count would be better here, increment?
+        usageCount.incrementAndGet();
     }
 
     public boolean isStarted() {
-        return started.get();
+        return usageCount.get() > 0;
     }
 
     public void stop() {
-        if (!started.get()) {
-            throw new IllegalStateException("Cannot stop scheduler if it has not been started");
-        }
+        synchronized (usageCount) {
+            if (usageCount.get() == 0) {
+                throw new IllegalStateException("Cannot stop scheduler if it has not been started");
+            }
 
-        started.set(false);
-        executor.shutdown();
+            final int count = usageCount.decrementAndGet();
+            if (count == 0) {
+                executor.shutdown();
+            }
+        }
     }
 }
