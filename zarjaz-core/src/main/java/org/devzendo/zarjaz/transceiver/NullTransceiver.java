@@ -1,10 +1,6 @@
-package org.devzendo.zarjaz;
+package org.devzendo.zarjaz.transceiver;
 
 import org.devzendo.commoncode.patterns.observer.ObserverList;
-import org.devzendo.zarjaz.transceiver.DataReceived;
-import org.devzendo.zarjaz.transceiver.Transceiver;
-import org.devzendo.zarjaz.transceiver.TransceiverObservableEvent;
-import org.devzendo.zarjaz.transceiver.TransceiverObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
