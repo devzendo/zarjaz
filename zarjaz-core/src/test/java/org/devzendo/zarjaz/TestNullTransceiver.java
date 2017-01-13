@@ -8,7 +8,9 @@ import org.devzendo.zarjaz.transceiver.TransceiverObservableEvent;
 import org.devzendo.zarjaz.transceiver.TransceiverObserver;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,14 +45,19 @@ public class TestNullTransceiver {
         BasicConfigurator.configure();
     }
 
-    private List<TransceiverObservableEvent> events = new ArrayList<>();
-    private TransceiverObserver observer = new TransceiverObserver() {
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
+    private static class EventCollectingTransceiverObserver implements TransceiverObserver {
+        public List<TransceiverObservableEvent> events = new ArrayList<>();
+
         @Override
         public void eventOccurred(final TransceiverObservableEvent observableEvent) {
             logger.debug("Received a " + observableEvent.getClass().getSimpleName());
             events.add(observableEvent);
         }
-    };
+    }
+
     private NullTransceiver transceiver;
 
     @Before
@@ -68,6 +75,7 @@ public class TestNullTransceiver {
     @Test(timeout = 2000)
     public void sentBufferIsReceivedByClient() throws IOException {
         transceiver.open();
+        final EventCollectingTransceiverObserver observer = new EventCollectingTransceiverObserver();
 
         final Transceiver.ClientTransceiver clientTransceiver = transceiver.getClientTransceiver();
         final Transceiver.ServerTransceiver serverTransceiver = transceiver.getServerTransceiver();
@@ -80,9 +88,103 @@ public class TestNullTransceiver {
 
         ThreadUtils.waitNoInterruption(500);
 
-        assertThat(events, hasSize(2));
-        assertThat(events.get(0).getData(), equalTo(buf0));
-        assertThat(events.get(1).getData(), equalTo(buf1));
+        assertThat(observer.events, hasSize(2));
+        assertThat(observer.events.get(0).getData(), equalTo(buf0));
+        assertThat(observer.events.get(1).getData(), equalTo(buf1));
+    }
+
+    @Test(timeout = 2000)
+    public void bidirectionalTest() throws IOException {
+        transceiver.open();
+
+        final Transceiver.ClientTransceiver clientTransceiver = transceiver.getClientTransceiver();
+        final Transceiver.ServerTransceiver serverTransceiver = transceiver.getServerTransceiver();
+
+        // server sending to client
+        final EventCollectingTransceiverObserver clientObserver = new EventCollectingTransceiverObserver();
+        clientTransceiver.addTransceiverObserver(clientObserver);
+
+        final ByteBuffer s2c0 = createByteBuffer();
+        serverTransceiver.writeBuffer(s2c0);
+        final ByteBuffer s2c1 = createByteBuffer();
+        serverTransceiver.writeBuffer(s2c1);
+
+        ThreadUtils.waitNoInterruption(500);
+
+        assertThat(clientObserver.events, hasSize(2));
+        assertThat(clientObserver.events.get(0).getData(), equalTo(s2c0));
+        assertThat(clientObserver.events.get(1).getData(), equalTo(s2c1));
+
+        // and now in the other direction... client sending to server
+        final EventCollectingTransceiverObserver serverObserver = new EventCollectingTransceiverObserver();
+        final Transceiver.ClientTransceiver serverToClientTransceiver = serverTransceiver.getClientTransceiver();
+        serverToClientTransceiver.addTransceiverObserver(serverObserver);
+
+        final Transceiver.ServerTransceiver clientToServerTransceiver = clientTransceiver.getServerTransceiver();
+        final ByteBuffer c2s0 = createByteBuffer();
+        clientToServerTransceiver.writeBuffer(c2s0);
+        final ByteBuffer c2s1 = createByteBuffer();
+        clientToServerTransceiver.writeBuffer(c2s1);
+
+        ThreadUtils.waitNoInterruption(500);
+
+        assertThat(serverObserver.events, hasSize(2));
+        assertThat(serverObserver.events.get(0).getData(), equalTo(c2s0));
+        assertThat(serverObserver.events.get(1).getData(), equalTo(c2s1));
+    }
+
+    @Test
+    public void inceptionClient() {
+        inceptionNotSupported();
+        transceiver.getClientTransceiver().getServerTransceiver().getClientTransceiver();
+    }
+
+    @Test
+    public void inceptionServer() {
+        inceptionNotSupported();
+        transceiver.getServerTransceiver().getClientTransceiver().getServerTransceiver();
+    }
+
+    private void inceptionNotSupported() {
+        thrown.expect(UnsupportedOperationException.class);
+        thrown.expectMessage("This isn't Inception, you know...");
+    }
+
+    @Test
+    public void cannotSendToUnopenedServerTransceiver() throws IOException {
+        expectTransceiverNotOpen();
+        transceiver.getServerTransceiver().writeBuffer(createByteBuffer());
+    }
+
+    @Test
+    public void cannotSendToUnopenedClientTransceiver() throws IOException {
+        expectTransceiverNotOpen();
+        transceiver.getClientTransceiver().getServerTransceiver().writeBuffer(createByteBuffer());
+    }
+
+    @Test
+    public void cannotSendToClosedServerTransceiver() throws IOException {
+        expectTransceiverNotOpen();
+        transceiver.open();
+        ThreadUtils.waitNoInterruption(250);
+        transceiver.close();
+        ThreadUtils.waitNoInterruption(250);
+        transceiver.getServerTransceiver().writeBuffer(createByteBuffer());
+    }
+
+    @Test
+    public void cannotSendToClosedClientTransceiver() throws IOException {
+        expectTransceiverNotOpen();
+        transceiver.open();
+        ThreadUtils.waitNoInterruption(250);
+        transceiver.close();
+        ThreadUtils.waitNoInterruption(250);
+        transceiver.getClientTransceiver().getServerTransceiver().writeBuffer(createByteBuffer());
+    }
+
+    private void expectTransceiverNotOpen() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Transceiver not open");
     }
 
     // TODO exception if data sent to non open transceiver

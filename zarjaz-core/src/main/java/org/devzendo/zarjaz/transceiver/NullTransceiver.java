@@ -26,10 +26,15 @@ import java.util.concurrent.ArrayBlockingQueue;
 public class NullTransceiver implements Transceiver {
     private static final Logger logger = LoggerFactory.getLogger(NullTransceiver.class);
 
-    private final ObserverList<TransceiverObservableEvent> observers = new ObserverList<>();
-    private final ArrayBlockingQueue<ByteBuffer> queue = new ArrayBlockingQueue<ByteBuffer>(10);
+    private static class NullTransceiverEnd {
+        private final ObserverList<TransceiverObservableEvent> observers = new ObserverList<>();
+    }
+    private final NullTransceiverEnd clientEnd = new NullTransceiverEnd();
+    private final NullTransceiverEnd serverEnd = new NullTransceiverEnd();
+
+    private final ArrayBlockingQueue<Runnable> queue = new ArrayBlockingQueue<Runnable>(10);
     private final Thread dispatchThread;
-    private volatile boolean active = true;
+    private volatile boolean active = false;
 
     public NullTransceiver() {
         dispatchThread = new Thread(new Runnable() {
@@ -37,11 +42,11 @@ public class NullTransceiver implements Transceiver {
             public void run() {
                 try {
                     while (active) {
-                        logger.debug("Waiting for ByteBuffer");
-                        final ByteBuffer byteBuffer = queue.take();
-                        logger.debug("Dispatching queued ByteBuffer");
-                        observers.eventOccurred(new DataReceived(byteBuffer));
-                        logger.debug("Dispatched to observers");
+                        logger.debug("Waiting for Runnable");
+                        final Runnable runnable = queue.take();
+                        logger.debug("Running queued Runnable");
+                        runnable.run();
+                        logger.debug("Run");
                     }
                 } catch (InterruptedException e) {
                     logger.warn("Dispatch thread interrupted");
@@ -66,6 +71,7 @@ public class NullTransceiver implements Transceiver {
     public void open() {
         logger.info("Opening NullTransceiver");
         dispatchThread.start();
+        active = true;
     }
 
     @Override
@@ -73,12 +79,30 @@ public class NullTransceiver implements Transceiver {
         return new ClientTransceiver() {
             @Override
             public void addTransceiverObserver(final TransceiverObserver observer) {
-                observers.addObserver(observer);
+                clientEnd.observers.addObserver(observer);
             }
 
             @Override
             public void removeTransceiverObserver(final TransceiverObserver observer) {
-                observers.removeListener(observer);
+                clientEnd.observers.removeListener(observer);
+            }
+
+            @Override
+            public ServerTransceiver getServerTransceiver() {
+                return new ServerTransceiver() {
+                    @Override
+                    public void writeBuffer(final ByteBuffer data) throws IOException {
+                        if (!active) {
+                            throw new IllegalStateException("Transceiver not open");
+                        }
+                        serverEnd.observers.eventOccurred(new DataReceived(data));
+                    }
+
+                    @Override
+                    public ClientTransceiver getClientTransceiver() {
+                        throw new UnsupportedOperationException("This isn't Inception, you know...");
+                    }
+                };
             }
         };
     }
@@ -88,8 +112,38 @@ public class NullTransceiver implements Transceiver {
         return new ServerTransceiver() {
             @Override
             public void writeBuffer(final ByteBuffer data) throws IOException {
+                if (!active) {
+                    throw new IllegalStateException("Transceiver not open");
+                }
                 logger.debug("Queueing ByteBuffer for sending to observers");
-                queue.add(data);
+                queue.add(new Runnable() {
+                    @Override
+                    public void run() {
+                        logger.debug("Dispatching queued ByteBuffer");
+                        clientEnd.observers.eventOccurred(new DataReceived(data));
+                        logger.debug("Dispatched to observers");
+                    }
+                });
+            }
+
+            @Override
+            public ClientTransceiver getClientTransceiver() {
+                return new ClientTransceiver() {
+                    @Override
+                    public void addTransceiverObserver(final TransceiverObserver observer) {
+                        serverEnd.observers.addObserver(observer);
+                    }
+
+                    @Override
+                    public void removeTransceiverObserver(final TransceiverObserver observer) {
+                        serverEnd.observers.removeListener(observer);
+                    }
+
+                    @Override
+                    public ServerTransceiver getServerTransceiver() {
+                        throw new UnsupportedOperationException("This isn't Inception, you know...");
+                    }
+                };
             }
         };
     }

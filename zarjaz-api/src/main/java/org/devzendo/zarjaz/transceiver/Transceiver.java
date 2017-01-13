@@ -24,6 +24,7 @@ public interface Transceiver extends Closeable {
     public interface ClientTransceiver {
         void addTransceiverObserver(TransceiverObserver observer);
         void removeTransceiverObserver(TransceiverObserver observer);
+        ServerTransceiver getServerTransceiver();
     }
 
     public interface ServerTransceiver {
@@ -31,6 +32,7 @@ public interface Transceiver extends Closeable {
          * Synchronously send a request.
          **/
         void writeBuffer(ByteBuffer data) throws IOException;
+        ClientTransceiver getClientTransceiver();
     }
 
     void open();
