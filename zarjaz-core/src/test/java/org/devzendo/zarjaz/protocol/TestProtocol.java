@@ -1,8 +1,8 @@
 package org.devzendo.zarjaz.protocol;
 
-import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Optional;
@@ -34,8 +34,12 @@ public class TestProtocol {
 
     @Test
     public void knownProtocolFrame() {
-        final Optional<Protocol.InitialFrameType> opt = Protocol.InitialFrameType.decodeInitialFrameType((byte) Protocol.InitialFrameType.EXTENSION.getInitialFrameType());
-        assertThat(opt.isPresent(), is(true));
-        assertThat(opt.get(), Matchers.equalTo(Protocol.InitialFrameType.EXTENSION));
+        final Optional<Protocol.InitialFrameType> opt = Protocol.InitialFrameType.decodeInitialFrameType(Protocol.InitialFrameType.EXTENSION.getInitialFrameType());
+        // this form (if ispresent / get) shuts IntelliJ's warning up.
+        if (opt.isPresent()) {
+            assertThat(opt.get(), Matchers.equalTo(Protocol.InitialFrameType.EXTENSION));
+        } else {
+            Assert.fail("Should not be empty");
+        }
     }
 }

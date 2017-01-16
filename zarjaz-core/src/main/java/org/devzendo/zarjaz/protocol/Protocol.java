@@ -20,11 +20,43 @@ import java.util.Optional;
  * limitations under the License.
  */
 public class Protocol {
+    /**
+     * The first byte of all protocol frames is an InitialFrameType.
+     */
     public enum InitialFrameType {
+        /**
+         * Unused at present, if the initial frame type is EXTENSION, it denotes that the next two bytes hold the
+         * full value of the frame type as a short.
+         */
         EXTENSION((byte) 0),
+
+        /**
+         * METHOD_INVOCATION_HASHED indicates that the rest of the frame contains a MethodCallIdentifier, then a
+         * MethodInvocationHash, followed by the argument list. Hashes are used to quickly refer to
+         * [endpoint name/return type/method name/argument list classes].
+         */
         METHOD_INVOCATION_HASHED((byte) 1),
+
+        /**
+         * METHOD_INVOCATION_DECLARED (unused at present) indicates that the rest of the frame contains a
+         * MethodCallIdentifier, then a MethodInvocationDecalaration, followed by the argument list. The
+         * MethodInvocationDeclaration is a dynamic mechanism for specifying the
+         * [endpoint name/return type/method name/argument list classes] in the frame; it is a much larger, slower
+         * method of invocation.
+         */
         METHOD_INVOCATION_DECLARED((byte) 2),
+
+        /**
+         * This frame returns the successful result of a previous invocation (either by METHOD_INVOCATION_HASHED or
+         * METHOD_INVOCATION_DECLARED). It is followed by a MethodCallIdentifier, then the encoded result.
+         */
         METHOD_RETURN_RESULT((byte) 3),
+
+        /**
+         * This frame indicates a failure to invoke a previous invocation (either by METHOD_INVOCATION_HASHED or
+         * METHOD_INVOCATION_DECLARED). It is followed by a MethodCallIdentifier, then the encoded exception as a
+         * MethodReturnException.
+         */
         METHOD_RETURN_EXCEPTION((byte) 4);
 
         private static Map<Byte, InitialFrameType> reverseLookup = new HashMap<>();
@@ -46,5 +78,17 @@ public class Protocol {
         public byte getInitialFrameType() {
             return frameType;
         }
+    }
+
+    public class MethodCallIdentifier {
+
+    }
+
+    public class MethodInvocationHash {
+
+    }
+
+    public class MethodReturnException {
+
     }
 }
