@@ -7,7 +7,6 @@ import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -131,15 +130,9 @@ class NullTransport extends AbstractTransport implements Transport {
     }
 
     private <T> T createProxy(Class<T> interfaceClass, final CompletionInvocationHandler cih) {
-        // TODO not sure we need the new InvocationHandler here, isn't the CompletionInvocationHandler an InvocationHandler?
         return (T) Proxy.newProxyInstance(interfaceClass.getClassLoader(),
                 new Class<?>[]{interfaceClass},
-                new InvocationHandler() {
-                    @Override
-                    public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
-                        return cih.invoke(proxy, method, args);
-                    }
-                });
+                cih);
     }
 
     private <T> TransportInvocationHandler createTransportInvocationHandler(EndpointName name, Class<T> interfaceClass) {

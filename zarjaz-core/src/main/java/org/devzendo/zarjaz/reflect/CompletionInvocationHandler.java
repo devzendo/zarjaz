@@ -7,6 +7,7 @@ import org.devzendo.zarjaz.transport.TransportInvocationHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -27,7 +28,7 @@ import java.util.concurrent.Future;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class CompletionInvocationHandler<T> {
+public class CompletionInvocationHandler<T> implements InvocationHandler {
     private static final Logger logger = LoggerFactory.getLogger(CompletionInvocationHandler.class);
 
     private final TimeoutScheduler timeoutScheduler;
