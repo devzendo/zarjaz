@@ -1,6 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
+import org.devzendo.zarjaz.transceiver.Transceiver;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.slf4j.Logger;
@@ -23,13 +24,15 @@ import org.slf4j.LoggerFactory;
  */
 public class TransceiverTransport extends AbstractTransport implements Transport {
     private static final Logger logger = LoggerFactory.getLogger(TransceiverTransport.class);
+    private final Transceiver transceiver;
 
-    public TransceiverTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler) {
-        this(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, "transceiver");
+    public TransceiverTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler, Transceiver transceiver) {
+        this(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transceiver, "transceiver");
     }
 
-    public TransceiverTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler, String transportName) {
+    public TransceiverTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler, Transceiver transceiver, String transportName) {
         super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transportName);
+        this.transceiver = transceiver;
     }
 
     @Override

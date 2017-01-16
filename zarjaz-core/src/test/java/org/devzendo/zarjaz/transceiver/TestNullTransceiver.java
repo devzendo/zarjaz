@@ -1,11 +1,7 @@
-package org.devzendo.zarjaz;
+package org.devzendo.zarjaz.transceiver;
 
 import org.apache.log4j.BasicConfigurator;
 import org.devzendo.commoncode.concurrency.ThreadUtils;
-import org.devzendo.zarjaz.transceiver.NullTransceiver;
-import org.devzendo.zarjaz.transceiver.Transceiver;
-import org.devzendo.zarjaz.transceiver.TransceiverObservableEvent;
-import org.devzendo.zarjaz.transceiver.TransceiverObserver;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;

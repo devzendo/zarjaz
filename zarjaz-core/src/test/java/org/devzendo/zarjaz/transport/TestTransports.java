@@ -2,6 +2,7 @@ package org.devzendo.zarjaz.transport;
 
 import org.apache.log4j.BasicConfigurator;
 import org.devzendo.commoncode.concurrency.ThreadUtils;
+import org.devzendo.zarjaz.transceiver.NullTransceiver;
 import org.devzendo.zarjaz.sample.primes.DefaultPrimeGenerator;
 import org.devzendo.zarjaz.sample.primes.PrimeGenerator;
 import org.devzendo.zarjaz.sample.timeout.DefaultTimeoutGenerator;
@@ -19,7 +20,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.internal.matchers.Null;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.slf4j.Logger;
@@ -93,7 +93,8 @@ public class TestTransports {
             clientTransport = new NullTransport(serverValidator, clientValidator, timeoutScheduler);
             serverTransport = clientTransport;
         } else if (transportClass.equals((TransceiverTransport.class))) {
-            clientTransport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler);
+            clientTransport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, new NullTransceiver());
+            serverTransport = clientTransport;
         }
     }
 
