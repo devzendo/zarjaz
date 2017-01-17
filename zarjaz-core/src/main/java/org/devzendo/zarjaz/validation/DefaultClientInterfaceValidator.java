@@ -20,5 +20,6 @@ public class DefaultClientInterfaceValidator implements ClientInterfaceValidator
     @Override
     public <T> void validateClientInterface(final Class<T> interfaceClass) {
         //To change body of implemented methods use File | Settings | File Templates.
+        // TODO disallow empty interface, ie with no methods.
     }
 }
