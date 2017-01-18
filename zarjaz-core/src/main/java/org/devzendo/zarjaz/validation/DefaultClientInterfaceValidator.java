@@ -1,5 +1,7 @@
 package org.devzendo.zarjaz.validation;
 
+import java.lang.reflect.Method;
+
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org <http://devzendo.org>
  * <p/>
@@ -19,7 +21,15 @@ public class DefaultClientInterfaceValidator implements ClientInterfaceValidator
 
     @Override
     public <T> void validateClientInterface(final Class<T> interfaceClass) {
-        //To change body of implemented methods use File | Settings | File Templates.
-        // TODO disallow empty interface, ie with no methods.
+        if (interfaceClass == null) {
+            throw new IllegalArgumentException("Client interfaces must not be null");
+        }
+        final Method[] methods = interfaceClass.getMethods();
+        // never null
+        if (methods.length == 0) {
+            throw new IllegalArgumentException("Client interfaces must contain methods");
+        }
+
+        // all ok so far then!
     }
 }

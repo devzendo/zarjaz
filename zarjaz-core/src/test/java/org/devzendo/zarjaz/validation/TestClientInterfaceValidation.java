@@ -1,9 +1,11 @@
 package org.devzendo.zarjaz.validation;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 /**
- * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org <http://devzendo.org>
+ * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
  * <p/>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +22,26 @@ import org.junit.Test;
 public class TestClientInterfaceValidation {
     final ClientInterfaceValidator validator = new DefaultClientInterfaceValidator();
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
+    private interface EmptyInterface {
+        // nothing
+    }
     @Test
     public void mustDetectLackOfMethods() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Client interfaces must contain methods");
 
+        validator.validateClientInterface(EmptyInterface.class);
     }
+
+    @Test
+    public void nullInterfaceDisallowed() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Client interfaces must not be null");
+
+        validator.validateClientInterface(null);
+    }
+
 }
