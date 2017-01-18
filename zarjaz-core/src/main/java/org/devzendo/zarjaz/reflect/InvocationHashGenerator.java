@@ -51,7 +51,7 @@ public class InvocationHashGenerator {
             throw new IllegalArgumentException("Cannot generate hashes for 'null'");
         }
         final Map<Method, byte[]> map = new HashMap<>();
-        for (Method method: interfaceClass.getDeclaredMethods()) {
+        for (Method method: interfaceClass.getMethods()) {
             final byte[] hash = generateHash(endpointName, method);
             map.put(method, hash);
         }

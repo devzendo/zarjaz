@@ -1,15 +1,18 @@
 package org.devzendo.zarjaz.reflect;
 
 import org.devzendo.zarjaz.transport.EndpointName;
+import org.hamcrest.MatcherAssert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.mockito.Matchers;
 
 import java.lang.reflect.Method;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.mockito.Matchers.isNotNull;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -97,5 +100,18 @@ public class TestInvocationHashGenerator {
         final byte[] firstMethodHash2 = endpoint2Map.get(firstMethod);
 
         assertThat(firstMethodHash, not(equalTo(firstMethodHash2)));
+    }
+
+    private interface DerivedSampleInterface extends SampleInterface {
+        void fourthMethod();
+    }
+    @Test
+    public void clientInterfacesAreReflectedUponWithInheritance() throws NoSuchMethodException {
+        final Method fourthMethod = DerivedSampleInterface.class.getMethod("fourthMethod");
+
+        final Map<Method, byte[]> endpointMap = gen.generate(DerivedSampleInterface.class);
+        assertThat(endpointMap.keySet().size(), equalTo(4));
+        final byte[] fourthMethodHash = endpointMap.get(fourthMethod);
+        assertThat(fourthMethodHash, not(equalTo(null)));
     }
 }
