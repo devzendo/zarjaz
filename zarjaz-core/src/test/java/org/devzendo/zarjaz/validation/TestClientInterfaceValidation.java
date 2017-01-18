@@ -1,6 +1,5 @@
 package org.devzendo.zarjaz.validation;
 
-import org.devzendo.zarjaz.reflect.TestInvocationHashGenerator;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
