@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.validation;
 
+import org.devzendo.zarjaz.reflect.TestInvocationHashGenerator;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -44,4 +45,23 @@ public class TestClientInterfaceValidation {
         validator.validateClientInterface(null);
     }
 
+    private interface SampleInterface {
+        void firstMethod(int integer, boolean bool, String string);
+        int secondMethod(int integer, boolean bool, String string);
+        String thirdMethod();
+    }
+    @Test
+    public void happyPath() {
+        validator.validateClientInterface(SampleInterface.class);
+        // no exception thrown
+    }
+
+    private interface DerivedSampleInterface extends TestClientInterfaceValidation.SampleInterface {
+        // intentionally empty to check that getMethods, not getDerivedMethods, is used.
+    }
+    @Test
+    public void interfacesCanBeInheritedFrom() {
+        validator.validateClientInterface(DerivedSampleInterface.class);
+        // no exception thrown
+    }
 }
