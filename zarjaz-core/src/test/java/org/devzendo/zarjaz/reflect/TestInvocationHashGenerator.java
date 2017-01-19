@@ -38,7 +38,7 @@ public class TestInvocationHashGenerator {
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-    private DefaultInvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
+    private InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
 
     // MD5 is 16 bytes (128 bits), and when the MessageDigest is constructed, the digest is reset.
 
@@ -92,7 +92,7 @@ public class TestInvocationHashGenerator {
         final byte[] firstMethodHash = endpoint1Map.get(firstMethod);
 
         final EndpointName endpoint2Name = new EndpointName("sampleInterfaceWithDifferentName");
-        final DefaultInvocationHashGenerator gen2 = new DefaultInvocationHashGenerator(endpoint2Name);
+        final InvocationHashGenerator gen2 = new DefaultInvocationHashGenerator(endpoint2Name);
         final Map<Method, byte[]> endpoint2Map = gen2.generate(SampleInterface.class);
         final byte[] firstMethodHash2 = endpoint2Map.get(firstMethod);
 

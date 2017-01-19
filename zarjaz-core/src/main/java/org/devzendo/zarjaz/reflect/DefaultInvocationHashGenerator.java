@@ -24,7 +24,7 @@ import java.util.Map;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class DefaultInvocationHashGenerator {
+public class DefaultInvocationHashGenerator implements InvocationHashGenerator {
     private final EndpointName endpointName;
     private final MessageDigest md5;
     private final Charset utf8Charset;
@@ -46,6 +46,7 @@ public class DefaultInvocationHashGenerator {
         this.endpointNameUTF8 = toUTF8(endpointName.toString());
     }
 
+    @Override
     public Map<Method, byte[]> generate(final Class<?> interfaceClass) {
         if (interfaceClass == null) {
             throw new IllegalArgumentException("Cannot generate hashes for 'null'");
