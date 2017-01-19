@@ -104,7 +104,7 @@ public abstract class AbstractTransport {
         }
     }
 
-    private final <T> void registerClientProxy(final EndpointName name, final Class<T> interfaceClass) {
+    private final <T> void registerClientEndpointInterface(final EndpointName name, final Class<T> interfaceClass) {
         final NamedInterface reg = new NamedInterface(name, interfaceClass);
         if (registeredEndpointInterfaces.contains(reg)) {
             throw new IllegalArgumentException("Cannot register the same EndpointName/Client interface more than once");
@@ -115,7 +115,7 @@ public abstract class AbstractTransport {
     public final <T> T createClientProxy(final EndpointName name, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
         logger.info("Creating client proxy of " + name + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
         clientInterfaceValidator.validateClientInterface(interfaceClass);
-        registerClientProxy(name, interfaceClass);
+        registerClientEndpointInterface(name, interfaceClass);
 
         final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(name, interfaceClass, methodTimeoutMilliseconds);
         final CompletionInvocationHandler cih = new CompletionInvocationHandler(timeoutScheduler, name, interfaceClass, transportInvocationHandler, methodTimeoutMilliseconds);
