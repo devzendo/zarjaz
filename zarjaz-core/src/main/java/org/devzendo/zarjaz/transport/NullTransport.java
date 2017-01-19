@@ -1,6 +1,5 @@
 package org.devzendo.zarjaz.transport;
 
-import org.devzendo.zarjaz.reflect.CompletionInvocationHandler;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
@@ -9,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -118,24 +116,9 @@ class NullTransport extends AbstractTransport implements Transport {
         }
     }
 
-    // Plan is that the TransportInvocationHandler is the client-side part that varies here, so that this
-    // createClientProxy method could be in an abstract base transport class?
-    @Override
-    public <T> T createClientProxy(EndpointName name, Class<T> interfaceClass, long methodTimeoutMilliseconds) {
-        logger.info("Creating client proxy of " + name + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
-        clientInterfaceValidator.validateClientInterface(interfaceClass);
-        final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(name, interfaceClass);
-        final CompletionInvocationHandler cih = new CompletionInvocationHandler(timeoutScheduler, name, interfaceClass, transportInvocationHandler, methodTimeoutMilliseconds);
-        return createProxy(interfaceClass, cih);
-    }
 
-    private <T> T createProxy(Class<T> interfaceClass, final CompletionInvocationHandler cih) {
-        return (T) Proxy.newProxyInstance(interfaceClass.getClassLoader(),
-                new Class<?>[]{interfaceClass},
-                cih);
-    }
-
-    private <T> TransportInvocationHandler createTransportInvocationHandler(EndpointName name, Class<T> interfaceClass) {
+    // The TransportInvocationHandler is the client-side part that varies between transports.
+    protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName name, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
         // TODO generally, how does a remote client know that a named interface exists?
         synchronized (implementations) {
             final NamedInterface namedInterface = new NamedInterface(name, interfaceClass);

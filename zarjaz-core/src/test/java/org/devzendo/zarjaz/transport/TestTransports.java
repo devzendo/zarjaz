@@ -60,7 +60,7 @@ public class TestTransports {
 
     @Parameters
     public static Collection<Class> data() {
-        return asList(NullTransport.class);
+        return asList(NullTransport.class /*, TransceiverTransport.class*/);
     }
 
     private final String userName = "Matt";
@@ -272,5 +272,45 @@ public class TestTransports {
         // NullTransport-specific?
         // no, all transports will have a server-side executor thread pool.
         // need tests for metrics on the thread pool usage too.
+    }
+
+
+    private final EndpointName endpointName1 = new EndpointName("endpoint1");
+    private final EndpointName endpointName2 = new EndpointName("endpoint2");
+    private static final int METHOD_TIMEOUT_MILLISECONDS = 500;
+
+    private interface SampleInterface {
+        void someMethod();
+    }
+
+    private void registerSampleServerForNullTransport() {
+        // need to register on server side first, in the NullTransport
+        final SampleInterface server = new SampleInterface() {
+            @Override
+            public void someMethod() {
+                // nothing
+            }
+        };
+        serverTransport.registerServerImplementation(endpointName1, SampleInterface.class, server);
+        serverTransport.registerServerImplementation(endpointName2, SampleInterface.class, server);
+    }
+
+    @Test
+    public void cannotCreateClientProxyForSameEndpointNameTwice() {
+        registerSampleServerForNullTransport();
+
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Cannot register the same EndpointName/Client interface more than once");
+
+        clientTransport.createClientProxy(endpointName1, SampleInterface.class, METHOD_TIMEOUT_MILLISECONDS);
+        clientTransport.createClientProxy(endpointName1, SampleInterface.class, METHOD_TIMEOUT_MILLISECONDS);
+    }
+
+    @Test
+    public void canCreateClientProxyTwiceForDifferentEndpointNames() {
+        registerSampleServerForNullTransport();
+
+        clientTransport.createClientProxy(endpointName1, SampleInterface.class, METHOD_TIMEOUT_MILLISECONDS);
+        clientTransport.createClientProxy(endpointName2, SampleInterface.class, METHOD_TIMEOUT_MILLISECONDS);
     }
 }

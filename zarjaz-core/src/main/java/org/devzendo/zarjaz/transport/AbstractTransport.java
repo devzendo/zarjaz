@@ -1,14 +1,18 @@
 package org.devzendo.zarjaz.transport;
 
 import org.devzendo.zarjaz.concurrency.DaemonThreadFactory;
+import org.devzendo.zarjaz.reflect.CompletionInvocationHandler;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Proxy;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -73,8 +77,9 @@ public abstract class AbstractTransport {
     protected final ClientInterfaceValidator clientInterfaceValidator;
     protected final TimeoutScheduler timeoutScheduler;
     protected final ThreadPoolExecutor executor;
-    final Map<NamedInterface, Object> implementations = new HashMap<>();
+    protected final Set<EndpointNameClientInterface> registeredEndpointInterfaces = new HashSet<>();
 
+    final Map<NamedInterface, Object> implementations = new HashMap<>();
     public AbstractTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final String transportName) {
         this.serverImplementationValidator = serverImplementationValidator;
         this.clientInterfaceValidator = clientInterfaceValidator;
@@ -98,6 +103,28 @@ public abstract class AbstractTransport {
             implementations.put(namedInterface, implementation);
         }
     }
+
+    private final <T> void registerClientProxy(final EndpointName name, final Class<T> interfaceClass) {
+        final EndpointNameClientInterface reg = new EndpointNameClientInterface(name, interfaceClass);
+        if (registeredEndpointInterfaces.contains(reg)) {
+            throw new IllegalArgumentException("Cannot register the same EndpointName/Client interface more than once");
+        }
+        registeredEndpointInterfaces.add(reg);
+    }
+
+    public final <T> T createClientProxy(final EndpointName name, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
+        logger.info("Creating client proxy of " + name + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
+        clientInterfaceValidator.validateClientInterface(interfaceClass);
+        registerClientProxy(name, interfaceClass);
+
+        final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(name, interfaceClass, methodTimeoutMilliseconds);
+        final CompletionInvocationHandler cih = new CompletionInvocationHandler(timeoutScheduler, name, interfaceClass, transportInvocationHandler, methodTimeoutMilliseconds);
+        return (T) Proxy.newProxyInstance(interfaceClass.getClassLoader(),
+                new Class<?>[]{interfaceClass},
+                cih);
+    }
+
+    protected abstract <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName name, final Class<T> interfaceClass, final long methodTimeoutMilliseconds);
 
     public void start() {
         timeoutScheduler.start();

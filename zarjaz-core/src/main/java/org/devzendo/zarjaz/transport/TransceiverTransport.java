@@ -7,6 +7,8 @@ import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
  * <p>
@@ -26,29 +28,33 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     private static final Logger logger = LoggerFactory.getLogger(TransceiverTransport.class);
     private final Transceiver transceiver;
 
-    public TransceiverTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler, Transceiver transceiver) {
+    public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver) {
         this(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transceiver, "transceiver");
     }
 
-    public TransceiverTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler, Transceiver transceiver, String transportName) {
+    public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver, final String transportName) {
         super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transportName);
         this.transceiver = transceiver;
     }
 
     @Override
-    public <T> T createClientProxy(EndpointName name, Class<T> interfaceClass, long methodTimeoutMilliseconds) {
+    protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName name, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
         return null;
     }
 
     @Override
     public void start() {
         super.start();
-        // TODO start transceiver?
+        transceiver.open();
     }
 
     @Override
     public void stop() {
-        // TODO stop transceiver?
+        try {
+            transceiver.close();
+        } catch (final IOException e) {
+            logger.warn("Could not close transceiver: " + e.getMessage());
+        }
         super.stop();
     }
 }
