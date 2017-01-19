@@ -24,13 +24,13 @@ import java.util.Map;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class InvocationHashGenerator {
+public class DefaultInvocationHashGenerator {
     private final EndpointName endpointName;
     private final MessageDigest md5;
     private final Charset utf8Charset;
     private final byte[] endpointNameUTF8;
 
-    public InvocationHashGenerator(final EndpointName endpointName) {
+    public DefaultInvocationHashGenerator(final EndpointName endpointName) {
         if (endpointName == null) {
             throw new IllegalArgumentException("Cannot generate hashes for endpoint name 'null'");
         }
