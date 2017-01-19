@@ -77,9 +77,9 @@ public abstract class AbstractTransport {
     protected final ClientInterfaceValidator clientInterfaceValidator;
     protected final TimeoutScheduler timeoutScheduler;
     protected final ThreadPoolExecutor executor;
-    protected final Set<EndpointNameClientInterface> registeredEndpointInterfaces = new HashSet<>();
-
+    protected final Set<NamedInterface> registeredEndpointInterfaces = new HashSet<>();
     final Map<NamedInterface, Object> implementations = new HashMap<>();
+
     public AbstractTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final String transportName) {
         this.serverImplementationValidator = serverImplementationValidator;
         this.clientInterfaceValidator = clientInterfaceValidator;
@@ -105,7 +105,7 @@ public abstract class AbstractTransport {
     }
 
     private final <T> void registerClientProxy(final EndpointName name, final Class<T> interfaceClass) {
-        final EndpointNameClientInterface reg = new EndpointNameClientInterface(name, interfaceClass);
+        final NamedInterface reg = new NamedInterface(name, interfaceClass);
         if (registeredEndpointInterfaces.contains(reg)) {
             throw new IllegalArgumentException("Cannot register the same EndpointName/Client interface more than once");
         }

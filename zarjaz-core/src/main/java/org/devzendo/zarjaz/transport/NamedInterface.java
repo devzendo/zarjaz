@@ -16,11 +16,11 @@ package org.devzendo.zarjaz.transport;
  * limitations under the License.
  */
 class NamedInterface <T> {
-    private final EndpointName name;
+    private final EndpointName endpointName;
     private final Class<T> interfaceClass;
 
-    public NamedInterface(final EndpointName name, final Class<T> interfaceClass) {
-        this.name = name;
+    public NamedInterface(final EndpointName endpointName, final Class<T> interfaceClass) {
+        this.endpointName = endpointName;
         this.interfaceClass = interfaceClass;
     }
 
@@ -36,11 +36,11 @@ class NamedInterface <T> {
             return false;
         }
         final NamedInterface other = (NamedInterface) obj;
-        if (name == null) {
-            if (other.name != null) {
+        if (endpointName == null) {
+            if (other.endpointName != null) {
                 return false;
             }
-        } else if (!name.equals(other.name)) {
+        } else if (!endpointName.equals(other.endpointName)) {
             return false;
         }
         if (interfaceClass == null) {
@@ -57,8 +57,13 @@ class NamedInterface <T> {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((name == null) ? 0 : name.hashCode());
+        result = prime * result + ((endpointName == null) ? 0 : endpointName.hashCode());
         result = prime * result + ((interfaceClass == null) ? 0 : interfaceClass.hashCode());
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return endpointName.toString() + " => " + interfaceClass.getSimpleName();
     }
 }
