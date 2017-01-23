@@ -1,8 +1,10 @@
 package org.devzendo.zarjaz.protocol;
 
 import org.devzendo.zarjaz.transport.EndpointName;
+import org.devzendo.zarjaz.transport.NamedInterface;
 
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -23,11 +25,13 @@ import java.util.Optional;
  * limitations under the License.
  */
 public class DefaultInvocationCodec implements InvocationCodec {
+    private Object lock = new Object();
     private final Map<byte[], EndpointInterfaceMethod> hashToMethod = new HashMap<>();
+    private final Map<NamedInterface<?>, Map<Method, byte[]>> namedInterfaceMethodMap = new HashMap<>();
 
     @Override
     public Optional<EndpointInterfaceMethod> registerHashes(final EndpointName endpointName, final Class<?> interfaceClass, final Map<Method, byte[]> methodMap) {
-        synchronized (hashToMethod) {
+        synchronized (lock) {
             // First detect any potential collisions... for now, return the first.
             for (byte[] hashToAdd: methodMap.values()) {
                 final EndpointInterfaceMethod existingEndpointInterfaceMethod = hashToMethod.get(hashToAdd);
@@ -37,11 +41,20 @@ public class DefaultInvocationCodec implements InvocationCodec {
             }
 
             // No collisions, register the incoming hashes
+            final Map<Method, byte[]> hashMap = new HashMap<>();
             methodMap.forEach((Method method, byte[] hash) -> {
                 hashToMethod.put(hash, new EndpointInterfaceMethod(endpointName, interfaceClass, method));
+                hashMap.put(method, hash);
             });
+            namedInterfaceMethodMap.put(new NamedInterface<>(endpointName, interfaceClass), hashMap);
         }
         return Optional.empty();
     }
 
+    @Override
+    public Map<Method, byte[]> getMethodsToHashMap(final EndpointName endpointName, final Class<?> interfaceClass) {
+        synchronized (lock) {
+            return Collections.unmodifiableMap(namedInterfaceMethodMap.get(new NamedInterface<>(endpointName, interfaceClass)));
+        }
+    }
 }

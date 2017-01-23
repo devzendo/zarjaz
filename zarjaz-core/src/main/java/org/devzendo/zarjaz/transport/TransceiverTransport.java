@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -46,6 +47,23 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         this.invocationCodec = invocationCodec;
     }
 
+    private class TransceiverTransportInvocationHandler implements TransportInvocationHandler {
+        private final EndpointName endpointName;
+        private final Class<?> interfaceClass;
+        private final Map<Method, byte[]> methodsToHashMap;
+
+        public <T> TransceiverTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass) {
+            this.endpointName = endpointName;
+            this.interfaceClass = interfaceClass;
+            this.methodsToHashMap = invocationCodec.getMethodsToHashMap(endpointName, interfaceClass);
+        }
+
+        @Override
+        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future) {
+            final byte[] hash = methodsToHashMap.get(method);
+        }
+    }
+
     @Override
     protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
         final Map<Method, byte[]> methodMap = invocationHashGenerator.generate(interfaceClass);
@@ -56,10 +74,8 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             throw new RegistrationException("Method hash collision when registering (Endpoint '" + endpointName +
                     "', Client interface '" + interfaceClass.getSimpleName() + "') conflicts with (" + collidingEndpointInterfaceMethod.get().toString() + ")");
         }
-        // No collisions would be generated, great. Register them...
-        // get hashes from invocationhashgenerator
-        // any already present in codec? throw
-        return null;
+
+        return new TransceiverTransportInvocationHandler(endpointName, interfaceClass);
     }
 
     @Override

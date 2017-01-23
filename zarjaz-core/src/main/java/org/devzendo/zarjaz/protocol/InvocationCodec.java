@@ -104,7 +104,16 @@ public interface InvocationCodec {
      *
      * @param endpointName
      * @param interfaceClass
-     *@param methodMap the map of methods and their hashes.  @return an optional detected collision.
+     * @param methodMap the map of methods and their hashes.
+     * @return an optional detected collision.
      */
     Optional<EndpointInterfaceMethod> registerHashes(EndpointName endpointName, Class<?> interfaceClass, Map<Method, byte[]> methodMap);
+
+    /**
+     * Retuan all method-hash pairs for a given endpoint/interface
+     * @param endpointName
+     * @param interfaceClass
+     * @return the map of methods and their hashes.
+     */
+    Map<Method, byte[]> getMethodsToHashMap(EndpointName endpointName, Class<?> interfaceClass);
 }

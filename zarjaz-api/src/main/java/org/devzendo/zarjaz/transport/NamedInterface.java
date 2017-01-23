@@ -15,7 +15,7 @@ package org.devzendo.zarjaz.transport;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-class NamedInterface <T> {
+public class NamedInterface <T> {
     private final EndpointName endpointName;
     private final Class<T> interfaceClass;
 
