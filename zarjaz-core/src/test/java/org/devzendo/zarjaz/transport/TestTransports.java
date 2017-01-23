@@ -2,12 +2,14 @@ package org.devzendo.zarjaz.transport;
 
 import org.apache.log4j.BasicConfigurator;
 import org.devzendo.commoncode.concurrency.ThreadUtils;
-import org.devzendo.zarjaz.transceiver.NullTransceiver;
+import org.devzendo.zarjaz.protocol.InvocationCodec;
+import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
 import org.devzendo.zarjaz.sample.primes.DefaultPrimeGenerator;
 import org.devzendo.zarjaz.sample.primes.PrimeGenerator;
 import org.devzendo.zarjaz.sample.timeout.DefaultTimeoutGenerator;
 import org.devzendo.zarjaz.sample.timeout.TimeoutGenerator;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
+import org.devzendo.zarjaz.transceiver.NullTransceiver;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.junit.After;
@@ -80,6 +82,12 @@ public class TestTransports {
     @Mock
     ServerImplementationValidator serverValidator;
 
+    @Mock
+    InvocationHashGenerator invocationHashGenerator;
+
+    @Mock
+    InvocationCodec invocationCodec;
+
     @Rule
     public MockitoRule mockitoRule = MockitoJUnit.rule();
 
@@ -93,7 +101,7 @@ public class TestTransports {
             clientTransport = new NullTransport(serverValidator, clientValidator, timeoutScheduler);
             serverTransport = clientTransport;
         } else if (transportClass.equals((TransceiverTransport.class))) {
-            clientTransport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, new NullTransceiver());
+            clientTransport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, new NullTransceiver(), invocationHashGenerator, invocationCodec);
             serverTransport = clientTransport;
         }
     }

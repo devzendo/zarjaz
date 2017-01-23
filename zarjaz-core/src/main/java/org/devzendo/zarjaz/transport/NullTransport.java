@@ -118,12 +118,12 @@ class NullTransport extends AbstractTransport implements Transport {
 
 
     // The TransportInvocationHandler is the client-side part that varies between transports.
-    protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName name, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
+    protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
         // TODO generally, how does a remote client know that a named interface exists?
         synchronized (implementations) {
-            final NamedInterface namedInterface = new NamedInterface(name, interfaceClass);
+            final NamedInterface namedInterface = new NamedInterface(endpointName, interfaceClass);
             if (!implementations.containsKey(namedInterface)) {
-                throw new RegistrationException("The EndpointName '" + name + "' is not registered");
+                throw new RegistrationException("The EndpointName '" + endpointName + "' is not registered");
             }
 
             return new NullTransportInvocationHandler(executor, implementations.get(namedInterface));

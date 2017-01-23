@@ -104,27 +104,29 @@ public abstract class AbstractTransport {
         }
     }
 
-    private final <T> void registerClientEndpointInterface(final EndpointName name, final Class<T> interfaceClass) {
-        final NamedInterface reg = new NamedInterface(name, interfaceClass);
+    private final <T> void registerClientEndpointInterface(final EndpointName endpointName, final Class<T> interfaceClass) {
+        final NamedInterface reg = new NamedInterface(endpointName, interfaceClass);
         if (registeredEndpointInterfaces.contains(reg)) {
+            // TODO change to RegistrationException
             throw new IllegalArgumentException("Cannot register the same EndpointName/Client interface more than once");
         }
         registeredEndpointInterfaces.add(reg);
     }
 
-    public final <T> T createClientProxy(final EndpointName name, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
-        logger.info("Creating client proxy of " + name + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
+    public final <T> T createClientProxy(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
+        // TODO validate for nulls
+        logger.info("Creating client proxy of " + endpointName + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
         clientInterfaceValidator.validateClientInterface(interfaceClass);
-        registerClientEndpointInterface(name, interfaceClass);
+        registerClientEndpointInterface(endpointName, interfaceClass);
 
-        final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(name, interfaceClass, methodTimeoutMilliseconds);
-        final CompletionInvocationHandler cih = new CompletionInvocationHandler(timeoutScheduler, name, interfaceClass, transportInvocationHandler, methodTimeoutMilliseconds);
+        final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(endpointName, interfaceClass, methodTimeoutMilliseconds);
+        final CompletionInvocationHandler cih = new CompletionInvocationHandler(timeoutScheduler, endpointName, interfaceClass, transportInvocationHandler, methodTimeoutMilliseconds);
         return (T) Proxy.newProxyInstance(interfaceClass.getClassLoader(),
                 new Class<?>[]{interfaceClass},
                 cih);
     }
 
-    protected abstract <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName name, final Class<T> interfaceClass, final long methodTimeoutMilliseconds);
+    protected abstract <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds);
 
     public void start() {
         timeoutScheduler.start();

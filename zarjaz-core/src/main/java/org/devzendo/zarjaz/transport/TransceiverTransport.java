@@ -1,5 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.zarjaz.protocol.InvocationCodec;
+import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.Transceiver;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
@@ -8,6 +10,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -27,18 +32,33 @@ import java.io.IOException;
 public class TransceiverTransport extends AbstractTransport implements Transport {
     private static final Logger logger = LoggerFactory.getLogger(TransceiverTransport.class);
     private final Transceiver transceiver;
+    private final InvocationHashGenerator invocationHashGenerator;
+    private final InvocationCodec invocationCodec;
 
-    public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver) {
-        this(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transceiver, "transceiver");
+    public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver, final InvocationHashGenerator invocationHashGenerator, final InvocationCodec invocationCodec) {
+        this(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transceiver, invocationHashGenerator, invocationCodec, "transceiver");
     }
 
-    public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver, final String transportName) {
+    public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver, final InvocationHashGenerator invocationHashGenerator, final InvocationCodec invocationCodec, final String transportName) {
         super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transportName);
         this.transceiver = transceiver;
+        this.invocationHashGenerator = invocationHashGenerator;
+        this.invocationCodec = invocationCodec;
     }
 
     @Override
-    protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName name, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
+    protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
+        final Map<Method, byte[]> methodMap = invocationHashGenerator.generate(interfaceClass);
+
+        // Register hashes,
+        final Optional<InvocationCodec.EndpointInterfaceMethod> collidingEndpointInterfaceMethod = invocationCodec.registerHashes(endpointName, interfaceClass, methodMap);
+        if (collidingEndpointInterfaceMethod.isPresent()) {
+            throw new RegistrationException("Method hash collision when registering (Endpoint '" + endpointName +
+                    "', Client interface '" + interfaceClass.getSimpleName() + "') conflicts with (" + collidingEndpointInterfaceMethod.get().toString() + ")");
+        }
+        // No collisions would be generated, great. Register them...
+        // get hashes from invocationhashgenerator
+        // any already present in codec? throw
         return null;
     }
 
