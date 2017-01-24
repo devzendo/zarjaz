@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -59,8 +60,14 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         }
 
         @Override
-        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future) {
+        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<Runnable> timeoutRunnables) {
             final byte[] hash = methodsToHashMap.get(method);
+            // allocate sequence
+            // store sequence - future in outstanding calls map
+            // add timeout runnable that removes from the outstanding calls map
+
+            //final ByteBuffer bytes = invocationCodec.generateHashedMethodInvocation(sequence, hash, args);
+            //transceiver.getServerTransceiver().writeBuffer(bytes);
         }
     }
 

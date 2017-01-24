@@ -1,6 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
 import java.lang.reflect.Method;
+import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -20,5 +21,5 @@ import java.util.concurrent.CompletableFuture;
  */
 
 public interface TransportInvocationHandler {
-    void invoke(Method method, Object[] args, CompletableFuture<Object> future);
+    void invoke(Method method, Object[] args, CompletableFuture<Object> future, LinkedList<Runnable> timeoutRunnables);
 }

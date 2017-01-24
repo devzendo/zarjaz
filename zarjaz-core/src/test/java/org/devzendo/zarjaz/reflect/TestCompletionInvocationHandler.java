@@ -1,8 +1,8 @@
 package org.devzendo.zarjaz.reflect;
 
+import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.spi.LoggingEvent;
-import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.zarjaz.logging.LoggingUnittestCase;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transport.EndpointName;
@@ -20,12 +20,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static org.devzendo.commoncode.concurrency.ThreadUtils.waitNoInterruption;
 import static org.devzendo.zarjaz.logging.IsLoggingEvent.loggingEvent;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.fail;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org <http://devzendo.org>
@@ -81,7 +84,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         // given
         transportInvocationHandler = new TransportInvocationHandler() {
             @Override
-            public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future) {
+            public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, LinkedList<Runnable> timeoutRunnables) {
                 assertThat(method.getName(), equalTo("getName"));
                 assertThat(args, arrayWithSize(0));
                 future.complete("Bob");
@@ -112,8 +115,8 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         // given
         transportInvocationHandler = new TransportInvocationHandler() {
             @Override
-            public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future) {
-                ThreadUtils.waitNoInterruption(2000L);
+            public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<Runnable> timeoutRunnables) {
+                waitNoInterruption(2000L);
                 future.complete("Bob");
             }
         };
@@ -128,6 +131,55 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         // when
         handler.invoke(irrelevantProxy, getNameMethod, noArgs);
 
-        ThreadUtils.waitNoInterruption(3000L);
+        waitNoInterruption(3000L);
     }
+
+    @Test(timeout = 4000L)
+    public void canRunCustomRunnableOnTimeout() throws NoSuchMethodException {
+        BasicConfigurator.configure();
+
+        final boolean[] wasRun = new boolean[] { false };
+        assertThat(wasRun[0], equalTo(false));
+
+        logger.info("creating test objects");
+        // given
+        transportInvocationHandler = new TransportInvocationHandler() {
+            @Override
+            public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<Runnable> timeoutRunnables) {
+                logger.info("transport invocation handler, adding timeout runnable");
+                timeoutRunnables.add(new Runnable() {
+                    @Override
+                    public void run() {
+                        logger.info("running timeout handler");
+                        wasRun[0] = true;
+                    }
+                });
+                logger.info("transport invocation handler taking a long time");
+                waitNoInterruption(2000L);
+                logger.info("finished transport invocation handler");
+            }
+        };
+        final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =
+                new CompletionInvocationHandler<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 500L);
+        final Object irrelevantProxy = null;
+
+        // when
+        try {
+            logger.info("invoking handler");
+            completionInvocationHandler.invoke(irrelevantProxy, getNameMethod, noArgs);
+            fail("A timeout exception should have been thrown");
+        } catch (final Exception e) {
+            logger.info("exception caught: " + e.getMessage());
+            assertThat(e, instanceOf(MethodInvocationTimeoutException.class));
+            assertThat(e.getMessage(), equalTo("method call [Sample] 'getName' timed out after 500ms"));
+        }
+
+        logger.info("end of test wait");
+        waitNoInterruption(200L);
+
+        // then
+        logger.info("end of test");
+        assertThat(wasRun[0], equalTo(true));
+    }
+
 }

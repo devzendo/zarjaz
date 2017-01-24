@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -52,7 +53,7 @@ class NullTransport extends AbstractTransport implements Transport {
         }
 
         @Override
-        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future) {
+        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<Runnable> timeoutRunnables) {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {

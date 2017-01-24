@@ -9,6 +9,9 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -54,7 +57,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         // And every response needs to reuse this logic. Synchronous calls can get.
 
         final CompletableFuture<Object> future = new CompletableFuture<Object>();
-        timeoutScheduler.schedule(methodTimeoutMs, new Runnable() {
+        final Runnable completeFutureExceptionally = new Runnable() {
             @Override
             public void run() {
                 final String message = "method call [" + name + "] '" + method.getName() + "' timed out after " + methodTimeoutMs + "ms";
@@ -63,14 +66,25 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
                 }
                 future.completeExceptionally(new MethodInvocationTimeoutException(message));
             }
+        };
+        final LinkedList<Runnable> timeoutRunnables = new LinkedList<>();
+        timeoutRunnables.addFirst(completeFutureExceptionally);
+        timeoutScheduler.schedule(methodTimeoutMs, new Runnable() {
+            @Override
+            public void run() {
+                timeoutRunnables.forEach((Runnable run) -> {
+                    try {
+                        run.run();
+                    } catch (final Exception e) {
+                        logger.warn("Method call timeout handler threw exception: " + e.getMessage());
+                    }
+                });
+            }
         });
 
         // Note that the NullTransport can block indefinitely here.
         // This will run the remote code on a separate thread.
-        // TODO need to pass a Runnable that cancels the timeout on completion/exception.
-        transportHandler.invoke(method, args, future);
-
-        // TODO cancel timeout
+        transportHandler.invoke(method, args, future, timeoutRunnables);
 
         if (method.getReturnType().isAssignableFrom(Future.class)) {
             if (logger.isDebugEnabled()) {
