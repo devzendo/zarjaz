@@ -9,7 +9,10 @@ import org.devzendo.zarjaz.transport.EndpointName;
 import org.devzendo.zarjaz.transport.MethodInvocationTimeoutException;
 import org.devzendo.zarjaz.transport.TransportInvocationHandler;
 import org.hamcrest.Matchers;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -17,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -80,13 +82,10 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
     @Test
     public void loggingOfNonFutureMethodInvocations() throws NoSuchMethodException {
         // given
-        transportInvocationHandler = new TransportInvocationHandler() {
-            @Override
-            public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, LinkedList<Runnable> timeoutRunnables) {
-                assertThat(method.getName(), equalTo("getName"));
-                assertThat(args, arrayWithSize(0));
-                future.complete("Bob");
-            }
+        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+            assertThat(method.getName(), equalTo("getName"));
+            assertThat(args, arrayWithSize(0));
+            future.complete("Bob");
         };
 
         final CompletionInvocationHandler<SampleInterface> handler =
@@ -111,12 +110,9 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
     @Test(timeout = 4000L)
     public void methodsCanTimeOut() throws NoSuchMethodException {
         // given
-        transportInvocationHandler = new TransportInvocationHandler() {
-            @Override
-            public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<Runnable> timeoutRunnables) {
-                waitNoInterruption(2000L);
-                future.complete("Bob");
-            }
+        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+            waitNoInterruption(2000L);
+            future.complete("Bob");
         };
         final CompletionInvocationHandler<SampleInterface> handler =
                 new CompletionInvocationHandler<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 500L);
@@ -141,21 +137,15 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
 
         logger.info("creating test objects");
         // given
-        transportInvocationHandler = new TransportInvocationHandler() {
-            @Override
-            public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<Runnable> timeoutRunnables) {
-                logger.info("transport invocation handler, adding timeout runnable");
-                timeoutRunnables.add(new Runnable() {
-                    @Override
-                    public void run() {
-                        logger.info("running timeout handler");
-                        wasRun[0] = true;
-                    }
-                });
-                logger.info("transport invocation handler taking a long time");
-                waitNoInterruption(2000L);
-                logger.info("finished transport invocation handler");
-            }
+        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+            logger.info("transport invocation handler, adding timeout runnable");
+            timeoutRunnables.add(() -> {
+                logger.info("running timeout handler");
+                wasRun[0] = true;
+            });
+            logger.info("transport invocation handler taking a long time");
+            waitNoInterruption(2000L);
+            logger.info("finished transport invocation handler");
         };
         final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =
                 new CompletionInvocationHandler<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 500L);
@@ -185,30 +175,14 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         final boolean[] wasRun = new boolean[] { false, false, false };
 
         // given
-        transportInvocationHandler = new TransportInvocationHandler() {
-            @Override
-            public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<Runnable> timeoutRunnables) {
-                timeoutRunnables.add(new Runnable() {
-                    @Override
-                    public void run() {
-                        wasRun[0] = true;
-                    }
-                });
-                timeoutRunnables.add(new Runnable() {
-                    @Override
-                    public void run() {
-                        wasRun[1] = true;
-                        throw new IllegalStateException("boom");
-                    }
-                });
-                timeoutRunnables.add(new Runnable() {
-                    @Override
-                    public void run() {
-                        wasRun[2] = true;
-                    }
-                });
-                waitNoInterruption(2000L);
-            }
+        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+            timeoutRunnables.add(() -> wasRun[0] = true);
+            timeoutRunnables.add(() -> {
+                wasRun[1] = true;
+                throw new IllegalStateException("boom");
+            });
+            timeoutRunnables.add(() -> wasRun[2] = true);
+            waitNoInterruption(2000L);
         };
         final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =
                 new CompletionInvocationHandler<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 500L);
