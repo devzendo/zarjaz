@@ -9,10 +9,7 @@ import org.devzendo.zarjaz.transport.EndpointName;
 import org.devzendo.zarjaz.transport.MethodInvocationTimeoutException;
 import org.devzendo.zarjaz.transport.TransportInvocationHandler;
 import org.hamcrest.Matchers;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.ExpectedException;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -28,6 +25,7 @@ import static org.devzendo.commoncode.concurrency.ThreadUtils.waitNoInterruption
 import static org.devzendo.zarjaz.logging.IsLoggingEvent.loggingEvent;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -182,4 +180,57 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         assertThat(wasRun[0], equalTo(true));
     }
 
+    @Test(timeout = 4000L)
+    public void explodingTimeoutHandlerDoesNotPreventExecutionOfOthers() throws NoSuchMethodException {
+        final boolean[] wasRun = new boolean[] { false, false, false };
+
+        // given
+        transportInvocationHandler = new TransportInvocationHandler() {
+            @Override
+            public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<Runnable> timeoutRunnables) {
+                timeoutRunnables.add(new Runnable() {
+                    @Override
+                    public void run() {
+                        wasRun[0] = true;
+                    }
+                });
+                timeoutRunnables.add(new Runnable() {
+                    @Override
+                    public void run() {
+                        wasRun[1] = true;
+                        throw new IllegalStateException("boom");
+                    }
+                });
+                timeoutRunnables.add(new Runnable() {
+                    @Override
+                    public void run() {
+                        wasRun[2] = true;
+                    }
+                });
+                waitNoInterruption(2000L);
+            }
+        };
+        final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =
+                new CompletionInvocationHandler<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 500L);
+        final Object irrelevantProxy = null;
+
+        // when
+        try {
+            completionInvocationHandler.invoke(irrelevantProxy, getNameMethod, noArgs);
+            fail("A timeout exception should have been thrown");
+        } catch (final Exception e) {
+            assertThat(e, instanceOf(MethodInvocationTimeoutException.class));
+            assertThat(e.getMessage(), equalTo("method call [Sample] 'getName' timed out after 500ms"));
+        }
+
+        waitNoInterruption(200L);
+
+        // then
+        assertThat(wasRun[0], equalTo(true));
+        assertThat(wasRun[1], equalTo(true));
+        assertThat(wasRun[2], equalTo(true));
+        assertTrue(capturingAppender.getEvents().stream().anyMatch(
+                e -> e.getMessage().equals("Method call timeout handler threw exception: boom") && e.getLevel().equals(Level.WARN)
+        ));
+    }
 }
