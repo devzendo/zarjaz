@@ -9,9 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -53,38 +51,36 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
             logger.debug("Invoking [" + name + "] " + method.getDeclaringClass().getName() + "." + method.getName());
         }
 
-        // TODO this needs replacing with a timeout scheduler
         // And every response needs to reuse this logic. Synchronous calls can get.
 
         final CompletableFuture<Object> future = new CompletableFuture<Object>();
-        final Runnable completeFutureExceptionally = new Runnable() {
-            @Override
-            public void run() {
-                final String message = "method call [" + name + "] '" + method.getName() + "' timed out after " + methodTimeoutMs + "ms";
-                if (logger.isDebugEnabled()) {
-                    logger.debug(message);
-                }
-                future.completeExceptionally(new MethodInvocationTimeoutException(message));
-            }
-        };
+        // This list is passed to the transport invocation handler so it can provide its own timeout behaviour for the
+        // method invocation.
         final LinkedList<Runnable> timeoutRunnables = new LinkedList<>();
-        timeoutRunnables.addFirst(completeFutureExceptionally);
-        timeoutScheduler.schedule(methodTimeoutMs, new Runnable() {
-            @Override
-            public void run() {
-                timeoutRunnables.forEach((Runnable run) -> {
-                    try {
-                        run.run();
-                    } catch (final Exception e) {
-                        logger.warn("Method call timeout handler threw exception: " + e.getMessage());
-                    }
-                });
+        final Runnable timeoutHandler = () -> {
+            final String message = "method call [" + name + "] '" + method.getName() + "' timed out after " + methodTimeoutMs + "ms";
+            if (logger.isDebugEnabled()) {
+                logger.debug(message);
             }
-        });
+            future.completeExceptionally(new MethodInvocationTimeoutException(message));
+        };
+        timeoutRunnables.addFirst(timeoutHandler);
+        timeoutScheduler.schedule(methodTimeoutMs, () -> timeoutRunnables.forEach((Runnable run) -> {
+            try {
+                run.run();
+            } catch (final Exception e) {
+                logger.warn("Method call timeout handler threw exception: " + e.getMessage());
+            }
+        }));
 
-        // Note that the NullTransport can block indefinitely here.
-        // This will run the remote code on a separate thread.
-        transportHandler.invoke(method, args, future, timeoutRunnables);
+        // Note that the NullTransport could block indefinitely here, so runs the invocation and remote code on a separate thread.
+        try {
+            transportHandler.invoke(method, args, future, timeoutRunnables);
+        } catch (final Exception e) {
+            logger.warn("Transport handler invocation failed: " + e.getMessage());
+            timeoutRunnables.remove(timeoutHandler);
+            future.completeExceptionally(e);
+        }
 
         if (method.getReturnType().isAssignableFrom(Future.class)) {
             if (logger.isDebugEnabled()) {

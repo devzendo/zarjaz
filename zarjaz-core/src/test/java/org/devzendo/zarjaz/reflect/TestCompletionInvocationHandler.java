@@ -3,16 +3,15 @@ package org.devzendo.zarjaz.reflect;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.spi.LoggingEvent;
+import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.zarjaz.logging.LoggingUnittestCase;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transport.EndpointName;
 import org.devzendo.zarjaz.transport.MethodInvocationTimeoutException;
 import org.devzendo.zarjaz.transport.TransportInvocationHandler;
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.ExpectedException;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -206,5 +205,50 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         assertTrue(capturingAppender.getEvents().stream().anyMatch(
                 e -> e.getMessage().equals("Method call timeout handler threw exception: boom") && e.getLevel().equals(Level.WARN)
         ));
+    }
+
+    @Test(timeout = 4000L)
+    public void transportHandlerExceptionIsStoredInTheFutureAsAFailure() throws NoSuchMethodException {
+
+        // given
+        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+            throw new IllegalStateException("boom");
+        };
+        final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =
+                new CompletionInvocationHandler<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 500L);
+        final Object irrelevantProxy = null;
+
+        // then
+        thrown.expect(InvocationException.class);
+        thrown.expectMessage("boom");
+
+        completionInvocationHandler.invoke(irrelevantProxy, getNameMethod, noArgs);
+    }
+
+    @Test(timeout = 4000L)
+    public void transportHandlerExceptionRemovesTimeoutHandler() throws NoSuchMethodException {
+        // given
+        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+            throw new IllegalStateException("boom");
+        };
+        final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =
+                new CompletionInvocationHandler<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 500L);
+        final Object irrelevantProxy = null;
+
+        // then
+        try {
+            completionInvocationHandler.invoke(irrelevantProxy, getNameMethod, noArgs);
+            fail("Expected an exception");
+        } catch (InvocationException ie) {
+            assertThat(ie.getMessage(), Matchers.containsString("boom"));
+        } catch (Exception e) {
+            fail("Caught the wrong exception: " + e);
+        }
+
+        ThreadUtils.waitNoInterruption(1000); // if the timeout handler has not been removed, give it time to run
+
+        // now sense its log output. not an ideal way of testing this, but it'll do
+        assertTrue(capturingAppender.getEvents().stream().noneMatch(
+                e -> e.getMessage().toString().contains("method call [Sample] 'getName' timed out")));
     }
 }

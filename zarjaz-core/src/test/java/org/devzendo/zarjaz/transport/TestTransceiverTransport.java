@@ -132,6 +132,7 @@ public class TestTransceiverTransport {
             final TransceiverObservableEvent event = clientToServerTransceiverObservableEvents.get(0);
             assertFalse(event.isFailure());
             final ByteBuffer data = event.getData();
+            // TODO this test is currently failing
         }
     }
 
