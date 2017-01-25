@@ -11,10 +11,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -36,6 +39,8 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     private final Transceiver transceiver;
     private final InvocationHashGenerator invocationHashGenerator;
     private final InvocationCodec invocationCodec;
+    private final AtomicInteger sequence = new AtomicInteger(0);
+    private final Map<Integer, CompletableFuture<Object>> outstandingMethodCalls = new ConcurrentHashMap<>();
 
     public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver, final InvocationHashGenerator invocationHashGenerator, final InvocationCodec invocationCodec) {
         this(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transceiver, invocationHashGenerator, invocationCodec, "transceiver");
@@ -61,10 +66,16 @@ public class TransceiverTransport extends AbstractTransport implements Transport
 
         @Override
         public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<Runnable> timeoutRunnables) {
+            // An invocation from the client is to be encoded, and sent to the server.
             final byte[] hash = methodsToHashMap.get(method);
-            // allocate sequence
-            // store sequence - future in outstanding calls map
-            // add timeout runnable that removes from the outstanding calls map
+            // Allocate a sequence number for this call and register as an outstanding call.
+            final int thisSequence = sequence.incrementAndGet();
+            outstandingMethodCalls.put(thisSequence, future);
+            // TODO METRIC increment number of outstanding method calls
+            timeoutRunnables.addFirst(() -> {
+                outstandingMethodCalls.remove(thisSequence);
+                // TODO METRIC decrement number of outstanding method calls
+            });
 
             //final ByteBuffer bytes = invocationCodec.generateHashedMethodInvocation(sequence, hash, args);
             //transceiver.getServerTransceiver().writeBuffer(bytes);
@@ -75,7 +86,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
         final Map<Method, byte[]> methodMap = invocationHashGenerator.generate(interfaceClass);
 
-        // Register hashes,
+        // Register hashes...
         final Optional<InvocationCodec.EndpointInterfaceMethod> collidingEndpointInterfaceMethod = invocationCodec.registerHashes(endpointName, interfaceClass, methodMap);
         if (collidingEndpointInterfaceMethod.isPresent()) {
             throw new RegistrationException("Method hash collision when registering (Endpoint '" + endpointName +
@@ -89,6 +100,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     public void start() {
         super.start();
         transceiver.open();
+        // TODO how do incoming server responses get decoded and dispatched to the server impl?
     }
 
     @Override
@@ -99,5 +111,9 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             logger.warn("Could not close transceiver: " + e.getMessage());
         }
         super.stop();
+    }
+
+    int getNumberOfOutstandingMethodCalls() {
+        return outstandingMethodCalls.size();
     }
 }
