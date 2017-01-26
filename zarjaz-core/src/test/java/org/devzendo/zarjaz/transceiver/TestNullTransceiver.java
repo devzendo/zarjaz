@@ -77,9 +77,9 @@ public class TestNullTransceiver {
         final Transceiver.ServerTransceiver serverTransceiver = transceiver.getServerTransceiver();
         clientTransceiver.addTransceiverObserver(observer);
 
-        final ByteBuffer buf0 = createByteBuffer();
+        final List<ByteBuffer> buf0 = createByteBuffer();
         serverTransceiver.writeBuffer(buf0);
-        final ByteBuffer buf1 = createByteBuffer();
+        final List<ByteBuffer> buf1 = createByteBuffer();
         serverTransceiver.writeBuffer(buf1);
 
         ThreadUtils.waitNoInterruption(500);
@@ -100,9 +100,9 @@ public class TestNullTransceiver {
         final EventCollectingTransceiverObserver clientObserver = new EventCollectingTransceiverObserver();
         clientTransceiver.addTransceiverObserver(clientObserver);
 
-        final ByteBuffer s2c0 = createByteBuffer();
+        final List<ByteBuffer> s2c0 = createByteBuffer();
         serverTransceiver.writeBuffer(s2c0);
-        final ByteBuffer s2c1 = createByteBuffer();
+        final List<ByteBuffer> s2c1 = createByteBuffer();
         serverTransceiver.writeBuffer(s2c1);
 
         ThreadUtils.waitNoInterruption(500);
@@ -117,9 +117,9 @@ public class TestNullTransceiver {
         serverToClientTransceiver.addTransceiverObserver(serverObserver);
 
         final Transceiver.ServerTransceiver clientToServerTransceiver = clientTransceiver.getServerTransceiver();
-        final ByteBuffer c2s0 = createByteBuffer();
+        final List<ByteBuffer> c2s0 = createByteBuffer();
         clientToServerTransceiver.writeBuffer(c2s0);
-        final ByteBuffer c2s1 = createByteBuffer();
+        final List<ByteBuffer> c2s1 = createByteBuffer();
         clientToServerTransceiver.writeBuffer(c2s1);
 
         ThreadUtils.waitNoInterruption(500);
@@ -186,11 +186,13 @@ public class TestNullTransceiver {
     // TODO exception if data sent to non open transceiver
 
     private byte startByte = 0;
-    private ByteBuffer createByteBuffer() {
+    private List<ByteBuffer> createByteBuffer() {
+        final List<ByteBuffer> list = new ArrayList<>();
         final ByteBuffer bb = ByteBuffer.allocate(10);
         for (int i = 0; i < 10; i++) {
             bb.put(startByte++);
         }
-        return bb;
+        list.add(bb);
+        return list;
     }
 }

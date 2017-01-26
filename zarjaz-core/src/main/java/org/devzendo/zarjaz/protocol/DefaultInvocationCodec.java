@@ -5,10 +5,7 @@ import org.devzendo.zarjaz.transport.NamedInterface;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -60,7 +57,8 @@ public class DefaultInvocationCodec implements InvocationCodec {
     }
 
     @Override
-    public ByteBuffer generateHashedMethodInvocation(int sequence, byte[] hash, Object[] args) {
+    public List<ByteBuffer> generateHashedMethodInvocation(int sequence, byte[] hash, Object[] args) {
+//        ByteBuffer.
         return null;
     }
 }

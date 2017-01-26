@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 
 /**
@@ -91,7 +92,7 @@ public class NullTransceiver implements Transceiver {
             public ServerTransceiver getServerTransceiver() {
                 return new ServerTransceiver() {
                     @Override
-                    public void writeBuffer(final ByteBuffer data) throws IOException {
+                    public void writeBuffer(final List<ByteBuffer> data) throws IOException {
                         if (!active) {
                             throw new IllegalStateException("Transceiver not open");
                         }
@@ -111,7 +112,7 @@ public class NullTransceiver implements Transceiver {
     public ServerTransceiver getServerTransceiver() {
         return new ServerTransceiver() {
             @Override
-            public void writeBuffer(final ByteBuffer data) throws IOException {
+            public void writeBuffer(final List<ByteBuffer> data) throws IOException {
                 if (!active) {
                     throw new IllegalStateException("Transceiver not open");
                 }

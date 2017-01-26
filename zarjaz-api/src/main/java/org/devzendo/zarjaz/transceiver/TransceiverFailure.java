@@ -36,7 +36,7 @@ public class TransceiverFailure implements TransceiverObservableEvent {
     }
 
     @Override
-    public ByteBuffer getData() {
+    public List<ByteBuffer> getData() {
         throw new UnsupportedOperationException("No data in a failure");
     }
 }

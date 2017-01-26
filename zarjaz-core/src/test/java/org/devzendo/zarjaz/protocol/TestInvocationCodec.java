@@ -1,14 +1,19 @@
 package org.devzendo.zarjaz.protocol;
 
+import org.devzendo.commoncode.string.HexDump;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
-import org.devzendo.zarjaz.reflect.TestInvocationHashGenerator;
 import org.devzendo.zarjaz.transport.EndpointName;
+import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -32,6 +37,7 @@ import static org.hamcrest.Matchers.not;
  * limitations under the License.
  */
 public class TestInvocationCodec {
+    private static final Logger logger = LoggerFactory.getLogger(TestInvocationCodec.class);
 
     private static final byte[] fixedHash = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 
@@ -82,5 +88,26 @@ public class TestInvocationCodec {
         assertThat(map.containsKey(secondMethod), equalTo(true));
         assertThat(map.get(secondMethod), equalTo(methodMap.get(secondMethod)));
     }
+
+    @Test
+    public void unsure() throws NoSuchMethodException {
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
+        final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
+        final Method firstMethod = SampleInterface.class.getMethod("firstMethod", int.class, boolean.class, String.class);
+        final byte[] hash = methodMap.get(firstMethod);
+        assertThat(hash.length, equalTo(16));
+
+        codec.registerHashes(endpointName, SampleInterface.class, methodMap);
+        final List<ByteBuffer> byteBuffers = codec.generateHashedMethodInvocation(0, hash, new Object[]{ 201, true, "boo" });
+        for (ByteBuffer byteBuffer : byteBuffers) {
+            final byte[] bytes = byteBuffer.array();
+            final String[] strings = HexDump.hexDump(bytes);
+            for (String dump : strings) {
+                logger.debug(dump);
+            }
+        }
+        Assert.fail("actually test something");
+    }
+
 
 }

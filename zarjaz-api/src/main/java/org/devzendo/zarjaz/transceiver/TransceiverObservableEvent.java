@@ -23,5 +23,5 @@ import java.util.List;
 public interface TransceiverObservableEvent extends ObservableEvent {
     boolean isFailure();
     Exception getCause();
-    ByteBuffer getData();
+    List<ByteBuffer> getData();
 }

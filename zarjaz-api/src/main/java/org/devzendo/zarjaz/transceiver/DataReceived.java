@@ -19,10 +19,10 @@ import java.util.List;
  * limitations under the License.
  */
 public class DataReceived implements TransceiverObservableEvent {
-    private final ByteBuffer buffer;
+    private final List<ByteBuffer> buffers;
 
-    public DataReceived(final ByteBuffer buffer) {
-        this.buffer = buffer;
+    public DataReceived(final List<ByteBuffer> buffers) {
+        this.buffers = buffers;
     }
 
     @Override
@@ -36,7 +36,7 @@ public class DataReceived implements TransceiverObservableEvent {
     }
 
     @Override
-    public ByteBuffer getData() {
-        return buffer;
+    public List<ByteBuffer> getData() {
+        return buffers;
     }
 }

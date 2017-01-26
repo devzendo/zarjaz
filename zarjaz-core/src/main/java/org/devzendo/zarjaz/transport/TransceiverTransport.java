@@ -12,10 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -78,7 +75,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
                 // TODO METRIC decrement number of outstanding method calls
             });
 
-            final ByteBuffer bytes = invocationCodec.generateHashedMethodInvocation(thisSequence, hash, args);
+            final List<ByteBuffer> bytes = invocationCodec.generateHashedMethodInvocation(thisSequence, hash, args);
             try {
                 transceiver.getServerTransceiver().writeBuffer(bytes);
             } catch (IOException e) {

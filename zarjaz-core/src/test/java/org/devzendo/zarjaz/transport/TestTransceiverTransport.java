@@ -131,7 +131,7 @@ public class TestTransceiverTransport {
             assertThat(clientToServerTransceiverObservableEvents, hasSize(1));
             final TransceiverObservableEvent event = clientToServerTransceiverObservableEvents.get(0);
             assertFalse(event.isFailure());
-            final ByteBuffer data = event.getData();
+            final List<ByteBuffer> data = event.getData();
             // TODO this test is currently failing
         }
     }
@@ -173,7 +173,7 @@ public class TestTransceiverTransport {
             assertThat(clientToServerTransceiverObservableEvents, hasSize(1));
             final TransceiverObservableEvent event = clientToServerTransceiverObservableEvents.get(0);
             assertFalse(event.isFailure());
-            final ByteBuffer data = event.getData();
+            final List<ByteBuffer> data = event.getData();
         }
     }
 
