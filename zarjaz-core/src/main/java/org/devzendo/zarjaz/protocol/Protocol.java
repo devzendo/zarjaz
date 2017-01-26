@@ -59,6 +59,26 @@ public class Protocol {
          */
         METHOD_RETURN_EXCEPTION((byte) 4);
 
+        /*
+        some thoughts on why REST is popular, and how you use a health-checking/routing front end service like ARR....
+        resources are addressable, then you can perform operations on them, although you're limited to CRUD that
+        HTTP methods give you.
+        Can achieve similar by passing resource addressing variables/ids into method calls, and update objects that
+        might be serialised via JSON or somesuch.
+        healthchecks would need a specific protocol exchange, each service impl could define a healthcheck method that
+        is called to check availability, returning a boolean response? or some document type?
+
+        an ARR-like system could map incoming endpoint requests to one or more actual servers, calling healthchecks,
+        and routing accordingly. it'd have to maintain its own sequences, and translate requests/responses.
+        how to translate URI-like things? they don't exist - but are resource addressing variables/ids/state.
+
+
+        what about ping?
+
+        what about listing the endpoints currently attached to this transport?
+
+         */
+
         private static Map<Byte, InitialFrameType> reverseLookup = new HashMap<>();
         static {
             for (InitialFrameType ift : values()) {
