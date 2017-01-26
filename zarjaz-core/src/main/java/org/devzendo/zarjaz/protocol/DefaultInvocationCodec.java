@@ -4,6 +4,7 @@ import org.devzendo.zarjaz.transport.EndpointName;
 import org.devzendo.zarjaz.transport.NamedInterface;
 
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -56,5 +57,10 @@ public class DefaultInvocationCodec implements InvocationCodec {
         synchronized (lock) {
             return Collections.unmodifiableMap(namedInterfaceMethodMap.get(new NamedInterface<>(endpointName, interfaceClass)));
         }
+    }
+
+    @Override
+    public ByteBuffer generateHashedMethodInvocation(int sequence, byte[] hash, Object[] args) {
+        return null;
     }
 }

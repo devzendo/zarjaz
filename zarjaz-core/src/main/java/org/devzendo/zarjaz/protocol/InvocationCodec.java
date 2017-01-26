@@ -3,8 +3,10 @@ package org.devzendo.zarjaz.protocol;
 import org.devzendo.zarjaz.transport.EndpointName;
 
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -116,4 +118,7 @@ public interface InvocationCodec {
      * @return the map of methods and their hashes.
      */
     Map<Method, byte[]> getMethodsToHashMap(EndpointName endpointName, Class<?> interfaceClass);
+
+    ByteBuffer generateHashedMethodInvocation(int sequence, byte[] hash, Object[] args);
+
 }

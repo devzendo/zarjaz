@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -77,8 +78,12 @@ public class TransceiverTransport extends AbstractTransport implements Transport
                 // TODO METRIC decrement number of outstanding method calls
             });
 
-            //final ByteBuffer bytes = invocationCodec.generateHashedMethodInvocation(sequence, hash, args);
-            //transceiver.getServerTransceiver().writeBuffer(bytes);
+            final ByteBuffer bytes = invocationCodec.generateHashedMethodInvocation(thisSequence, hash, args);
+            try {
+                transceiver.getServerTransceiver().writeBuffer(bytes);
+            } catch (IOException e) {
+                logger.warn("Could not write buffer to server transceiver: " + e.getMessage());
+            }
         }
     }
 
