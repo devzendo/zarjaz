@@ -33,6 +33,7 @@ public class ByteBufferEncoder {
     }
 
     public void writeByte(final byte b) {
+        // TODO exhaustion test
         getCurrentBuffer().put(b);
     }
 
@@ -40,13 +41,13 @@ public class ByteBufferEncoder {
         if (buffers.size() == 0) {
             addBuffer();
         }
-        final ByteBuffer last = buffers.getLast();
-        // TODO need to check for exhaustion, and allocate another
-        return last;
+        return buffers.getLast();
     }
 
-    private void addBuffer() {
-        buffers.add(ByteBuffer.allocate(BUFFER_SIZE));
+    private ByteBuffer addBuffer() {
+        final ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
+        buffers.add(buffer);
+        return buffer;
     }
 
 
@@ -55,6 +56,17 @@ public class ByteBufferEncoder {
     }
 
     public void writeBytes(final byte[] bs) {
-        getCurrentBuffer().put(bs);
+        ByteBuffer currentBuffer = getCurrentBuffer();
+        int length = bs.length;
+        int offset = 0;
+        int remaining = currentBuffer.remaining();
+        while (length > remaining) {
+            currentBuffer.put(bs, offset, remaining);
+            length -= remaining;
+            offset += remaining;
+            currentBuffer = addBuffer();
+            remaining = currentBuffer.remaining();
+        }
+        currentBuffer.put(bs, offset, length);
     }
 }
