@@ -58,7 +58,10 @@ public class DefaultInvocationCodec implements InvocationCodec {
 
     @Override
     public List<ByteBuffer> generateHashedMethodInvocation(int sequence, byte[] hash, Object[] args) {
-//        ByteBuffer.
-        return null;
+        final ByteBufferEncoder codec = new ByteBufferEncoder();
+        codec.writeByte(Protocol.InitialFrameType.METHOD_INVOCATION_HASHED.getInitialFrameType());
+        codec.writeInt(sequence);
+        codec.writeBytes(hash);
+        return codec.getBuffers();
     }
 }
