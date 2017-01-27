@@ -33,8 +33,7 @@ public class ByteBufferEncoder {
     }
 
     public void writeByte(final byte b) {
-        final ByteBuffer buffer = getCurrentBuffer();
-        buffer.put(b);
+        getCurrentBuffer().put(b);
     }
 
     private ByteBuffer getCurrentBuffer() {
@@ -56,6 +55,6 @@ public class ByteBufferEncoder {
     }
 
     public void writeBytes(final byte[] bs) {
-
+        getCurrentBuffer().put(bs);
     }
 }

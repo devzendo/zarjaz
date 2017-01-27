@@ -43,4 +43,22 @@ public class TestByteBufferEncoder {
         assertThat(buffer.limit(), equalTo(1));
         assertThat(buffer.get(0), equalTo((byte) 0xc9));
     }
+
+    @Test
+    public void aFullBufferOfBytes() {
+        final byte[] buf = new byte[ByteBufferEncoder.BUFFER_SIZE]; // white box
+        for (int i=0; i<ByteBufferEncoder.BUFFER_SIZE; i++) {
+            buf[i] = (byte) (i & 0xff);
+        }
+        encoder.writeBytes(buf);
+        final List<ByteBuffer> buffers = encoder.getBuffers();
+        assertThat(buffers, hasSize(1));
+        final ByteBuffer buffer = buffers.get(0);
+        assertThat(buffer.capacity(), equalTo(ByteBufferEncoder.BUFFER_SIZE));
+        assertThat(buffer.limit(), equalTo(ByteBufferEncoder.BUFFER_SIZE));
+        final byte[] dst = new byte[ByteBufferEncoder.BUFFER_SIZE];
+        buffer.get(dst);
+        assertThat(dst, equalTo(buf));
+    }
+
 }
