@@ -156,4 +156,7 @@ public class ByteBufferEncoder {
         writeBytes(utf8bytes);
     }
 
+    public void writeObject(final Class<?> parameterType, final Object parameterValue) {
+
+    }
 }

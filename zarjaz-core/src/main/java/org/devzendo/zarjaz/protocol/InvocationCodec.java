@@ -120,6 +120,6 @@ public interface InvocationCodec {
      */
     Map<Method, byte[]> getMethodsToHashMap(EndpointName endpointName, Class<?> interfaceClass);
 
-    List<ByteBuffer> generateHashedMethodInvocation(int sequence, byte[] hash, Object[] args);
+    List<ByteBuffer> generateHashedMethodInvocation(int sequence, EndpointName endpointName, Class<?> interfaceClass, Method method, Object[] args);
 
 }

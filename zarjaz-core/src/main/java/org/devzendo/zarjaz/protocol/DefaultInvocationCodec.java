@@ -50,6 +50,7 @@ public class DefaultInvocationCodec implements InvocationCodec {
     }
 
     @Override
+    // TODO this is really just internal now - tell, don't ask.
     public Map<Method, byte[]> getMethodsToHashMap(final EndpointName endpointName, final Class<?> interfaceClass) {
         synchronized (lock) {
             return Collections.unmodifiableMap(namedInterfaceMethodMap.get(new NamedInterface<>(endpointName, interfaceClass)));
@@ -57,11 +58,22 @@ public class DefaultInvocationCodec implements InvocationCodec {
     }
 
     @Override
-    public List<ByteBuffer> generateHashedMethodInvocation(int sequence, byte[] hash, Object[] args) {
-        final ByteBufferEncoder codec = new ByteBufferEncoder();
-        codec.writeByte(Protocol.InitialFrameType.METHOD_INVOCATION_HASHED.getInitialFrameType());
-        codec.writeInt(sequence);
-        codec.writeBytes(hash);
-        return codec.getBuffers();
+    public List<ByteBuffer> generateHashedMethodInvocation(int sequence, final EndpointName endpointName, final Class<?> interfaceClass, final Method method, final Object[] args) {
+        final byte[] hash = getHash(endpointName, interfaceClass, method);
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeByte(Protocol.InitialFrameType.METHOD_INVOCATION_HASHED.getInitialFrameType());
+        encoder.writeInt(sequence);
+        encoder.writeBytes(hash);
+        final Class<?>[] parameterTypes = method.getParameterTypes();
+        for (int i = 0; i < parameterTypes.length; i++) {
+            encoder.writeObject(parameterTypes[i], args[i]);
+        }
+        return encoder.getBuffers();
+    }
+
+    private byte[] getHash(final EndpointName endpointName, final Class<?> interfaceClass, final Method method) {
+        synchronized (lock) {
+            return namedInterfaceMethodMap.get(new NamedInterface<>(endpointName, interfaceClass)).get(method);
+        }
     }
 }

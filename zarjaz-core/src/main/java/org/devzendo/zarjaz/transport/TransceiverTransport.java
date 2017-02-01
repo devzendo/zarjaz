@@ -75,7 +75,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
                 // TODO METRIC decrement number of outstanding method calls
             });
 
-            final List<ByteBuffer> bytes = invocationCodec.generateHashedMethodInvocation(thisSequence, hash, args);
+            final List<ByteBuffer> bytes = invocationCodec.generateHashedMethodInvocation(thisSequence, endpointName, interfaceClass, method, args);
             try {
                 transceiver.getServerTransceiver().writeBuffer(bytes);
             } catch (IOException e) {

@@ -90,7 +90,7 @@ public class TestInvocationCodec {
     }
 
     @Test
-    public void unsure() throws NoSuchMethodException {
+    public void testEncodingOfMethodCall() throws NoSuchMethodException {
         final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
         final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
         final Method firstMethod = SampleInterface.class.getMethod("firstMethod", int.class, boolean.class, String.class);
@@ -98,12 +98,12 @@ public class TestInvocationCodec {
         assertThat(hash.length, equalTo(16));
 
         codec.registerHashes(endpointName, SampleInterface.class, methodMap);
-        final List<ByteBuffer> byteBuffers = codec.generateHashedMethodInvocation(0, hash, new Object[]{ 201, true, "boo" });
+        final List<ByteBuffer> byteBuffers = codec.generateHashedMethodInvocation(0, endpointName, SampleInterface.class, firstMethod, new Object[]{ 201, true, "boo" });
         for (ByteBuffer byteBuffer : byteBuffers) {
             final byte[] bytes = byteBuffer.array();
-            final String[] strings = HexDump.hexDump(bytes);
+            final String[] strings = HexDump.hexDump(bytes, 0, byteBuffer.limit());
             for (String dump : strings) {
-                logger.debug(dump);
+                System.out.println(dump);
             }
         }
         Assert.fail("actually test something");
