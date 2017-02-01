@@ -65,12 +65,30 @@ public class TestByteBufferEncoder {
     }
 
     @Test
-    public void moreThanOneBufferOfBytes() {
+    public void moreThanOneBufferOfBytesWrittenByWriteBytes() {
+        final byte[] buf = initialiseMoreThanOneBufferOfBytes();
+        encoder.writeBytes(buf);
+        checkMoreThanOneBufferOfBytes(buf);
+    }
+
+    @Test
+    public void moreThanOneBufferOfBytesWrittenByWriteByte() {
+        final byte[] buf = initialiseMoreThanOneBufferOfBytes();
+        for (int i=0; i < buf.length; i++) {
+            encoder.writeByte(buf[i]);
+        }
+        checkMoreThanOneBufferOfBytes(buf);
+    }
+
+    private byte[] initialiseMoreThanOneBufferOfBytes() {
         final byte[] buf = new byte[BUFFER_SIZE + 128];
         for (int i=0; i<BUFFER_SIZE + 128; i++) {
             buf[i] = (byte) (i & 0xff);
         }
-        encoder.writeBytes(buf);
+        return buf;
+    }
+
+    private void checkMoreThanOneBufferOfBytes(final byte[] buf) {
         final List<ByteBuffer> buffers = encoder.getBuffers();
         assertThat(buffers, hasSize(2));
 
@@ -87,5 +105,115 @@ public class TestByteBufferEncoder {
         final byte[] dst = new byte[128];
         secondBuffer.get(dst);
         assertThat(dst, equalTo(Arrays.copyOfRange(buf, BUFFER_SIZE, BUFFER_SIZE + 128)));
+    }
+
+    @Test
+    public void singleInt() {
+        encoder.writeInt(0xabcdef01);
+        final List<ByteBuffer> buffers = encoder.getBuffers();
+        assertThat(buffers, hasSize(1));
+        final ByteBuffer buffer = buffers.get(0);
+        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
+        assertThat(buffer.limit(), equalTo(4));
+        assertThat(buffer.get(0), equalTo((byte) 0xab));
+        assertThat(buffer.get(1), equalTo((byte) 0xcd));
+        assertThat(buffer.get(2), equalTo((byte) 0xef));
+        assertThat(buffer.get(3), equalTo((byte) 0x01));
+    }
+
+    // As the basic data types all use writeByte/writeBytes, and that allocates more buffers when the current is full,
+    // there's no need for any 'multiple buffers of int' test.
+
+    @Test
+    public void singleBoolean() {
+        encoder.writeBoolean(false);
+        encoder.writeBoolean(true);
+        final List<ByteBuffer> buffers = encoder.getBuffers();
+        assertThat(buffers, hasSize(1));
+        final ByteBuffer buffer = buffers.get(0);
+        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
+        assertThat(buffer.limit(), equalTo(2));
+        assertThat(buffer.get(0), equalTo((byte) 0x00));
+        assertThat(buffer.get(1), equalTo((byte) 0x01));
+    }
+
+    @Test
+    public void singleChar() {
+        encoder.writeChar('A');
+        encoder.writeChar('0');
+        encoder.writeChar('\uffff');
+        final List<ByteBuffer> buffers = encoder.getBuffers();
+        assertThat(buffers, hasSize(1));
+        final ByteBuffer buffer = buffers.get(0);
+        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
+        assertThat(buffer.limit(), equalTo(6));
+        assertThat(buffer.get(0), equalTo((byte) 0x00));
+        assertThat(buffer.get(1), equalTo((byte) 0x41));
+        assertThat(buffer.get(2), equalTo((byte) 0x00));
+        assertThat(buffer.get(3), equalTo((byte) 0x30));
+        assertThat(buffer.get(4), equalTo((byte) 0xff));
+        assertThat(buffer.get(5), equalTo((byte) 0xff));
+    }
+
+    @Test
+    public void singleShort() {
+        encoder.writeShort((short) 0x8764);
+        final List<ByteBuffer> buffers = encoder.getBuffers();
+        assertThat(buffers, hasSize(1));
+        final ByteBuffer buffer = buffers.get(0);
+        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
+        assertThat(buffer.limit(), equalTo(2));
+        assertThat(buffer.get(0), equalTo((byte) 0x87));
+        assertThat(buffer.get(1), equalTo((byte) 0x64));
+    }
+
+    @Test
+    public void singleLong() {
+        encoder.writeLong(0x87643210ABCDEF10L);
+        final List<ByteBuffer> buffers = encoder.getBuffers();
+        assertThat(buffers, hasSize(1));
+        final ByteBuffer buffer = buffers.get(0);
+        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
+        assertThat(buffer.limit(), equalTo(8));
+        assertThat(buffer.get(0), equalTo((byte) 0x87));
+        assertThat(buffer.get(1), equalTo((byte) 0x64));
+        assertThat(buffer.get(2), equalTo((byte) 0x32));
+        assertThat(buffer.get(3), equalTo((byte) 0x10));
+        assertThat(buffer.get(4), equalTo((byte) 0xAB));
+        assertThat(buffer.get(5), equalTo((byte) 0xCD));
+        assertThat(buffer.get(6), equalTo((byte) 0xEF));
+        assertThat(buffer.get(7), equalTo((byte) 0x10));
+    }
+
+    @Test
+    public void singleFloat() {
+        encoder.writeFloat(3.1415f);
+        final List<ByteBuffer> buffers = encoder.getBuffers();
+        assertThat(buffers, hasSize(1));
+        final ByteBuffer buffer = buffers.get(0);
+        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
+        assertThat(buffer.limit(), equalTo(4));
+        assertThat(buffer.get(0), equalTo((byte) 64));
+        assertThat(buffer.get(1), equalTo((byte) 73));
+        assertThat(buffer.get(2), equalTo((byte) 14));
+        assertThat(buffer.get(3), equalTo((byte) 86));
+    }
+
+    @Test
+    public void singleDouble() {
+        encoder.writeDouble(3.1415);
+        final List<ByteBuffer> buffers = encoder.getBuffers();
+        assertThat(buffers, hasSize(1));
+        final ByteBuffer buffer = buffers.get(0);
+        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
+        assertThat(buffer.limit(), equalTo(8));
+        assertThat(buffer.get(0), equalTo((byte) 64));
+        assertThat(buffer.get(1), equalTo((byte) 9));
+        assertThat(buffer.get(2), equalTo((byte) 33));
+        assertThat(buffer.get(3), equalTo((byte) -54));
+        assertThat(buffer.get(4), equalTo((byte) -64));
+        assertThat(buffer.get(5), equalTo((byte) -125));
+        assertThat(buffer.get(6), equalTo((byte) 18));
+        assertThat(buffer.get(7), equalTo((byte) 111));
     }
 }

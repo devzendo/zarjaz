@@ -33,8 +33,11 @@ public class ByteBufferEncoder {
     }
 
     public void writeByte(final byte b) {
-        // TODO exhaustion test
-        getCurrentBuffer().put(b);
+        ByteBuffer currentBuffer = getCurrentBuffer();
+        if (currentBuffer.remaining() == 0) {
+            currentBuffer = addBuffer();
+        }
+        currentBuffer.put(b);
     }
 
     private ByteBuffer getCurrentBuffer() {
@@ -50,11 +53,8 @@ public class ByteBufferEncoder {
         return buffer;
     }
 
-
-    public void writeInt(final int i) {
-
-    }
-
+    // Conversion of other primitive data types is faster with a buffer and a call to writeBytes, rather than
+    // multiple calls to writeByte.
     public void writeBytes(final byte[] bs) {
         ByteBuffer currentBuffer = getCurrentBuffer();
         int length = bs.length;
@@ -68,5 +68,73 @@ public class ByteBufferEncoder {
             remaining = currentBuffer.remaining();
         }
         currentBuffer.put(bs, offset, length);
+    }
+
+    public void writeInt(final int i) {
+        // >>> is ever so slightly faster than >>
+        final byte[] buf = new byte[4];
+        buf[0] = (byte) ((i >>> 24) & 0xff);
+        buf[1] = (byte) ((i >>> 16) & 0xff);
+        buf[2] = (byte) ((i >>> 8) & 0xff);
+        buf[3] = (byte) (i & 0xff);
+        writeBytes(buf);
+    }
+
+    public void writeBoolean(final boolean b) {
+        writeByte((byte) (b ? 0x01 : 0x00));
+    }
+
+    public void writeChar(final char ch) {
+        final int intval = (int) ch;
+        final byte[] buf = new byte[2];
+        buf[0] = (byte) ((intval >>> 8) & 0xff);
+        buf[1] = (byte) (intval & 0xff);
+        writeBytes(buf);
+    }
+
+    public void writeShort(final short s) {
+        final byte[] buf = new byte[2];
+        buf[0] = (byte) ((s >>> 8) & 0xff);
+        buf[1] = (byte) (s & 0xff);
+        writeBytes(buf);
+    }
+
+    public void writeFloat(final float f) {
+        final int bits = Float.floatToRawIntBits(f);
+        final byte[] buf = new byte[4];
+        buf[0] = (byte) ((bits >>> 24) & 0xFF);
+        buf[1] = (byte) ((bits >>> 16) & 0xFF);
+        buf[2] = (byte) ((bits >>> 8) & 0xFF);
+        buf[3] = (byte) (bits & 0xFF);
+        writeBytes(buf);
+    }
+
+    public void writeDouble(final double d) {
+        final long bits = Double.doubleToRawLongBits(d);
+        final int left = (int)((bits >>> 32) & 0xFFFFFFFF);
+        final int right = (int)(bits & 0xFFFFFFFF);
+        final byte[] buf = new byte[8];
+        buf[0] = (byte) ((left >>> 24) & 0xFF);
+        buf[1] = (byte) ((left >>> 16) & 0xFF);
+        buf[2] = (byte) ((left >>> 8) & 0xFF);
+        buf[3] = (byte) (left & 0xFF);
+        buf[4] = (byte) ((right >>> 24) & 0xFF);
+        buf[5] = (byte) ((right >>> 16) & 0xFF);
+        buf[6] = (byte) ((right >>> 8) & 0xFF);
+        buf[7] = (byte) (right & 0xFF);
+        writeBytes(buf);
+    }
+
+    public void writeLong(final long l) {
+        final byte[] buf = new byte[8];
+        buf[0] = (byte) ((l >>> 56) & 0xFF);
+        buf[1] = (byte) ((l >>> 48) & 0xFF);
+        buf[2] = (byte) ((l >>> 40) & 0xFF);
+        buf[3] = (byte) ((l >>> 32) & 0xFF);
+        buf[4] = (byte) ((l >>> 24) & 0xFF);
+        buf[5] = (byte) ((l >>> 16) & 0xFF);
+        buf[6] = (byte) ((l >>> 8) & 0xFF);
+        buf[7] = (byte) (l & 0xFF);
+        writeBytes(buf);
     }
 }
