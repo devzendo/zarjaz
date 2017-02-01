@@ -1,6 +1,8 @@
 package org.devzendo.zarjaz.protocol;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -30,6 +32,9 @@ public class TestByteBufferEncoder {
     private static final int BUFFER_SIZE = ByteBufferEncoder.BUFFER_SIZE; // white box
 
     private final ByteBufferEncoder encoder = new ByteBufferEncoder();
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void emptyBuffers() {
@@ -215,5 +220,48 @@ public class TestByteBufferEncoder {
         assertThat(buffer.get(5), equalTo((byte) -125));
         assertThat(buffer.get(6), equalTo((byte) 18));
         assertThat(buffer.get(7), equalTo((byte) 111));
+    }
+
+    @Test
+    public void encodeNullString() {
+        thrown.expect(IllegalArgumentException.class);
+        encoder.writeString(null);
+    }
+
+    @Test
+    public void encodeEmptyString() {
+        encoder.writeString("");
+        final List<ByteBuffer> buffers = encoder.getBuffers();
+        assertThat(buffers, hasSize(1));
+        final ByteBuffer buffer = buffers.get(0);
+        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
+        assertThat(buffer.limit(), equalTo(4));
+        assertThat(buffer.get(0), equalTo((byte) 0));
+        assertThat(buffer.get(1), equalTo((byte) 0));
+        assertThat(buffer.get(2), equalTo((byte) 0));
+        assertThat(buffer.get(3), equalTo((byte) 0));
+    }
+
+    // TODO test the UTF8 encoding of strings
+
+    @Test
+    public void encodeString() {
+        encoder.writeString("Hello");
+        final List<ByteBuffer> buffers = encoder.getBuffers();
+        assertThat(buffers, hasSize(1));
+        final ByteBuffer buffer = buffers.get(0);
+        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
+        assertThat(buffer.limit(), equalTo(9));
+        // count of bytes
+        assertThat(buffer.get(0), equalTo((byte) 0));
+        assertThat(buffer.get(1), equalTo((byte) 0));
+        assertThat(buffer.get(2), equalTo((byte) 0));
+        assertThat(buffer.get(3), equalTo((byte) 5));
+
+        assertThat(buffer.get(4), equalTo((byte) 'H'));
+        assertThat(buffer.get(5), equalTo((byte) 'e'));
+        assertThat(buffer.get(6), equalTo((byte) 'l'));
+        assertThat(buffer.get(7), equalTo((byte) 'l'));
+        assertThat(buffer.get(8), equalTo((byte) 'o'));
     }
 }

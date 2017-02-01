@@ -2,6 +2,7 @@ package org.devzendo.zarjaz.protocol;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -22,6 +23,8 @@ import java.util.List;
  * limitations under the License.
  */
 public class ByteBufferEncoder {
+    private static final Charset UTF8 = Charset.forName("UTF-8");
+
     static final int BUFFER_SIZE = 8192;
 
     private final LinkedList<ByteBuffer> buffers = new LinkedList<>();
@@ -137,4 +140,20 @@ public class ByteBufferEncoder {
         buf[7] = (byte) (l & 0xFF);
         writeBytes(buf);
     }
+
+    public void writeString(final String s) {
+        // TODO test for this, but, fix it.
+        if (s == null) {
+            throw new IllegalArgumentException("Null objects cannot be serialised");
+        }
+        if (s.length() == 0) {
+            writeInt(0);
+            return;
+        }
+
+        final byte[] utf8bytes = s.getBytes(UTF8);
+        writeInt(utf8bytes.length);
+        writeBytes(utf8bytes);
+    }
+
 }
