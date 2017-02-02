@@ -4,6 +4,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -184,8 +185,7 @@ public class TestByteBufferEncoder {
     @Test
     public void singleDouble() {
         encoder.writeDouble(3.1415);
-        final int expectedBytes = 8;
-        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(expectedBytes);
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(8);
         assertThat(buffer.get(0), equalTo((byte) 64));
         assertThat(buffer.get(1), equalTo((byte) 9));
         assertThat(buffer.get(2), equalTo((byte) 33));
@@ -230,4 +230,105 @@ public class TestByteBufferEncoder {
         assertThat(buffer.get(7), equalTo((byte) 'l'));
         assertThat(buffer.get(8), equalTo((byte) 'o'));
     }
+
+    private Class<?> parameterType(Class<?> interfaceClass) {
+        final Method method = interfaceClass.getDeclaredMethods()[0];
+        return method.getParameterTypes()[0];
+    }
+
+    private interface BytePrimitiveInterface {
+        void method(byte x);
+    }
+
+    @Test
+    public void encodeObjectBytePrimitive() {
+        encoder.writeObject(parameterType(BytePrimitiveInterface.class), (byte) 201);
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(1);
+        assertThat(buffer.get(0), equalTo((byte) 201));
+    }
+
+    private interface ByteWrapperInterface {
+        void method(Byte x);
+    }
+
+    @Test
+    public void encodeObjectByteWrapper() {
+        encoder.writeObject(parameterType(ByteWrapperInterface.class), Byte.valueOf((byte) 201));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(1);
+        assertThat(buffer.get(0), equalTo((byte) 201));
+    }
+
+    private interface IntPrimitiveInterface {
+        void method(int x);
+    }
+
+    @Test
+    public void encodeObjectIntPrimitive() {
+        encoder.writeObject(parameterType(IntPrimitiveInterface.class), (int) 201);
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
+        assertThat(buffer.get(0), equalTo((byte) 0));
+        assertThat(buffer.get(1), equalTo((byte) 0));
+        assertThat(buffer.get(2), equalTo((byte) 0));
+        assertThat(buffer.get(3), equalTo((byte) 201));
+    }
+
+    private interface IntWrapperInterface {
+        void method(Integer x);
+    }
+
+    @Test
+    public void encodeObjectIntWrapper() {
+        encoder.writeObject(parameterType(IntWrapperInterface.class), Integer.valueOf(201));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
+        assertThat(buffer.get(0), equalTo((byte) 0));
+        assertThat(buffer.get(1), equalTo((byte) 0));
+        assertThat(buffer.get(2), equalTo((byte) 0));
+        assertThat(buffer.get(3), equalTo((byte) 201));
+    }
+
+    private interface StringInterface {
+        void method(String x);
+    }
+
+    @Test
+    public void encodeObjectString() {
+        encoder.writeObject(parameterType(StringInterface.class), "Hello");
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(9);
+        // count of bytes
+        assertThat(buffer.get(0), equalTo((byte) 0));
+        assertThat(buffer.get(1), equalTo((byte) 0));
+        assertThat(buffer.get(2), equalTo((byte) 0));
+        assertThat(buffer.get(3), equalTo((byte) 5));
+
+        assertThat(buffer.get(4), equalTo((byte) 'H'));
+        assertThat(buffer.get(5), equalTo((byte) 'e'));
+        assertThat(buffer.get(6), equalTo((byte) 'l'));
+        assertThat(buffer.get(7), equalTo((byte) 'l'));
+        assertThat(buffer.get(8), equalTo((byte) 'o'));
+    }
+
+    private interface BooleanPrimitiveInterface {
+        void method(boolean x);
+    }
+
+    @Test
+    public void encodeObjectBooleanPrimitive() {
+        encoder.writeObject(parameterType(BooleanPrimitiveInterface.class), (boolean) true);
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(1);
+        assertThat(buffer.get(0), equalTo((byte) 1));
+    }
+
+    private interface BooleanWrapperInterface {
+        void method(Boolean x);
+    }
+
+    @Test
+    public void encodeObjectBooleanWrapper() {
+        encoder.writeObject(parameterType(BooleanWrapperInterface.class), Boolean.valueOf(true));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(1);
+        assertThat(buffer.get(0), equalTo((byte) 1));
+    }
+
+    // TODO write the other dispatcher calls for the other primitive types
+
 }

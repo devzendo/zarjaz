@@ -156,7 +156,24 @@ public class ByteBufferEncoder {
         writeBytes(utf8bytes);
     }
 
-    public void writeObject(final Class<?> parameterType, final Object parameterValue) {
-
+    public void writeObject(final Class parameterType, final Object parameterValue) {
+        // TODO test for this, but, fix it.
+        if (parameterValue == null) {
+            throw new IllegalArgumentException("Null objects cannot be serialised");
+        }
+        // TODO would a lookup/dispatch map be faster?
+        if (parameterType.equals(Byte.class) || parameterType.equals(Byte.TYPE)) {
+            writeByte((byte) parameterValue);
+        } else if (parameterType.equals(Integer.class) || parameterType.equals(Integer.TYPE)) {
+            writeInt((int) parameterValue);
+        } else if (parameterType.equals(Boolean.class) || parameterType.equals(Boolean.TYPE)) {
+            writeBoolean((boolean) parameterValue);
+        } else if (parameterType.equals(String.class)) {
+            writeString((String) parameterValue);
+            // TODO write the other dispatcher calls for the other primitive types
+        } else {
+            // TODO test for this
+            throw new IllegalArgumentException("The parameter type '" + parameterType.getName() + "' has no known serialisation");
+        }
     }
 }

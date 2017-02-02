@@ -13,12 +13,14 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasXPath;
 import static org.hamcrest.Matchers.not;
 
 /**
@@ -99,15 +101,55 @@ public class TestInvocationCodec {
 
         codec.registerHashes(endpointName, SampleInterface.class, methodMap);
         final List<ByteBuffer> byteBuffers = codec.generateHashedMethodInvocation(0, endpointName, SampleInterface.class, firstMethod, new Object[]{ 201, true, "boo" });
-        for (ByteBuffer byteBuffer : byteBuffers) {
-            final byte[] bytes = byteBuffer.array();
-            final String[] strings = HexDump.hexDump(bytes, 0, byteBuffer.limit());
-            for (String dump : strings) {
-                System.out.println(dump);
-            }
-        }
-        Assert.fail("actually test something");
+        assertThat(byteBuffers.size(), equalTo(1));
+        final ByteBuffer buffer = byteBuffers.get(0);
+        assertThat(buffer.limit(), equalTo(33));
+        final byte[] frame = Arrays.copyOf(buffer.array(), buffer.limit());
+
+        assertThat(frame, equalTo(new byte[] {
+                Protocol.InitialFrameType.METHOD_INVOCATION_HASHED.getInitialFrameType(),
+
+                // sequence
+                0,
+                0,
+                0,
+                0,
+
+                // hash
+                40,
+                -75,
+                34,
+                109,
+                -49,
+                -65,
+                -113,
+                -35,
+                11,
+                117,
+                91,
+                79,
+                126,
+                20,
+                -110,
+                -90,
+
+                // 201
+                0,
+                0,
+                0,
+                (byte) 0xc9,
+
+                // true
+                1,
+
+                // "boo"
+                0,
+                0,
+                0,
+                3, // length
+                'b',
+                'o',
+                'o'
+        }));
     }
-
-
 }
