@@ -44,11 +44,7 @@ public class TestByteBufferEncoder {
     @Test
     public void singleByte() {
         encoder.writeByte((byte) 0xc9);
-        final List<ByteBuffer> buffers = encoder.getBuffers();
-        assertThat(buffers, hasSize(1));
-        final ByteBuffer buffer = buffers.get(0);
-        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
-        assertThat(buffer.limit(), equalTo(1));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(1);
         assertThat(buffer.get(0), equalTo((byte) 0xc9));
     }
 
@@ -59,11 +55,7 @@ public class TestByteBufferEncoder {
             buf[i] = (byte) (i & 0xff);
         }
         encoder.writeBytes(buf);
-        final List<ByteBuffer> buffers = encoder.getBuffers();
-        assertThat(buffers, hasSize(1));
-        final ByteBuffer buffer = buffers.get(0);
-        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
-        assertThat(buffer.limit(), equalTo(BUFFER_SIZE));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(BUFFER_SIZE);
         final byte[] dst = new byte[BUFFER_SIZE];
         buffer.get(dst);
         assertThat(dst, equalTo(buf));
@@ -112,14 +104,19 @@ public class TestByteBufferEncoder {
         assertThat(dst, equalTo(Arrays.copyOfRange(buf, BUFFER_SIZE, BUFFER_SIZE + 128)));
     }
 
-    @Test
-    public void singleInt() {
-        encoder.writeInt(0xabcdef01);
+    private ByteBuffer getSingleByteBufferWithExpectedBytes(final int expectedBytes) {
         final List<ByteBuffer> buffers = encoder.getBuffers();
         assertThat(buffers, hasSize(1));
         final ByteBuffer buffer = buffers.get(0);
         assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
-        assertThat(buffer.limit(), equalTo(4));
+        assertThat(buffer.limit(), equalTo(expectedBytes));
+        return buffer;
+    }
+
+    @Test
+    public void singleInt() {
+        encoder.writeInt(0xabcdef01);
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
         assertThat(buffer.get(0), equalTo((byte) 0xab));
         assertThat(buffer.get(1), equalTo((byte) 0xcd));
         assertThat(buffer.get(2), equalTo((byte) 0xef));
@@ -133,11 +130,7 @@ public class TestByteBufferEncoder {
     public void singleBoolean() {
         encoder.writeBoolean(false);
         encoder.writeBoolean(true);
-        final List<ByteBuffer> buffers = encoder.getBuffers();
-        assertThat(buffers, hasSize(1));
-        final ByteBuffer buffer = buffers.get(0);
-        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
-        assertThat(buffer.limit(), equalTo(2));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(2);
         assertThat(buffer.get(0), equalTo((byte) 0x00));
         assertThat(buffer.get(1), equalTo((byte) 0x01));
     }
@@ -147,11 +140,7 @@ public class TestByteBufferEncoder {
         encoder.writeChar('A');
         encoder.writeChar('0');
         encoder.writeChar('\uffff');
-        final List<ByteBuffer> buffers = encoder.getBuffers();
-        assertThat(buffers, hasSize(1));
-        final ByteBuffer buffer = buffers.get(0);
-        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
-        assertThat(buffer.limit(), equalTo(6));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(6);
         assertThat(buffer.get(0), equalTo((byte) 0x00));
         assertThat(buffer.get(1), equalTo((byte) 0x41));
         assertThat(buffer.get(2), equalTo((byte) 0x00));
@@ -163,11 +152,7 @@ public class TestByteBufferEncoder {
     @Test
     public void singleShort() {
         encoder.writeShort((short) 0x8764);
-        final List<ByteBuffer> buffers = encoder.getBuffers();
-        assertThat(buffers, hasSize(1));
-        final ByteBuffer buffer = buffers.get(0);
-        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
-        assertThat(buffer.limit(), equalTo(2));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(2);
         assertThat(buffer.get(0), equalTo((byte) 0x87));
         assertThat(buffer.get(1), equalTo((byte) 0x64));
     }
@@ -175,11 +160,7 @@ public class TestByteBufferEncoder {
     @Test
     public void singleLong() {
         encoder.writeLong(0x87643210ABCDEF10L);
-        final List<ByteBuffer> buffers = encoder.getBuffers();
-        assertThat(buffers, hasSize(1));
-        final ByteBuffer buffer = buffers.get(0);
-        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
-        assertThat(buffer.limit(), equalTo(8));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(8);
         assertThat(buffer.get(0), equalTo((byte) 0x87));
         assertThat(buffer.get(1), equalTo((byte) 0x64));
         assertThat(buffer.get(2), equalTo((byte) 0x32));
@@ -193,11 +174,7 @@ public class TestByteBufferEncoder {
     @Test
     public void singleFloat() {
         encoder.writeFloat(3.1415f);
-        final List<ByteBuffer> buffers = encoder.getBuffers();
-        assertThat(buffers, hasSize(1));
-        final ByteBuffer buffer = buffers.get(0);
-        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
-        assertThat(buffer.limit(), equalTo(4));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
         assertThat(buffer.get(0), equalTo((byte) 64));
         assertThat(buffer.get(1), equalTo((byte) 73));
         assertThat(buffer.get(2), equalTo((byte) 14));
@@ -207,11 +184,8 @@ public class TestByteBufferEncoder {
     @Test
     public void singleDouble() {
         encoder.writeDouble(3.1415);
-        final List<ByteBuffer> buffers = encoder.getBuffers();
-        assertThat(buffers, hasSize(1));
-        final ByteBuffer buffer = buffers.get(0);
-        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
-        assertThat(buffer.limit(), equalTo(8));
+        final int expectedBytes = 8;
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(expectedBytes);
         assertThat(buffer.get(0), equalTo((byte) 64));
         assertThat(buffer.get(1), equalTo((byte) 9));
         assertThat(buffer.get(2), equalTo((byte) 33));
@@ -231,11 +205,7 @@ public class TestByteBufferEncoder {
     @Test
     public void encodeEmptyString() {
         encoder.writeString("");
-        final List<ByteBuffer> buffers = encoder.getBuffers();
-        assertThat(buffers, hasSize(1));
-        final ByteBuffer buffer = buffers.get(0);
-        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
-        assertThat(buffer.limit(), equalTo(4));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
         assertThat(buffer.get(0), equalTo((byte) 0));
         assertThat(buffer.get(1), equalTo((byte) 0));
         assertThat(buffer.get(2), equalTo((byte) 0));
@@ -247,11 +217,7 @@ public class TestByteBufferEncoder {
     @Test
     public void encodeString() {
         encoder.writeString("Hello");
-        final List<ByteBuffer> buffers = encoder.getBuffers();
-        assertThat(buffers, hasSize(1));
-        final ByteBuffer buffer = buffers.get(0);
-        assertThat(buffer.capacity(), equalTo(BUFFER_SIZE));
-        assertThat(buffer.limit(), equalTo(9));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(9);
         // count of bytes
         assertThat(buffer.get(0), equalTo((byte) 0));
         assertThat(buffer.get(1), equalTo((byte) 0));
