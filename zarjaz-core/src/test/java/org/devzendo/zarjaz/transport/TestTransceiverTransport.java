@@ -1,9 +1,9 @@
 package org.devzendo.zarjaz.transport;
 
 import org.apache.log4j.BasicConfigurator;
-import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
+import org.devzendo.zarjaz.protocol.Protocol;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
@@ -12,10 +12,7 @@ import org.devzendo.zarjaz.transceiver.Transceiver;
 import org.devzendo.zarjaz.transceiver.TransceiverObservableEvent;
 import org.devzendo.zarjaz.validation.DefaultClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.DefaultServerImplementationValidator;
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -132,7 +129,23 @@ public class TestTransceiverTransport {
             final TransceiverObservableEvent event = clientToServerTransceiverObservableEvents.get(0);
             assertFalse(event.isFailure());
             final List<ByteBuffer> data = event.getData();
-            // TODO this test is currently failing
+            assertThat(data.size(), equalTo(1));
+            final ByteBuffer buffer = data.get(0);
+            // not an exhaustive check on the buffer contents (don't know the hash)... this is done in TestInvocationCodec.
+            assertThat(buffer.limit(), equalTo(21)); // frame type byte / sequence 4 bytes / hash 16 bytes / no args
+            final byte[] frame = Arrays.copyOf(buffer.array(), 5);
+
+            assertThat(frame, equalTo(new byte[]{
+                    Protocol.InitialFrameType.METHOD_INVOCATION_HASHED.getInitialFrameType(),
+
+                    // sequence
+                    0,
+                    0,
+                    0,
+                    1,
+
+                    // hash....
+            }));
         }
     }
 
