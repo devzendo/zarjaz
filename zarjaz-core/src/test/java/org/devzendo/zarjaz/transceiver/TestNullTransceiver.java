@@ -93,6 +93,8 @@ public class TestNullTransceiver {
     public void bidirectionalTest() throws IOException {
         transceiver.open();
 
+        // the client transceiver is that transceiver that talks TO THE CLIENT
+        // the server transceiver is that transceiver that talks TO THE SERVER
         final Transceiver.ClientTransceiver clientTransceiver = transceiver.getClientTransceiver();
         final Transceiver.ServerTransceiver serverTransceiver = transceiver.getServerTransceiver();
 
@@ -127,6 +129,52 @@ public class TestNullTransceiver {
         assertThat(serverObserver.events, hasSize(2));
         assertThat(serverObserver.events.get(0).getData(), equalTo(c2s0));
         assertThat(serverObserver.events.get(1).getData(), equalTo(c2s1));
+    }
+
+    private class ReplyingTransceiverObserver implements TransceiverObserver {
+
+        private final List<ByteBuffer> buffersToReplyWith;
+
+        public ReplyingTransceiverObserver(List<ByteBuffer> buffersToReplyWith) {
+            this.buffersToReplyWith = buffersToReplyWith;
+        }
+
+        @Override
+        public void eventOccurred(final TransceiverObservableEvent observableEvent) {
+            try {
+                logger.debug("ReplyingTransceiverObserver got data " + observableEvent.getData() + " - replying");
+                observableEvent.getServerTransceiver().writeBuffer(buffersToReplyWith);
+                logger.debug("replied");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Test(timeout = 1000)
+    public void sentBufferCanBeRepliedTo() throws IOException {
+        transceiver.open();
+
+        // the server will collect the reply coming from the client
+        final EventCollectingTransceiverObserver serverReplyObserver = new EventCollectingTransceiverObserver();
+        final Transceiver.ServerTransceiver serverTransceiver = transceiver.getServerTransceiver();
+        serverTransceiver.getClientTransceiver().addTransceiverObserver(serverReplyObserver);
+
+        // the client will reply to its request
+        final List<ByteBuffer> replyWith = createByteBuffer();
+        final ReplyingTransceiverObserver replyingObserver = new ReplyingTransceiverObserver(replyWith);
+        final Transceiver.ClientTransceiver clientTransceiver = transceiver.getClientTransceiver();
+        clientTransceiver.addTransceiverObserver(replyingObserver);
+
+        // send the request to the server
+        logger.debug("sending initial buffer to server");
+        serverTransceiver.writeBuffer(createByteBuffer());
+
+        ThreadUtils.waitNoInterruption(500);
+
+        // the server has received a reply to its request
+        assertThat(serverReplyObserver.events, hasSize(1));
+        assertThat(serverReplyObserver.events.get(0).getData(), equalTo(replyWith));
     }
 
     @Test

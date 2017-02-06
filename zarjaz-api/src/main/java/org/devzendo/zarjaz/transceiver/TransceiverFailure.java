@@ -39,4 +39,9 @@ public class TransceiverFailure implements TransceiverObservableEvent {
     public List<ByteBuffer> getData() {
         throw new UnsupportedOperationException("No data in a failure");
     }
+
+    @Override
+    public Transceiver.ServerTransceiver getServerTransceiver() {
+        throw new UnsupportedOperationException("Failures cannot be replied to");
+    }
 }

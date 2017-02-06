@@ -31,6 +31,7 @@ public interface Transceiver extends Closeable {
         /**
          * Synchronously send a request.
          **/
+        // TODO rename to writeBuffers
         void writeBuffer(List<ByteBuffer> data) throws IOException;
         ClientTransceiver getClientTransceiver();
     }

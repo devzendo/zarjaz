@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.transceiver;
 
+import com.sun.deploy.util.SessionState;
 import org.devzendo.commoncode.patterns.observer.ObserverList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,9 @@ public class NullTransceiver implements Transceiver {
     private final Thread dispatchThread;
     private volatile boolean active = false;
 
+    private final ServerTransceiver serverTransceiver;
+    private final ClientTransceiver clientTransceiver;
+
     public NullTransceiver() {
         dispatchThread = new Thread(new Runnable() {
             @Override
@@ -57,71 +61,33 @@ public class NullTransceiver implements Transceiver {
         });
         dispatchThread.setDaemon(true);
         dispatchThread.setName("NullTransceiver dispatch thread");
-    }
 
-    @Override
-    public void close() throws IOException {
-        logger.info("Closing NullTransceiver");
-        active = false;
-        if (dispatchThread.isAlive()) {
-            dispatchThread.interrupt();
-        }
-    }
 
-    @Override
-    public void open() {
-        logger.info("Opening NullTransceiver");
-        dispatchThread.start();
-        active = true;
-    }
-
-    @Override
-    public ClientTransceiver getClientTransceiver() {
-        return new ClientTransceiver() {
+        final ServerTransceiver replyServerTransceiver = new ServerTransceiver() {
             @Override
-            public void addTransceiverObserver(final TransceiverObserver observer) {
-                clientEnd.observers.addObserver(observer);
+            public void writeBuffer(final List<ByteBuffer> data) throws IOException {
+                serverEnd.observers.eventOccurred(new DataReceived(data, null));
             }
 
             @Override
-            public void removeTransceiverObserver(final TransceiverObserver observer) {
-                clientEnd.observers.removeListener(observer);
-            }
-
-            @Override
-            public ServerTransceiver getServerTransceiver() {
-                return new ServerTransceiver() {
-                    @Override
-                    public void writeBuffer(final List<ByteBuffer> data) throws IOException {
-                        if (!active) {
-                            throw new IllegalStateException("Transceiver not open");
-                        }
-                        serverEnd.observers.eventOccurred(new DataReceived(data));
-                    }
-
-                    @Override
-                    public ClientTransceiver getClientTransceiver() {
-                        throw new UnsupportedOperationException("This isn't Inception, you know...");
-                    }
-                };
+            public ClientTransceiver getClientTransceiver() {
+                throw new IllegalStateException("Can't get the client to reply to");
             }
         };
-    }
 
-    @Override
-    public ServerTransceiver getServerTransceiver() {
-        return new ServerTransceiver() {
+        serverTransceiver = new ServerTransceiver() {
             @Override
             public void writeBuffer(final List<ByteBuffer> data) throws IOException {
                 if (!active) {
                     throw new IllegalStateException("Transceiver not open");
                 }
                 logger.debug("Queueing ByteBuffer for sending to observers");
+
                 queue.add(new Runnable() {
                     @Override
                     public void run() {
-                        logger.debug("Dispatching queued ByteBuffer");
-                        clientEnd.observers.eventOccurred(new DataReceived(data));
+                        logger.debug("Dispatching queued ByteBuffer at client end with reply server transceiver " + replyServerTransceiver);
+                        clientEnd.observers.eventOccurred(new DataReceived(data, replyServerTransceiver));
                         logger.debug("Dispatched to observers");
                     }
                 });
@@ -147,5 +113,63 @@ public class NullTransceiver implements Transceiver {
                 };
             }
         };
+
+        clientTransceiver = new ClientTransceiver() {
+            @Override
+            public void addTransceiverObserver(final TransceiverObserver observer) {
+                clientEnd.observers.addObserver(observer);
+            }
+
+            @Override
+            public void removeTransceiverObserver(final TransceiverObserver observer) {
+                clientEnd.observers.removeListener(observer);
+            }
+
+            @Override
+            public ServerTransceiver getServerTransceiver() {
+                return new ServerTransceiver() {
+                    @Override
+                    public void writeBuffer(final List<ByteBuffer> data) throws IOException {
+                        if (!active) {
+                            throw new IllegalStateException("Transceiver not open");
+                        }
+                        logger.debug("Dispatching queued ByteBuffer at server end with reply server transceiver " + this);
+                        serverEnd.observers.eventOccurred(new DataReceived(data, serverTransceiver));
+                    }
+
+                    @Override
+                    public ClientTransceiver getClientTransceiver() {
+                        throw new UnsupportedOperationException("This isn't Inception, you know...");
+                    }
+                };
+            }
+        };
+
+    }
+
+    @Override
+    public void close() throws IOException {
+        logger.info("Closing NullTransceiver");
+        active = false;
+        if (dispatchThread.isAlive()) {
+            dispatchThread.interrupt();
+        }
+    }
+
+    @Override
+    public void open() {
+        logger.info("Opening NullTransceiver");
+        dispatchThread.start();
+        active = true;
+    }
+
+    @Override
+    public ClientTransceiver getClientTransceiver() {
+        return clientTransceiver;
+    }
+
+    @Override
+    public ServerTransceiver getServerTransceiver() {
+        return serverTransceiver;
     }
 }

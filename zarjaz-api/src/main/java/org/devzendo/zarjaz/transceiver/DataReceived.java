@@ -20,9 +20,11 @@ import java.util.List;
  */
 public class DataReceived implements TransceiverObservableEvent {
     private final List<ByteBuffer> buffers;
+    private final Transceiver.ServerTransceiver serverTransceiver;
 
-    public DataReceived(final List<ByteBuffer> buffers) {
+    public DataReceived(final List<ByteBuffer> buffers, final Transceiver.ServerTransceiver serverTransceiver) {
         this.buffers = buffers;
+        this.serverTransceiver = serverTransceiver;
     }
 
     @Override
@@ -38,5 +40,10 @@ public class DataReceived implements TransceiverObservableEvent {
     @Override
     public List<ByteBuffer> getData() {
         return buffers;
+    }
+
+    @Override
+    public Transceiver.ServerTransceiver getServerTransceiver() {
+        return serverTransceiver;
     }
 }
