@@ -77,6 +77,9 @@ public class Protocol {
 
         what about listing the endpoints currently attached to this transport?
 
+        what about attaching a (possibly empty) set of String->String headers to each method invocation (e.g. for
+        authentication)?
+
          */
 
         private static Map<Byte, InitialFrameType> reverseLookup = new HashMap<>();
