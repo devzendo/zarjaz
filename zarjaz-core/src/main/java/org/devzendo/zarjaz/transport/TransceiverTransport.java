@@ -4,6 +4,8 @@ import org.devzendo.zarjaz.protocol.InvocationCodec;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.Transceiver;
+import org.devzendo.zarjaz.transceiver.TransceiverObservableEvent;
+import org.devzendo.zarjaz.transceiver.TransceiverObserver;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.slf4j.Logger;
@@ -39,6 +41,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     private final InvocationCodec invocationCodec;
     private final AtomicInteger sequence = new AtomicInteger(0);
     private final Map<Integer, CompletableFuture<Object>> outstandingMethodCalls = new ConcurrentHashMap<>();
+    private final TransceiverObserver transceiverObserver;
 
     public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver, final InvocationHashGenerator invocationHashGenerator, final InvocationCodec invocationCodec) {
         this(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transceiver, invocationHashGenerator, invocationCodec, "transceiver");
@@ -49,6 +52,15 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         this.transceiver = transceiver;
         this.invocationHashGenerator = invocationHashGenerator;
         this.invocationCodec = invocationCodec;
+        this.transceiverObserver = new TransceiverTransportObserver();
+    }
+
+    private class TransceiverTransportObserver implements TransceiverObserver {
+
+        @Override
+        public void eventOccurred(final TransceiverObservableEvent observableEvent) {
+
+        }
     }
 
     private class TransceiverTransportInvocationHandler implements TransportInvocationHandler {
@@ -101,6 +113,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     @Override
     public void start() {
         super.start();
+        transceiver.getClientTransceiver().addTransceiverObserver(transceiverObserver);
         transceiver.open();
         // TODO how do incoming server responses get decoded and dispatched to the server impl?
     }
@@ -108,6 +121,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     @Override
     public void stop() {
         try {
+            transceiver.getClientTransceiver().removeTransceiverObserver(transceiverObserver);
             transceiver.close();
         } catch (final IOException e) {
             logger.warn("Could not close transceiver: " + e.getMessage());
