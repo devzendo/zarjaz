@@ -25,8 +25,6 @@ import java.util.List;
 public class ByteBufferEncoder {
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
-    static final int BUFFER_SIZE = 8192;
-
     private final LinkedList<ByteBuffer> buffers = new LinkedList<>();
 
     public List<ByteBuffer> getBuffers() {
@@ -51,7 +49,7 @@ public class ByteBufferEncoder {
     }
 
     private ByteBuffer addBuffer() {
-        final ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
+        final ByteBuffer buffer = ByteBuffer.allocate(Protocol.BUFFER_SIZE);
         buffers.add(buffer);
         return buffer;
     }

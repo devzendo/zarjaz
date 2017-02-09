@@ -40,7 +40,18 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     private final InvocationHashGenerator invocationHashGenerator;
     private final InvocationCodec invocationCodec;
     private final AtomicInteger sequence = new AtomicInteger(0);
-    private final Map<Integer, CompletableFuture<Object>> outstandingMethodCalls = new ConcurrentHashMap<>();
+    static class OutstandingMethodCall {
+        public final byte[] hash;
+        public final Method method;
+        public final CompletableFuture<Object> future;
+
+        public OutstandingMethodCall(final byte[] hash, final Method method, final CompletableFuture<Object> future) {
+            this.hash = hash;
+            this.method = method;
+            this.future = future;
+        }
+    }
+    private final Map<Integer, OutstandingMethodCall> outstandingMethodCalls = new ConcurrentHashMap<>();
     private final TransceiverObserver transceiverObserver;
 
     public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver, final InvocationHashGenerator invocationHashGenerator, final InvocationCodec invocationCodec) {
@@ -52,14 +63,37 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         this.transceiver = transceiver;
         this.invocationHashGenerator = invocationHashGenerator;
         this.invocationCodec = invocationCodec;
-        this.transceiverObserver = new TransceiverTransportObserver();
+        this.transceiverObserver = new TransceiverTransportObserver(outstandingMethodCalls);
     }
 
-    private class TransceiverTransportObserver implements TransceiverObserver {
+    /*
+     * Handle replies from servers; decodes and sets in the outstanding method calls map.
+     */
+    static class TransceiverTransportObserver implements TransceiverObserver {
+        private final Map<Integer, OutstandingMethodCall> outstandingMethodCalls;
+
+        public TransceiverTransportObserver(final Map<Integer, OutstandingMethodCall> outstandingMethodCalls) {
+            this.outstandingMethodCalls = outstandingMethodCalls;
+        }
 
         @Override
         public void eventOccurred(final TransceiverObservableEvent observableEvent) {
+            // TODO test for null
+            if (observableEvent.isFailure()) {
+                // TODO test for failures
+            } else {
+                final List<ByteBuffer> buffers = observableEvent.getData();
+                // TODO test for null buffers, empty buffers
+                if (buffers.size() > 0) {
+                    final ByteBuffer firstBuffer = buffers.get(0);
+                    if (firstBuffer.limit() > 0) {
+                        final byte initialFrameByte = firstBuffer.get();
 
+                    } else {
+                        // TODO test for empty first buffer
+                    }
+                }
+            }
         }
     }
 
@@ -80,7 +114,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             final byte[] hash = methodsToHashMap.get(method);
             // Allocate a sequence number for this call and register as an outstanding call.
             final int thisSequence = sequence.incrementAndGet();
-            outstandingMethodCalls.put(thisSequence, future);
+            outstandingMethodCalls.put(thisSequence, new OutstandingMethodCall(hash, method, future));
             // TODO METRIC increment number of outstanding method calls
             timeoutRunnables.addFirst(() -> {
                 outstandingMethodCalls.remove(thisSequence);

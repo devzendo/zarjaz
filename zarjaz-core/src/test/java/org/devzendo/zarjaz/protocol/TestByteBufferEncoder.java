@@ -30,7 +30,7 @@ import static org.hamcrest.Matchers.hasSize;
  * limitations under the License.
  */
 public class TestByteBufferEncoder {
-    private static final int BUFFER_SIZE = ByteBufferEncoder.BUFFER_SIZE; // white box
+    private static final int BUFFER_SIZE = Protocol.BUFFER_SIZE; // white box
 
     private final ByteBufferEncoder encoder = new ByteBufferEncoder();
 

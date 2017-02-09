@@ -58,7 +58,6 @@ public class TestInvocationCodec {
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-
     @Test
     public void detectsHashExistence() throws NoSuchMethodException {
         final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);

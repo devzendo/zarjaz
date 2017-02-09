@@ -20,6 +20,8 @@ import java.util.Optional;
  * limitations under the License.
  */
 public class Protocol {
+    public static final int BUFFER_SIZE = 8192;
+
     /**
      * The first byte of all protocol frames is an InitialFrameType.
      */
