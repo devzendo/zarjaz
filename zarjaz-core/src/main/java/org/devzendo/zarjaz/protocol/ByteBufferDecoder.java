@@ -1,5 +1,7 @@
 package org.devzendo.zarjaz.protocol;
 
+import org.devzendo.commoncode.string.HexDump;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -73,6 +75,26 @@ public class ByteBufferDecoder {
         }
     }
 
+    public boolean readBoolean() throws IOException {
+        return readByte() == (byte) 0x01;
+    }
+
+    public char readChar() throws IOException {
+        final byte[] buf = new byte[2];
+        readBytes(buf, 2);
+        return (char) ((buf[0] << 8) | buf[1]);
+    }
+
+    public short readShort() throws IOException {
+        final byte[] buf = new byte[2];
+        readBytes(buf, 2);
+        return (short) ((buf[0] << 8) | buf[1]);
+    }
+
+    public float readFloat() throws IOException {
+        return Float.intBitsToFloat(readInt());
+    }
+
     public int readInt() throws IOException {
         final byte[] buf = new byte[4];
         readBytes(buf, 4);
@@ -82,28 +104,22 @@ public class ByteBufferDecoder {
                ( buf[3]        & 0x000000ff);
     }
 
+    public double readDouble() throws IOException {
+        return Double.longBitsToDouble(readLong());
+    }
+
     public long readLong() throws IOException {
         final byte[] buf = new byte[8];
         readBytes(buf, 8);
-        long out = 0L;
-
-        for (int index = 0; index < 8; index ++) {
-            out |= buf[index];
-            if (index < 7) {
-                out <<= 8;
-            }
-        }
+        long out = (((long) buf[0] << 56) & 0xff00000000000000L) |
+                   (((long) buf[1] << 48) & 0x00ff000000000000L) |
+                   (((long) buf[2] << 40) & 0x0000ff0000000000L) |
+                   (((long) buf[3] << 32) & 0x000000ff00000000L) |
+                   (((long) buf[4] << 24) & 0x00000000ff000000L) |
+                   (((long) buf[5] << 16) & 0x0000000000ff0000L) |
+                   (((long) buf[6] << 8)  & 0x000000000000ff00L) |
+                   ( (long) buf[7]        & 0x00000000000000ffL);
         return out;
-        /*
-        return ((buf[0] << 56) & 0xff00000000000000L) |
-               ((buf[1] << 48) & 0x00ff000000000000L) |
-               ((buf[2] << 40) & 0x0000ff0000000000L) |
-               ((buf[3] << 32) & 0x000000ff00000000L) |
-               ((buf[4] << 24) & 0x00000000ff000000L) |
-               ((buf[5] << 16) & 0x0000000000ff0000L) |
-               ((buf[6] << 8)  & 0x000000000000ff00L) |
-               ( buf[7]        & 0x00000000000000ffL);
-               */
     }
 
     public String readString() throws IOException {
@@ -111,10 +127,6 @@ public class ByteBufferDecoder {
         final byte[] buf = new byte[length];
         readBytes(buf, length);
         return new String(buf, 0, length, Protocol.UTF8);
-    }
-
-    public boolean readBoolean() throws IOException {
-        return readByte() == (byte) 0x01;
     }
 
     private void exhausted(final int requiredBytes) throws IOException {

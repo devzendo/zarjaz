@@ -99,13 +99,7 @@ public class ByteBufferEncoder {
     }
 
     public void writeFloat(final float f) {
-        final int bits = Float.floatToRawIntBits(f);
-        final byte[] buf = new byte[4];
-        buf[0] = (byte) ((bits >>> 24) & 0xFF);
-        buf[1] = (byte) ((bits >>> 16) & 0xFF);
-        buf[2] = (byte) ((bits >>> 8) & 0xFF);
-        buf[3] = (byte) (bits & 0xFF);
-        writeBytes(buf);
+        writeInt(Float.floatToRawIntBits(f));
     }
 
     public void writeDouble(final double d) {

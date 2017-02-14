@@ -165,6 +165,50 @@ public class TestByteBufferDecoder {
     }
 
     @Test
+    public void singleChar() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeChar('Q');
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.empty(), is(false));
+        assertThat(decoder.size(), is(2));
+        assertThat(decoder.readChar(), is('Q'));
+    }
+
+    @Test
+    public void singleShort() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeShort((short) 0x1234);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.empty(), is(false));
+        assertThat(decoder.size(), is(2));
+        assertThat(decoder.readShort(), is((short) 0x1234));
+    }
+
+    @Test
+    public void singleFloat() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeFloat(3.1415f);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.empty(), is(false));
+        assertThat(decoder.size(), is(4));
+        assertThat(decoder.readFloat(), is(3.1415f));
+    }
+
+    @Test
+    public void singleDouble() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeDouble(3.1415);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.empty(), is(false));
+        assertThat(decoder.size(), is(8));
+        assertThat(decoder.readDouble(), is(3.1415));
+    }
+
+    @Test
     public void singleString() throws IOException {
         final ByteBufferEncoder encoder = new ByteBufferEncoder();
         encoder.writeString("UTF8");
