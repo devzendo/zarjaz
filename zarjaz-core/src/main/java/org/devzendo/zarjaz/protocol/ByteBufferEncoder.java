@@ -2,7 +2,6 @@ package org.devzendo.zarjaz.protocol;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,7 +22,6 @@ import java.util.List;
  * limitations under the License.
  */
 public class ByteBufferEncoder {
-    private static final Charset UTF8 = Charset.forName("UTF-8");
 
     private final LinkedList<ByteBuffer> buffers = new LinkedList<>();
 
@@ -149,7 +147,7 @@ public class ByteBufferEncoder {
             return;
         }
 
-        final byte[] utf8bytes = s.getBytes(UTF8);
+        final byte[] utf8bytes = s.getBytes(Protocol.UTF8);
         writeInt(utf8bytes.length);
         writeBytes(utf8bytes);
     }

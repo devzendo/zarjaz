@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.protocol;
 
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -21,6 +22,7 @@ import java.util.Optional;
  */
 public class Protocol {
     public static final int BUFFER_SIZE = 8192;
+    public static final Charset UTF8 = Charset.forName("UTF-8");
 
     /**
      * The first byte of all protocol frames is an InitialFrameType.
