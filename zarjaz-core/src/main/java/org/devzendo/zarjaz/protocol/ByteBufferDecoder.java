@@ -132,4 +132,21 @@ public class ByteBufferDecoder {
     private void exhausted(final int requiredBytes) throws IOException {
         throw new IOException("Buffers exhausted; " + requiredBytes + " byte(s) required");
     }
+
+    public Object readObject(final Class parameterType) throws IOException {
+        // TODO would a lookup/dispatch map be faster?
+        if (parameterType.equals(Byte.class) || parameterType.equals(Byte.TYPE)) {
+            return readByte();
+        } else if (parameterType.equals(Integer.class) || parameterType.equals(Integer.TYPE)) {
+            return readInt();
+        } else if (parameterType.equals(Boolean.class) || parameterType.equals(Boolean.TYPE)) {
+            return readBoolean();
+        } else if (parameterType.equals(String.class)) {
+            return readString();
+            // TODO write the other dispatcher calls for the other primitive types
+        } else {
+            // TODO test for this
+            throw new IllegalArgumentException("The parameter type '" + parameterType.getName() + "' has no known deserialisation");
+        }
+    }
 }

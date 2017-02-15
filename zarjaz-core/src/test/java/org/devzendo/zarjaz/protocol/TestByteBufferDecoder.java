@@ -11,6 +11,7 @@ import java.util.List;
 
 import static java.util.Collections.EMPTY_LIST;
 import static java.util.Collections.singletonList;
+import static org.devzendo.zarjaz.protocol.SampleInterfaces.parameterType;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
@@ -217,6 +218,69 @@ public class TestByteBufferDecoder {
         assertThat(decoder.empty(), is(false));
         assertThat(decoder.size(), is(8));
         assertThat(decoder.readString(), is("UTF8"));
+    }
+
+    @Test
+    public void decodeObjectBytePrimitive() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeByte((byte) 0xc9);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.BytePrimitiveInterface.class)), is((byte) 0xc9));
+    }
+
+    @Test
+    public void decodeObjectByteWrapper() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeByte((byte) 0xc9);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.ByteWrapperInterface.class)), is((byte) 0xc9));
+    }
+
+    @Test
+    public void decodeObjectIntPrimitive() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeInt(0x12345678);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.IntPrimitiveInterface.class)), is(0x12345678));
+    }
+
+    @Test
+    public void decodeObjectIntWrapper() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeInt(0x12345678);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.IntWrapperInterface.class)), is(0x12345678));
+    }
+
+    @Test
+    public void decodeObjectBooleanPrimitive() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeBoolean(true);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.BooleanPrimitiveInterface.class)), is(true));
+    }
+
+    @Test
+    public void decodeObjectBooleanWrapper() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeBoolean(true);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.BooleanWrapperInterface.class)), is(true));
+    }
+
+    @Test
+    public void decodeObjectStringWrapper() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeString("test it!");
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.StringInterface.class)), is("test it!"));
     }
 
     private ByteBuffer allocateBuffer() {
