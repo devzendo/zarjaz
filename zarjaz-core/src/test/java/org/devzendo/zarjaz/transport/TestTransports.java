@@ -152,6 +152,22 @@ public class TestTransports {
     }
 
     @Test
+    public void cannotStartWithNoClientBound() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("No clients or server implementations bound");
+
+        clientTransport.start();
+    }
+
+    @Test
+    public void cannotStartWithNoServerBound() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("No clients or server implementations bound");
+
+        serverTransport.start();
+    }
+
+    @Test
     public void clientProxyRequestedForUnboundNameDisallowed() {
         // TODO
     }
@@ -173,6 +189,15 @@ public class TestTransports {
     @Test(timeout = 2000L)
     public void timeoutSchedulerExpectationsOnStartingAndStoppingTransport() {
         assertThat(timeoutScheduler.isStarted(), equalTo(false));
+
+        // irrelevant to the test, but must have a client or server bound as it fails validation otherwise
+        final EndpointName endpointName = new EndpointName("irrelevant");
+        final DefaultTimeoutGenerator serverImplementation = new DefaultTimeoutGenerator();
+        // for the null clientTransport, the impl has to be registered even tho only interested in the 'client' side.
+        if (clientTransport instanceof NullTransport) {
+            clientTransport.registerServerImplementation(endpointName, TimeoutGenerator.class, serverImplementation);
+        }
+        clientTransport.createClientProxy(endpointName, TimeoutGenerator.class, 500L);
 
         ThreadUtils.waitNoInterruption(250L);
         clientTransport.start();

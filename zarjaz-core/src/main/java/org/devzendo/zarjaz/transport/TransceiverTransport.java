@@ -1,6 +1,9 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.commoncode.string.HexDump;
+import org.devzendo.zarjaz.protocol.ByteBufferDecoder;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
+import org.devzendo.zarjaz.protocol.Protocol;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.Transceiver;
@@ -52,7 +55,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         }
     }
     private final Map<Integer, OutstandingMethodCall> outstandingMethodCalls = new ConcurrentHashMap<>();
-    private final TransceiverObserver transceiverObserver;
+    private final TransceiverObserver serverReplyTransceiverObserver;
 
     public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver, final InvocationHashGenerator invocationHashGenerator, final InvocationCodec invocationCodec) {
         this(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transceiver, invocationHashGenerator, invocationCodec, "transceiver");
@@ -63,16 +66,16 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         this.transceiver = transceiver;
         this.invocationHashGenerator = invocationHashGenerator;
         this.invocationCodec = invocationCodec;
-        this.transceiverObserver = new TransceiverTransportObserver(outstandingMethodCalls);
+        this.serverReplyTransceiverObserver = new ServerReplyTransceiverObserver(outstandingMethodCalls);
     }
 
     /*
      * Handle replies from servers; decodes and sets in the outstanding method calls map.
      */
-    static class TransceiverTransportObserver implements TransceiverObserver {
+    static class ServerReplyTransceiverObserver implements TransceiverObserver {
         private final Map<Integer, OutstandingMethodCall> outstandingMethodCalls;
 
-        public TransceiverTransportObserver(final Map<Integer, OutstandingMethodCall> outstandingMethodCalls) {
+        public ServerReplyTransceiverObserver(final Map<Integer, OutstandingMethodCall> outstandingMethodCalls) {
             this.outstandingMethodCalls = outstandingMethodCalls;
         }
 
@@ -84,16 +87,40 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             } else {
                 final List<ByteBuffer> buffers = observableEvent.getData();
                 // TODO test for null buffers, empty buffers
-                if (buffers.size() > 0) {
-                    final ByteBuffer firstBuffer = buffers.get(0);
-                    if (firstBuffer.limit() > 0) {
-                        final byte initialFrameByte = firstBuffer.get();
-
-                    } else {
-                        // TODO test for empty first buffer
-                    }
+                final ByteBufferDecoder decoder = new ByteBufferDecoder(buffers);
+                try {
+                    final byte initialFrameByte = decoder.readByte();
+                    processFrame(initialFrameByte, decoder);
+                } catch (final IOException e) {
+                    // TODO METRIC increment bad incoming frames
+                    // TODO test for this
+                    logger.warn("Incoming frame decode: " + e.getMessage(), e);
                 }
             }
+        }
+
+        private void processFrame(final byte initialFrameByte, final ByteBufferDecoder decoder) throws IOException {
+            if (initialFrameByte == Protocol.InitialFrameType.METHOD_RETURN_RESULT.getInitialFrameType()) {
+                processMethodReturnResult(decoder);
+            } else {
+                // TODO METRIC increment unsupported incoming frames
+                // TODO test for this
+                throw new IOException("Unsupported incoming frame type 0x" + HexDump.byte2hex(initialFrameByte));
+            }
+        }
+
+        private void processMethodReturnResult(final ByteBufferDecoder decoder) throws IOException {
+            final int sequence = decoder.readInt();
+            final OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.remove(sequence);
+            if (outstandingMethodCall == null) {
+                // TODO test for this
+                throw new IOException("Incoming method return with sequence " + sequence + " is not outstanding");
+            }
+            final Class<?> returnType = outstandingMethodCall.method.getReturnType();
+            final Object returnValue = decoder.readObject(returnType);
+            outstandingMethodCall.future.complete(returnValue);
+            // TODO METRIC increment successful method decode
+            // TODO REQUEST/RESPONSE LOGGING log method return
         }
     }
 
@@ -147,7 +174,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     @Override
     public void start() {
         super.start();
-        transceiver.getClientTransceiver().addTransceiverObserver(transceiverObserver);
+        transceiver.getClientTransceiver().addTransceiverObserver(serverReplyTransceiverObserver);
         transceiver.open();
         // TODO how do incoming server responses get decoded and dispatched to the server impl?
     }
@@ -155,7 +182,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     @Override
     public void stop() {
         try {
-            transceiver.getClientTransceiver().removeTransceiverObserver(transceiverObserver);
+            transceiver.getClientTransceiver().removeTransceiverObserver(serverReplyTransceiverObserver);
             transceiver.close();
         } catch (final IOException e) {
             logger.warn("Could not close transceiver: " + e.getMessage());

@@ -79,11 +79,12 @@ public class Protocol {
 
         what about ping?
 
-        what about listing the endpoints currently attached to this transport?
+        what about listing the endpoints currently attached to this transport? or checking that a given endpoint exists?
 
         what about attaching a (possibly empty) set of String->String headers to each method invocation (e.g. for
         authentication)?
 
+        what about rate limiting?
          */
 
         private static Map<Byte, InitialFrameType> reverseLookup = new HashMap<>();

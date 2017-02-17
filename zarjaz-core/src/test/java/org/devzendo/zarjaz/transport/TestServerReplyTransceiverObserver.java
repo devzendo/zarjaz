@@ -4,7 +4,6 @@ import org.devzendo.zarjaz.protocol.ByteBufferEncoder;
 import org.devzendo.zarjaz.protocol.Protocol;
 import org.devzendo.zarjaz.transceiver.DataReceived;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Map;
@@ -30,13 +29,13 @@ import static org.hamcrest.Matchers.*;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class TestTransceiverTransportObserver {
+public class TestServerReplyTransceiverObserver {
     private static final int SEQUENCE = 69;
 
     private final ByteBufferEncoder encoder = new ByteBufferEncoder();
     private final Map<Integer, TransceiverTransport.OutstandingMethodCall> outstandingMethodCalls = new ConcurrentHashMap<>();
     private final CompletableFuture<Object> future = new CompletableFuture<>();
-    private final TransceiverTransport.TransceiverTransportObserver observer = new TransceiverTransport.TransceiverTransportObserver(outstandingMethodCalls);
+    private final TransceiverTransport.ServerReplyTransceiverObserver observer = new TransceiverTransport.ServerReplyTransceiverObserver(outstandingMethodCalls);
 
     private interface SampleInterface {
         String someMethod();
@@ -48,7 +47,6 @@ public class TestTransceiverTransportObserver {
     }
 
     @Test
-    @Ignore
     public void decodeValidResponse() throws ExecutionException, InterruptedException {
         observeStringResponseDataReceived();
         // outstanding method call is no longer outstanding

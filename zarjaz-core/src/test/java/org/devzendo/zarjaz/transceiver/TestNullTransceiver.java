@@ -155,20 +155,23 @@ public class TestNullTransceiver {
     public void sentBufferCanBeRepliedTo() throws IOException {
         transceiver.open();
 
-        // the server will collect the reply coming from the client
+        // collect the reply coming from the server
         final EventCollectingTransceiverObserver serverReplyObserver = new EventCollectingTransceiverObserver();
-        final Transceiver.ServerTransceiver serverTransceiver = transceiver.getServerTransceiver();
-        serverTransceiver.getClientTransceiver().addTransceiverObserver(serverReplyObserver);
+        // the server transceiver is that transceiver that talks TO THE SERVER
+        final Transceiver.ServerTransceiver toServerTransceiver = transceiver.getServerTransceiver();
+        final Transceiver.ClientTransceiver serverReplyTransceiver = toServerTransceiver.getClientTransceiver();
+        serverReplyTransceiver.addTransceiverObserver(serverReplyObserver);
 
         // the client will reply to its request
         final List<ByteBuffer> replyWith = createByteBuffer();
         final ReplyingTransceiverObserver replyingObserver = new ReplyingTransceiverObserver(replyWith);
-        final Transceiver.ClientTransceiver clientTransceiver = transceiver.getClientTransceiver();
-        clientTransceiver.addTransceiverObserver(replyingObserver);
+        // the client transceiver is that transceiver that talks TO THE CLIENT
+        final Transceiver.ClientTransceiver toClientTransceiver = transceiver.getClientTransceiver();
+        toClientTransceiver.addTransceiverObserver(replyingObserver);
 
         // send the request to the server
         logger.debug("sending initial buffer to server");
-        serverTransceiver.writeBuffer(createByteBuffer());
+        toServerTransceiver.writeBuffer(createByteBuffer());
 
         ThreadUtils.waitNoInterruption(500);
 
