@@ -117,9 +117,10 @@ public class TestTransceiverTransport {
         captureFromNullTransceiver();
         transport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
                 timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
-        transport.start();
         try {
             final SampleInterface clientProxy = transport.createClientProxy(endpointName, SampleInterface.class, METHOD_TIMEOUT_MILLISECONDS);
+            transport.start();
+
             clientProxy.someMethod();
             // the transport handler isn't going to get a response, so the completion will time out
             fail("A timeout should have happened");
@@ -153,9 +154,10 @@ public class TestTransceiverTransport {
     public void clientRequestIncreasesOutstandingMethodCallCount() throws InterruptedException {
         transport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
                 timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
-        transport.start();
         try {
             final SampleInterface clientProxy = transport.createClientProxy(endpointName, SampleInterface.class, METHOD_TIMEOUT_MILLISECONDS);
+            transport.start();
+
             // do on another thread... that will have the timeout exception thrown on it clientProxy.someMethod();
             // then counts down a latch
             final CountDownLatch aboutToCallOnOtherThread = new CountDownLatch(1);

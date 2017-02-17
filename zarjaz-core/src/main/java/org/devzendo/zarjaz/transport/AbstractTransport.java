@@ -128,11 +128,19 @@ public abstract class AbstractTransport {
 
     protected abstract <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds);
 
-    public void start() {
+    protected boolean hasClientProxiesBound() {
+        return registeredEndpointInterfaces.size() != 0;
+    }
+
+    protected boolean hasServerImplementationsBound() {
         synchronized (implementations) {
-            if (registeredEndpointInterfaces.size() == 0 || implementations.size() == 0) {
-                throw new IllegalStateException("No clients or server implementations bound");
-            }
+            return implementations.size() != 0;
+        }
+    }
+
+    public void start() {
+        if (!hasClientProxiesBound() && !hasServerImplementationsBound()) {
+            throw new IllegalStateException("No clients or server implementations bound");
         }
         timeoutScheduler.start();
     }

@@ -174,7 +174,9 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     @Override
     public void start() {
         super.start();
-        transceiver.getClientTransceiver().addTransceiverObserver(serverReplyTransceiverObserver);
+        if (hasClientProxiesBound()) {
+            transceiver.getClientTransceiver().addTransceiverObserver(serverReplyTransceiverObserver);
+        }
         transceiver.open();
         // TODO how do incoming server responses get decoded and dispatched to the server impl?
     }
