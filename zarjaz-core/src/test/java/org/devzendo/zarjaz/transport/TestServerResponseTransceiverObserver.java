@@ -29,13 +29,13 @@ import static org.hamcrest.Matchers.*;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class TestServerReplyTransceiverObserver {
+public class TestServerResponseTransceiverObserver {
     private static final int SEQUENCE = 69;
 
     private final ByteBufferEncoder encoder = new ByteBufferEncoder();
     private final Map<Integer, TransceiverTransport.OutstandingMethodCall> outstandingMethodCalls = new ConcurrentHashMap<>();
     private final CompletableFuture<Object> future = new CompletableFuture<>();
-    private final TransceiverTransport.ServerReplyTransceiverObserver observer = new TransceiverTransport.ServerReplyTransceiverObserver(outstandingMethodCalls);
+    private final TransceiverTransport.ServerResponseTransceiverObserver observer = new TransceiverTransport.ServerResponseTransceiverObserver(outstandingMethodCalls);
 
     private interface SampleInterface {
         String someMethod();

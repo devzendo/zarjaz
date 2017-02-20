@@ -55,7 +55,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         }
     }
     private final Map<Integer, OutstandingMethodCall> outstandingMethodCalls = new ConcurrentHashMap<>();
-    private final TransceiverObserver serverReplyTransceiverObserver;
+    private final TransceiverObserver serverResponseTransceiverObserver;
 
     public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver, final InvocationHashGenerator invocationHashGenerator, final InvocationCodec invocationCodec) {
         this(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transceiver, invocationHashGenerator, invocationCodec, "transceiver");
@@ -66,16 +66,16 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         this.transceiver = transceiver;
         this.invocationHashGenerator = invocationHashGenerator;
         this.invocationCodec = invocationCodec;
-        this.serverReplyTransceiverObserver = new ServerReplyTransceiverObserver(outstandingMethodCalls);
+        this.serverResponseTransceiverObserver = new ServerResponseTransceiverObserver(outstandingMethodCalls);
     }
 
     /*
-     * Handle replies from servers; decodes and sets in the outstanding method calls map.
+     * Client side. Handle responses from servers; decodes and sets in the outstanding method calls map.
      */
-    static class ServerReplyTransceiverObserver implements TransceiverObserver {
+    static class ServerResponseTransceiverObserver implements TransceiverObserver {
         private final Map<Integer, OutstandingMethodCall> outstandingMethodCalls;
 
-        public ServerReplyTransceiverObserver(final Map<Integer, OutstandingMethodCall> outstandingMethodCalls) {
+        public ServerResponseTransceiverObserver(final Map<Integer, OutstandingMethodCall> outstandingMethodCalls) {
             this.outstandingMethodCalls = outstandingMethodCalls;
         }
 
@@ -175,7 +175,8 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     public void start() {
         super.start();
         if (hasClientProxiesBound()) {
-            transceiver.getClientTransceiver().addTransceiverObserver(serverReplyTransceiverObserver);
+            // On the client side, listen for incoming responses from the server
+            transceiver.getClientTransceiver().addTransceiverObserver(serverResponseTransceiverObserver);
         }
         transceiver.open();
         // TODO how do incoming server responses get decoded and dispatched to the server impl?
@@ -184,7 +185,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     @Override
     public void stop() {
         try {
-            transceiver.getClientTransceiver().removeTransceiverObserver(serverReplyTransceiverObserver);
+            transceiver.getClientTransceiver().removeTransceiverObserver(serverResponseTransceiverObserver);
             transceiver.close();
         } catch (final IOException e) {
             logger.warn("Could not close transceiver: " + e.getMessage());
