@@ -56,6 +56,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     }
     private final Map<Integer, OutstandingMethodCall> outstandingMethodCalls = new ConcurrentHashMap<>();
     private final TransceiverObserver serverResponseTransceiverObserver;
+    private final TransceiverObserver serverRequestTransceiverObserver;
 
     public TransceiverTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler, final Transceiver transceiver, final InvocationHashGenerator invocationHashGenerator, final InvocationCodec invocationCodec) {
         this(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, transceiver, invocationHashGenerator, invocationCodec, "transceiver");
@@ -67,6 +68,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         this.invocationHashGenerator = invocationHashGenerator;
         this.invocationCodec = invocationCodec;
         this.serverResponseTransceiverObserver = new ServerResponseTransceiverObserver(outstandingMethodCalls);
+        this.serverRequestTransceiverObserver = new ServerRequestTransceiverObserver(invocationCodec);
     }
 
     /*
@@ -124,6 +126,20 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         }
     }
 
+    /*
+     * Server side. Handle requests from clients; decodes, calls implementation, send response.
+     */
+    static class ServerRequestTransceiverObserver implements TransceiverObserver {
+        public ServerRequestTransceiverObserver(final InvocationCodec invocationCodec) {
+
+        }
+
+        @Override
+        public void eventOccurred(final TransceiverObservableEvent observableEvent) {
+
+        }
+    }
+
     private class TransceiverTransportInvocationHandler implements TransportInvocationHandler {
         private final EndpointName endpointName;
         private final Class<?> interfaceClass;
@@ -158,7 +174,18 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     }
 
     @Override
+    protected <T> void registerTransportRequestDispatcher(final EndpointName endpointName, final Class<T> interfaceClass) {
+        registerHashes(endpointName, interfaceClass);
+    }
+
+    @Override
     protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
+        registerHashes(endpointName, interfaceClass);
+
+        return new TransceiverTransportInvocationHandler(endpointName, interfaceClass);
+    }
+
+    private <T> void registerHashes(EndpointName endpointName, Class<T> interfaceClass) {
         final Map<Method, byte[]> methodMap = invocationHashGenerator.generate(interfaceClass);
 
         // Register hashes...
@@ -167,8 +194,6 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             throw new RegistrationException("Method hash collision when registering (Endpoint '" + endpointName +
                     "', Client interface '" + interfaceClass.getSimpleName() + "') conflicts with (" + collidingEndpointInterfaceMethod.get().toString() + ")");
         }
-
-        return new TransceiverTransportInvocationHandler(endpointName, interfaceClass);
     }
 
     @Override

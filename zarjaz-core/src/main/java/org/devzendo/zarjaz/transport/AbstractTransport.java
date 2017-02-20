@@ -94,6 +94,8 @@ public abstract class AbstractTransport {
         clientInterfaceValidator.validateClientInterface(interfaceClass);
         serverImplementationValidator.validateServerImplementation(interfaceClass, implementation);
 
+        registerTransportRequestDispatcher(name, interfaceClass);
+
         synchronized (implementations) {
             final NamedInterface namedInterface = new NamedInterface(name, interfaceClass);
             if (implementations.containsKey(namedInterface)) {
@@ -103,6 +105,8 @@ public abstract class AbstractTransport {
             implementations.put(namedInterface, implementation);
         }
     }
+
+    protected abstract <T> void registerTransportRequestDispatcher(final EndpointName endpointName, final Class<T> interfaceClass);
 
     private final <T> void registerClientEndpointInterface(final EndpointName endpointName, final Class<T> interfaceClass) {
         final NamedInterface reg = new NamedInterface(endpointName, interfaceClass);

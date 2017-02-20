@@ -117,6 +117,10 @@ class NullTransport extends AbstractTransport implements Transport {
         }
     }
 
+    @Override
+    protected <T> void registerTransportRequestDispatcher(final EndpointName endpointName, final Class<T> interfaceClass) {
+        // Nothing is needed here in the NullTransport.
+    }
 
     // The TransportInvocationHandler is the client-side part that varies between transports.
     protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {

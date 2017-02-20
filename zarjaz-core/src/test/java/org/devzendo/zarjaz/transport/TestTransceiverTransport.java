@@ -98,7 +98,7 @@ public class TestTransceiverTransport {
     }
 
     @Test
-    public void hashCollisionsAreDetected() {
+    public void hashCollisionsAreDetectedOnClientProxyCreation() {
         final Transport transport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
                 timeoutScheduler, nullTransceiver, new IntentionallyCollidingInvocationHashGenerator(), invocationCodec);
         transport.createClientProxy(new EndpointName("endpoint1"), SampleInterface.class, METHOD_TIMEOUT_MILLISECONDS);
@@ -110,6 +110,22 @@ public class TestTransceiverTransport {
         thrown.expectMessage("Method hash collision when registering (Endpoint 'endpoint2', Client interface 'SampleInterface') conflicts with (Endpoint 'endpoint1', Client interface 'SampleInterface', Method 'someMethod')");
 
         transport.createClientProxy(new EndpointName("endpoint2"), SampleInterface.class, METHOD_TIMEOUT_MILLISECONDS);
+    }
+
+    @Test
+    public void hashCollisionsAreDetectedOnServerImplementationCreation() {
+        final Transport transport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
+                timeoutScheduler, nullTransceiver, new IntentionallyCollidingInvocationHashGenerator(), invocationCodec);
+        final SampleInterface irrelevantImplementation = null;
+        transport.registerServerImplementation(new EndpointName("endpoint1"), SampleInterface.class, irrelevantImplementation);
+
+        // Normally this would be fine since in the default hash invocation generator, endpoint names are part of the
+        // hash. but the intentionally colliding one above does not check endpoints, and always returns a fixed hash.
+        // Difficult to generate an endpoint/interface/method that would trigger this in the real implementation!
+        thrown.expect(RegistrationException.class);
+        thrown.expectMessage("Method hash collision when registering (Endpoint 'endpoint2', Client interface 'SampleInterface') conflicts with (Endpoint 'endpoint1', Client interface 'SampleInterface', Method 'someMethod')");
+
+        transport.registerServerImplementation(new EndpointName("endpoint2"), SampleInterface.class, irrelevantImplementation);
     }
 
     @Test
