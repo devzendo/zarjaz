@@ -106,6 +106,12 @@ public abstract class AbstractTransport {
         }
     }
 
+    public final <T> T getImplementation(final NamedInterface namedInterface) {
+        synchronized (implementations) {
+            return (T) implementations.get(namedInterface);
+        }
+    }
+
     protected abstract <T> void registerTransportRequestDispatcher(final EndpointName endpointName, final Class<T> interfaceClass);
 
     private final <T> void registerClientEndpointInterface(final EndpointName endpointName, final Class<T> interfaceClass) {

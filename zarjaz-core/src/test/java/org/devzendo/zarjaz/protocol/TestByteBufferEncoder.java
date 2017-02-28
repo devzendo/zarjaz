@@ -233,21 +233,37 @@ public class TestByteBufferEncoder {
 
     @Test
     public void encodeObjectBytePrimitive() {
-        encoder.writeObject(parameterType(SampleInterfaces.BytePrimitiveInterface.class), (byte) 201);
+        encoder.writeObject(Byte.TYPE, (byte) 201);
         final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(1);
         assertThat(buffer.get(0), equalTo((byte) 201));
     }
 
     @Test
     public void encodeObjectByteWrapper() {
-        encoder.writeObject(parameterType(SampleInterfaces.ByteWrapperInterface.class), Byte.valueOf((byte) 201));
+        encoder.writeObject(Byte.class, Byte.valueOf((byte) 201));
         final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(1);
         assertThat(buffer.get(0), equalTo((byte) 201));
     }
 
     @Test
+    public void encodeObjectByteWrapperIncompatibleType() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'String' cannot be converted to the parameter type 'Byte'");
+
+        encoder.writeObject(Byte.class, "boom");
+    }
+
+    @Test
+    public void encodeObjectBytePrimitiveIncompatibleType() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'String' cannot be converted to the parameter type 'byte'");
+
+        encoder.writeObject(Byte.TYPE, "boom");
+    }
+
+    @Test
     public void encodeObjectIntPrimitive() {
-        encoder.writeObject(parameterType(SampleInterfaces.IntPrimitiveInterface.class), (int) 201);
+        encoder.writeObject(Integer.TYPE, (int) 201);
         final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
         assertThat(buffer.get(0), equalTo((byte) 0));
         assertThat(buffer.get(1), equalTo((byte) 0));
@@ -257,7 +273,7 @@ public class TestByteBufferEncoder {
 
     @Test
     public void encodeObjectIntWrapper() {
-        encoder.writeObject(parameterType(SampleInterfaces.IntWrapperInterface.class), Integer.valueOf(201));
+        encoder.writeObject(Integer.class, Integer.valueOf(201));
         final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
         assertThat(buffer.get(0), equalTo((byte) 0));
         assertThat(buffer.get(1), equalTo((byte) 0));
@@ -266,8 +282,44 @@ public class TestByteBufferEncoder {
     }
 
     @Test
+    public void encodeObjectIntPrimitiveWidenedByte() {
+        encoder.writeObject(Integer.TYPE, (byte) 201);
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
+        assertThat(buffer.get(0), equalTo((byte) -1));
+        assertThat(buffer.get(1), equalTo((byte) -1));
+        assertThat(buffer.get(2), equalTo((byte) -1));
+        assertThat(buffer.get(3), equalTo((byte) 201));
+    }
+
+    @Test
+    public void encodeObjectIntWrapperWidenedByte() {
+        encoder.writeObject(Integer.class, (byte) 201);
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
+        assertThat(buffer.get(0), equalTo((byte) -1));
+        assertThat(buffer.get(1), equalTo((byte) -1));
+        assertThat(buffer.get(2), equalTo((byte) -1));
+        assertThat(buffer.get(3), equalTo((byte) 201));
+    }
+
+    @Test
+    public void encodeObjectIntWrapperIncompatibleType() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'String' cannot be converted to the parameter type 'Integer'");
+
+        encoder.writeObject(Integer.class, "boom");
+    }
+
+    @Test
+    public void encodeObjectIntPrimitiveIncompatibleType() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'String' cannot be converted to the parameter type 'int'");
+
+        encoder.writeObject(Integer.TYPE, "boom");
+    }
+
+    @Test
     public void encodeObjectString() {
-        encoder.writeObject(parameterType(SampleInterfaces.StringInterface.class), "Hello");
+        encoder.writeObject(String.class, "Hello");
         final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(9);
         // count of bytes
         assertThat(buffer.get(0), equalTo((byte) 0));
@@ -283,17 +335,41 @@ public class TestByteBufferEncoder {
     }
 
     @Test
+    public void encodeStringIncompatibleType() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'Integer' cannot be converted to the parameter type 'String'");
+
+        encoder.writeObject(String.class, Integer.valueOf(12));
+    }
+
+    @Test
     public void encodeObjectBooleanPrimitive() {
-        encoder.writeObject(parameterType(SampleInterfaces.BooleanPrimitiveInterface.class), (boolean) true);
+        encoder.writeObject(Boolean.TYPE, (boolean) true);
         final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(1);
         assertThat(buffer.get(0), equalTo((byte) 1));
     }
 
     @Test
     public void encodeObjectBooleanWrapper() {
-        encoder.writeObject(parameterType(SampleInterfaces.BooleanWrapperInterface.class), Boolean.valueOf(true));
+        encoder.writeObject(Boolean.class, Boolean.valueOf(true));
         final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(1);
         assertThat(buffer.get(0), equalTo((byte) 1));
+    }
+
+    @Test
+    public void encodeObjectBooleanWrapperIncompatibleType() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'String' cannot be converted to the parameter type 'Boolean'");
+
+        encoder.writeObject(Boolean.class, "boom");
+    }
+
+    @Test
+    public void encodeObjectBooleanPrimitiveIncompatibleType() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'String' cannot be converted to the parameter type 'boolean'");
+
+        encoder.writeObject(Boolean.TYPE, "boom");
     }
 
     // TODO write the other dispatcher calls for the other primitive types

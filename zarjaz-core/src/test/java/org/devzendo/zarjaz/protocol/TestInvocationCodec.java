@@ -1,10 +1,9 @@
 package org.devzendo.zarjaz.protocol;
 
-import org.devzendo.commoncode.string.HexDump;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
 import org.devzendo.zarjaz.transport.EndpointName;
-import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -39,12 +38,17 @@ import static org.hamcrest.Matchers.not;
  * limitations under the License.
  */
 public class TestInvocationCodec {
+    private static final int SEQUENCE = 69;
     private static final Logger logger = LoggerFactory.getLogger(TestInvocationCodec.class);
 
     private static final byte[] fixedHash = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 
     private final InvocationCodec codec = new DefaultInvocationCodec();
     private final EndpointName endpointName = new EndpointName("endpoint");
+    private final EndpointName intentionallyMissingEndpoint = new EndpointName("IntentionallyMissing");
+    private Method addOneMethod;
+    private Method addOneWrapperMethod;
+    private Method intentionallyNotRegisteredMethod;
 
     private interface SampleInterface {
         void firstMethod(int integer, boolean bool, String string);
@@ -55,8 +59,34 @@ public class TestInvocationCodec {
         boolean secondMethod(String string);
     }
 
+    private interface AddOnePrimitiveParameterInterface {
+        public int addOne(int input);
+    }
+
+    private interface AddOneWrapperParameterInterface {
+        public Integer addOne(Integer input);
+    }
+
+    private interface IntentionallyNotRegisteredInterface {
+        void intentionallyNotRegisteredMethod();
+    }
+
     @Rule
     public ExpectedException thrown = ExpectedException.none();
+
+
+    @Before
+    public void registerHashes() {
+        final DefaultInvocationHashGenerator hashGenerator = new DefaultInvocationHashGenerator(endpointName);
+        // it's valid (but dodgy) to have multiple interfaces registered under the same endpoint name - they will have
+        // different hashes.
+        codec.registerHashes(endpointName, AddOnePrimitiveParameterInterface.class, hashGenerator.generate(AddOnePrimitiveParameterInterface.class));
+        codec.registerHashes(endpointName, AddOneWrapperParameterInterface.class, hashGenerator.generate(AddOneWrapperParameterInterface.class));
+
+        addOneMethod = AddOnePrimitiveParameterInterface.class.getDeclaredMethods()[0];
+        addOneWrapperMethod = AddOneWrapperParameterInterface.class.getDeclaredMethods()[0];
+        intentionallyNotRegisteredMethod = IntentionallyNotRegisteredInterface.class.getDeclaredMethods()[0];
+    }
 
     @Test
     public void detectsHashExistence() throws NoSuchMethodException {
@@ -91,7 +121,7 @@ public class TestInvocationCodec {
     }
 
     @Test
-    public void testEncodingOfMethodCall() throws NoSuchMethodException {
+    public void encodingOfMethodCall() throws NoSuchMethodException {
         final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
         final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
         final Method firstMethod = SampleInterface.class.getMethod("firstMethod", int.class, boolean.class, String.class);
@@ -150,5 +180,100 @@ public class TestInvocationCodec {
                 'o',
                 'o'
         }));
+    }
+
+    @Test
+    public void receiveMethodInvocationIncompatibleArgumentTypes() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'String' cannot be converted to the parameter type 'int'");
+
+        codec.generateHashedMethodInvocation(SEQUENCE, endpointName, AddOnePrimitiveParameterInterface.class, addOneMethod, new Object[] { "boom" });
+    }
+
+    @Test
+    public void receiveMethodInvocationArgumentConversionCannotBeAssignedBecauseTooWide() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'Long' cannot be converted to the parameter type 'int'");
+
+        codec.generateHashedMethodInvocation(SEQUENCE, endpointName, AddOnePrimitiveParameterInterface.class, addOneMethod, new Object[] { (long) 69L });
+    }
+
+    @Test
+    public void receiveMethodInvocationArgumentConversionCanBeAssignedButWidened() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'Short' cannot be converted to the parameter type 'int'"); // TODO yet
+
+        codec.generateHashedMethodInvocation(SEQUENCE, endpointName, AddOnePrimitiveParameterInterface.class, addOneMethod, new Object[] { (short) 69 });
+    }
+
+    @Test
+    public void receiveMethodInvocationIncompatibleArgumentTypesWrapperInterface() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'String' cannot be converted to the parameter type 'Integer'");
+
+        codec.generateHashedMethodInvocation(SEQUENCE, endpointName, AddOneWrapperParameterInterface.class, addOneWrapperMethod, new Object[] { "boom" });
+    }
+
+    @Test
+    public void receiveMethodInvocationArgumentConversionCannotBeAssignedBecauseTooWideWrapperInterface() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'Long' cannot be converted to the parameter type 'Integer'");
+
+        codec.generateHashedMethodInvocation(SEQUENCE, endpointName, AddOneWrapperParameterInterface.class, addOneWrapperMethod, new Object[] { (long) 69L });
+    }
+
+    @Test
+    public void receiveMethodInvocationArgumentConversionCanBeAssignedButWidenedWrapperInterface() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("The parameter value type 'Short' cannot be converted to the parameter type 'Integer'"); // TODO yet
+
+        codec.generateHashedMethodInvocation(SEQUENCE, endpointName, AddOneWrapperParameterInterface.class, addOneWrapperMethod, new Object[] { (short) 69 });
+    }
+
+    @Test
+    public void receiveMethodInvocationEndpointNotFound() {
+        expectLookupFailure();
+
+        codec.generateHashedMethodInvocation(SEQUENCE, intentionallyMissingEndpoint, AddOnePrimitiveParameterInterface.class, addOneMethod, new Object[0]);
+    }
+
+    @Test
+    public void receiveMethodInvocationClientInterfaceNotFound() {
+        expectLookupFailure();
+
+        codec.generateHashedMethodInvocation(SEQUENCE, endpointName, IntentionallyNotRegisteredInterface.class, addOneMethod, new Object[0]);
+    }
+
+    @Test
+    public void receiveMethodInvocationMethodNotFound() {
+        expectLookupFailure();
+
+        codec.generateHashedMethodInvocation(SEQUENCE, endpointName, AddOnePrimitiveParameterInterface.class, intentionallyNotRegisteredMethod, new Object[0]);
+    }
+
+    @Test
+    public void receiveMethodInvocationEndpointAndClientInterfaceNotFound() {
+        expectLookupFailure();
+
+        codec.generateHashedMethodInvocation(SEQUENCE, intentionallyMissingEndpoint, IntentionallyNotRegisteredInterface.class, addOneMethod, new Object[0]);
+    }
+
+    @Test
+    public void receiveMethodInvocationClientInterfaceAndMethodNotFound() {
+        expectLookupFailure();
+
+        codec.generateHashedMethodInvocation(SEQUENCE, endpointName, IntentionallyNotRegisteredInterface.class, intentionallyNotRegisteredMethod, new Object[0]);
+    }
+
+    @Test
+    public void receiveMethodInvocationEndpointAndMethodNotFound() {
+        expectLookupFailure();
+
+        codec.generateHashedMethodInvocation(SEQUENCE, endpointName, AddOnePrimitiveParameterInterface.class, intentionallyNotRegisteredMethod, new Object[0]);
+    }
+
+    private void expectLookupFailure() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Hash lookup of endpoint name / client interface / method failed");
     }
 }

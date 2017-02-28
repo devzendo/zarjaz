@@ -2,6 +2,8 @@ package org.devzendo.zarjaz.protocol;
 
 import org.devzendo.zarjaz.transport.EndpointName;
 import org.devzendo.zarjaz.transport.NamedInterface;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
@@ -23,6 +25,8 @@ import java.util.*;
  * limitations under the License.
  */
 public class DefaultInvocationCodec implements InvocationCodec {
+    private static final Logger logger = LoggerFactory.getLogger(DefaultInvocationCodec.class);
+
     private Object lock = new Object();
     private final Map<byte[], EndpointInterfaceMethod> hashToMethod = new HashMap<>();
     private final Map<NamedInterface<?>, Map<Method, byte[]>> namedInterfaceMethodMap = new HashMap<>();
@@ -59,21 +63,47 @@ public class DefaultInvocationCodec implements InvocationCodec {
 
     @Override
     public List<ByteBuffer> generateHashedMethodInvocation(int sequence, final EndpointName endpointName, final Class<?> interfaceClass, final Method method, final Object[] args) {
+        // Note: args can be null for a method with no arguments
         final byte[] hash = getHash(endpointName, interfaceClass, method);
+        if (hash == null) {
+            throw new IllegalStateException("Hash lookup of endpoint name / client interface / method failed");
+        }
+        final Class<?>[] parameterTypes = method.getParameterTypes();
+        // TODO tests needed for this illegalargumentexception
+        if ((args == null && parameterTypes.length != 0) ||
+            (args != null && parameterTypes.length != args.length)) {
+            throw new IllegalArgumentException("Registered method argument count does not match method invocation argument count");
+        }
+
         final ByteBufferEncoder encoder = new ByteBufferEncoder();
         encoder.writeByte(Protocol.InitialFrameType.METHOD_INVOCATION_HASHED.getInitialFrameType());
         encoder.writeInt(sequence);
         encoder.writeBytes(hash);
-        final Class<?>[] parameterTypes = method.getParameterTypes();
+        // A little unsure of boxing (method has an int, reflectively can't pass one) and widening (method has an int, passing a short), here...
         for (int i = 0; i < parameterTypes.length; i++) {
-            encoder.writeObject(parameterTypes[i], args[i]);
+            final Class<?> parameterType = parameterTypes[i];
+            encoder.writeObject(parameterType, args[i]);
         }
         return encoder.getBuffers();
     }
 
+    @Override
+    public List<ByteBuffer> generateMethodReturnResponse(int sequence, Class<?> returnType, Object result) {
+        return null;
+    }
+
+    @Override
+    public DecodedFrame decodeFrame(final List<ByteBuffer> frames) {
+        return null;
+    }
+
     private byte[] getHash(final EndpointName endpointName, final Class<?> interfaceClass, final Method method) {
         synchronized (lock) {
-            return namedInterfaceMethodMap.get(new NamedInterface<>(endpointName, interfaceClass)).get(method);
+            final Map<Method, byte[]> methodMap = namedInterfaceMethodMap.get(new NamedInterface<>(endpointName, interfaceClass));
+            if (methodMap == null) {
+                return null;
+            }
+            return methodMap.get(method);
         }
     }
 }

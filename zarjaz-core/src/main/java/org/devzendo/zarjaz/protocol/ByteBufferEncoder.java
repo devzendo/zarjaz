@@ -151,19 +151,52 @@ public class ByteBufferEncoder {
         if (parameterValue == null) {
             throw new IllegalArgumentException("Null objects cannot be serialised");
         }
+        final Class parameterValueType = parameterValue.getClass();
+        boolean fail = false;
         // TODO would a lookup/dispatch map be faster?
+        // it would certainly be cleaner
+        // TODO parameterValue might be of a narrower type - conversion map might be best
+        // TODO parameterValue could be of a wider type
+        // TODO parameterValue could be of a completetly weird wrong type
         if (parameterType.equals(Byte.class) || parameterType.equals(Byte.TYPE)) {
-            writeByte((byte) parameterValue);
+            if (parameterValueType.equals(Byte.class) || parameterValueType.equals(Byte.TYPE)) {
+                writeByte((byte) parameterValue);
+            } else {
+                fail = true;
+            }
+
         } else if (parameterType.equals(Integer.class) || parameterType.equals(Integer.TYPE)) {
-            writeInt((int) parameterValue);
+            if (parameterValueType.equals(Integer.class) || parameterValueType.equals(Integer.TYPE)) {
+                writeInt((int) parameterValue);
+            } else if (parameterValueType.equals(Byte.class) || parameterValueType.equals(Byte.TYPE)) {
+                writeInt((byte) parameterValue);
+            } else {
+                fail = true;
+            }
+
         } else if (parameterType.equals(Boolean.class) || parameterType.equals(Boolean.TYPE)) {
-            writeBoolean((boolean) parameterValue);
+            if (parameterValueType.equals(Boolean.class) || parameterValueType.equals(Boolean.TYPE)) {
+                writeBoolean((boolean) parameterValue);
+            } else {
+                fail = true;
+            }
+
         } else if (parameterType.equals(String.class)) {
-            writeString((String) parameterValue);
+            if (parameterValueType.equals(String.class)) {
+                writeString((String) parameterValue);
+            } else {
+                fail = true;
+            }
             // TODO write the other dispatcher calls for the other primitive types
+
         } else {
             // TODO test for this
             throw new IllegalArgumentException("The parameter type '" + parameterType.getName() + "' has no known serialisation");
+        }
+
+        if (fail) {
+            throw new IllegalArgumentException("The parameter value type '" + parameterValueType.getSimpleName() +
+                    "' cannot be converted to the parameter type '" + parameterType.getSimpleName() + "'");
         }
     }
 }

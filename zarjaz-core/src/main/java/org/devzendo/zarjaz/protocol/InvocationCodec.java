@@ -7,7 +7,6 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -122,4 +121,23 @@ public interface InvocationCodec {
 
     List<ByteBuffer> generateHashedMethodInvocation(int sequence, EndpointName endpointName, Class<?> interfaceClass, Method method, Object[] args);
 
+    List<ByteBuffer> generateMethodReturnResponse(int sequence, Class<?> returnType, Object result);
+
+    abstract class DecodedFrame {
+        // nothing here yet
+    };
+
+    class HashedMethodInvocation extends DecodedFrame {
+        public final int sequence;
+        public final EndpointInterfaceMethod endpointInterfaceMethod;
+        public final Object[] args;
+
+        public HashedMethodInvocation(final int sequence, final EndpointInterfaceMethod endpointInterfaceMethod, final Object[] args) {
+            this.sequence = sequence;
+            this.endpointInterfaceMethod = endpointInterfaceMethod;
+            this.args = args;
+        }
+    }
+
+    DecodedFrame decodeFrame(List<ByteBuffer> frames);
 }

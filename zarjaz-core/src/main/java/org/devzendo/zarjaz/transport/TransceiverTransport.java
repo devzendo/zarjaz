@@ -15,12 +15,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -68,7 +70,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         this.invocationHashGenerator = invocationHashGenerator;
         this.invocationCodec = invocationCodec;
         this.serverResponseTransceiverObserver = new ServerResponseTransceiverObserver(outstandingMethodCalls);
-        this.serverRequestTransceiverObserver = new ServerRequestTransceiverObserver(invocationCodec);
+        this.serverRequestTransceiverObserver = new ServerRequestTransceiverObserver(invocationCodec, this::getImplementation);
     }
 
     /*
@@ -130,14 +132,82 @@ public class TransceiverTransport extends AbstractTransport implements Transport
      * Server side. Handle requests from clients; decodes, calls implementation, send response.
      */
     static class ServerRequestTransceiverObserver implements TransceiverObserver {
-        public ServerRequestTransceiverObserver(final InvocationCodec invocationCodec) {
+        private final InvocationCodec invocationCodec;
+        private final Function<NamedInterface, Object> lookupImplementation;
 
+        public ServerRequestTransceiverObserver(final InvocationCodec invocationCodec, final Function<NamedInterface, Object> lookupImplementation) {
+            this.invocationCodec = invocationCodec;
+            this.lookupImplementation = lookupImplementation;
         }
 
         @Override
         public void eventOccurred(final TransceiverObservableEvent observableEvent) {
+            logger.debug("Server has received a request from a client");
+            if (observableEvent.isFailure()) {
+                // TODO test for this
+            } else {
+                final List<ByteBuffer> buffers = observableEvent.getData();
+                // TODO METRIC empty list?
+                // TODO rate limiting?
+                try {
+                    logger.debug("Decoding buffers");
+                    final InvocationCodec.DecodedFrame decodedFrame = invocationCodec.decodeFrame(buffers);
+
+                    // TODO convert to visitor
+                    if (decodedFrame instanceof InvocationCodec.HashedMethodInvocation) {
+                        final InvocationCodec.HashedMethodInvocation hmi = (InvocationCodec.HashedMethodInvocation) decodedFrame;
+                        processHashedMethodInvocation(observableEvent.getServerTransceiver(), hmi.sequence, hmi.endpointInterfaceMethod.getEndpointName(), hmi.endpointInterfaceMethod.getClientInterface(), hmi.endpointInterfaceMethod.getMethod(), hmi.args);
+                    }
+                } catch (final Exception e) {
+                    // TODO METRIC invocation failure
+                    // TODO reply with failure
+//                    final List<ByteBuffer> failure = invocationCodec.generateMethodFailureResponse();
+//                    observableEvent.getServerTransceiver().writeBuffer(failure);
+                    logger.warn("Invocation failure: " + e.getMessage(), e);
+                }
+                /*
+
+                final ByteBufferDecoder decoder = new ByteBufferDecoder(buffers);
+                try {
+                    final byte initialFrameByte = decoder.readByte();
+                    processFrame(observableEvent.getServerTransceiver(), initialFrameByte, decoder);
+                } catch (final IOException e) {
+                    // TODO METRIC increment bad incoming frames
+                    // TODO test for this
+                    logger.warn("Incoming frame decode: " + e.getMessage(), e);
+                }
+                 */
+            }
+        }
+
+        private void processHashedMethodInvocation(final Transceiver.ServerTransceiver replyTransceiver, final int sequence, final EndpointName endpointName, final Class<?> clientInterface, final Method method, final Object[] args) throws InvocationTargetException, IllegalAccessException, IOException {
+            // TODO server request logging
+            final NamedInterface namedInterface = new NamedInterface(endpointName, clientInterface);
+            final Object implementation = lookupImplementation.apply(namedInterface);
+            final Object result = method.invoke(implementation, args);
+            // TODO server response generation logging
+            // TODO METRIC method duration timing
+            final List<ByteBuffer> resultBuffers = invocationCodec.generateMethodReturnResponse(sequence, method.getReturnType(), result);
+            replyTransceiver.writeBuffer(resultBuffers);
+        }
+/*
+        private void processFrame(final Transceiver.ServerTransceiver replyTransceiver, final byte initialFrameByte, final ByteBufferDecoder decoder) throws IOException {
+            if (initialFrameByte == Protocol.InitialFrameType.METHOD_INVOCATION_HASHED.getInitialFrameType()) {
+                processHashedMethodInvocation(replyTransceiver, decoder);
+            } else {
+                // TODO METRIC increment unsupported incoming frames
+                // TODO test for this
+                throw new IOException("Unsupported incoming frame type 0x" + HexDump.byte2hex(initialFrameByte));
+            }
+        }
+
+        private void processHashedMethodInvocation(final Transceiver.ServerTransceiver replyTransceiver, final ByteBufferDecoder decoder) {
+            // need to look up impl via final Map<NamedInterface, Object> implementations = new HashMap<>();
+
+            final InvocationCodec.HashedMethodInvocation hashedMethodInvocation = invocationCodec.decodeHashedMethodInvocation(decoder);
 
         }
+*/
     }
 
     private class TransceiverTransportInvocationHandler implements TransportInvocationHandler {
@@ -201,7 +271,13 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         super.start();
         if (hasClientProxiesBound()) {
             // On the client side, listen for incoming responses from the server
+            logger.debug("Listening for incoming responses from the server");
             transceiver.getClientTransceiver().addTransceiverObserver(serverResponseTransceiverObserver);
+        }
+        if (hasServerImplementationsBound()) {
+            // On the server side, listen for incoming requests from the client
+            logger.debug("Listening for incoming requests from the client");
+            transceiver.getClientTransceiver().addTransceiverObserver(serverRequestTransceiverObserver);
         }
         transceiver.open();
         // TODO how do incoming server responses get decoded and dispatched to the server impl?

@@ -207,5 +207,4 @@ public class TestTransceiverTransport {
             final List<ByteBuffer> data = event.getData();
         }
     }
-
 }
