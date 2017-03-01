@@ -2,6 +2,7 @@ package org.devzendo.zarjaz.transceiver;
 
 import com.sun.deploy.util.SessionState;
 import org.devzendo.commoncode.patterns.observer.ObserverList;
+import org.devzendo.commoncode.string.HexDump;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +42,96 @@ public class NullTransceiver implements Transceiver {
     private final ServerTransceiver serverTransceiver;
     private final ClientTransceiver clientTransceiver;
 
+    private class NullClientTransceiver implements ClientTransceiver {
+        @Override
+        public void addTransceiverObserver(final TransceiverObserver observer) {
+            clientEnd.observers.addObserver(observer);
+        }
+
+        @Override
+        public void removeTransceiverObserver(final TransceiverObserver observer) {
+            clientEnd.observers.removeListener(observer);
+        }
+
+        @Override
+        public ServerTransceiver getServerTransceiver() {
+            return new ServerTransceiver() {
+                @Override
+                public void writeBuffer(final List<ByteBuffer> data) throws IOException {
+                    if (!active) {
+                        throw new IllegalStateException("Transceiver not open");
+                    }
+                    logger.debug("Dispatching queued ByteBuffer at server end with reply server transceiver " + this);
+                    NullTransceiver.dumpBuffers(data);
+                    serverEnd.observers.eventOccurred(new DataReceived(data, serverTransceiver));
+                }
+
+                @Override
+                public ClientTransceiver getClientTransceiver() {
+                    throw new UnsupportedOperationException("This isn't Inception, you know...");
+                }
+            };
+        }
+    }
+
+    private class NullReplyServerTransceiver implements ServerTransceiver {
+        @Override
+        public void writeBuffer(final List<ByteBuffer> data) throws IOException {
+            serverEnd.observers.eventOccurred(new DataReceived(data, null));
+        }
+
+        @Override
+        public ClientTransceiver getClientTransceiver() {
+            throw new IllegalStateException("Can't get the client to reply to");
+        }
+    }
+
+    private class NullServerTransceiver implements ServerTransceiver {
+        private final ServerTransceiver replyServerTransceiver;
+
+        public NullServerTransceiver(final ServerTransceiver replyServerTransceiver) {
+            this.replyServerTransceiver = replyServerTransceiver;
+        }
+
+        @Override
+        public void writeBuffer(final List<ByteBuffer> data) throws IOException {
+            if (!active) {
+                throw new IllegalStateException("Transceiver not open");
+            }
+            logger.debug("Queueing ByteBuffer for sending to observers");
+
+            queue.add(new Runnable() {
+                @Override
+                public void run() {
+                    logger.debug("Dispatching queued ByteBuffer at client end with reply server transceiver " + replyServerTransceiver);
+                    NullTransceiver.dumpBuffers(data);
+                    clientEnd.observers.eventOccurred(new DataReceived(data, replyServerTransceiver));
+                    logger.debug("Dispatched to observers");
+                }
+            });
+        }
+
+        @Override
+        public ClientTransceiver getClientTransceiver() {
+            return new ClientTransceiver() {
+                @Override
+                public void addTransceiverObserver(final TransceiverObserver observer) {
+                    serverEnd.observers.addObserver(observer);
+                }
+
+                @Override
+                public void removeTransceiverObserver(final TransceiverObserver observer) {
+                    serverEnd.observers.removeListener(observer);
+                }
+
+                @Override
+                public ServerTransceiver getServerTransceiver() {
+                    throw new UnsupportedOperationException("This isn't Inception, you know...");
+                }
+            };
+        }
+    }
+
     public NullTransceiver() {
         dispatchThread = new Thread(new Runnable() {
             @Override
@@ -62,89 +153,20 @@ public class NullTransceiver implements Transceiver {
         dispatchThread.setDaemon(true);
         dispatchThread.setName("NullTransceiver dispatch thread");
 
+        serverTransceiver = new NullServerTransceiver(new NullReplyServerTransceiver());
+        clientTransceiver = new NullClientTransceiver();
+    }
 
-        final ServerTransceiver replyServerTransceiver = new ServerTransceiver() {
-            @Override
-            public void writeBuffer(final List<ByteBuffer> data) throws IOException {
-                serverEnd.observers.eventOccurred(new DataReceived(data, null));
+    private static void dumpBuffers(final List<ByteBuffer> buffers) {
+        logger.debug(" --- There are " + buffers.size() + "buffers ---");
+        for (ByteBuffer buffer: buffers) {
+            final byte[] array = buffer.array();
+            final String[] strings = HexDump.asciiDump(array);
+            for (String string: strings) {
+                logger.debug(string);
             }
-
-            @Override
-            public ClientTransceiver getClientTransceiver() {
-                throw new IllegalStateException("Can't get the client to reply to");
-            }
-        };
-
-        serverTransceiver = new ServerTransceiver() {
-            @Override
-            public void writeBuffer(final List<ByteBuffer> data) throws IOException {
-                if (!active) {
-                    throw new IllegalStateException("Transceiver not open");
-                }
-                logger.debug("Queueing ByteBuffer for sending to observers");
-
-                queue.add(new Runnable() {
-                    @Override
-                    public void run() {
-                        logger.debug("Dispatching queued ByteBuffer at client end with reply server transceiver " + replyServerTransceiver);
-                        clientEnd.observers.eventOccurred(new DataReceived(data, replyServerTransceiver));
-                        logger.debug("Dispatched to observers");
-                    }
-                });
-            }
-
-            @Override
-            public ClientTransceiver getClientTransceiver() {
-                return new ClientTransceiver() {
-                    @Override
-                    public void addTransceiverObserver(final TransceiverObserver observer) {
-                        serverEnd.observers.addObserver(observer);
-                    }
-
-                    @Override
-                    public void removeTransceiverObserver(final TransceiverObserver observer) {
-                        serverEnd.observers.removeListener(observer);
-                    }
-
-                    @Override
-                    public ServerTransceiver getServerTransceiver() {
-                        throw new UnsupportedOperationException("This isn't Inception, you know...");
-                    }
-                };
-            }
-        };
-
-        clientTransceiver = new ClientTransceiver() {
-            @Override
-            public void addTransceiverObserver(final TransceiverObserver observer) {
-                clientEnd.observers.addObserver(observer);
-            }
-
-            @Override
-            public void removeTransceiverObserver(final TransceiverObserver observer) {
-                clientEnd.observers.removeListener(observer);
-            }
-
-            @Override
-            public ServerTransceiver getServerTransceiver() {
-                return new ServerTransceiver() {
-                    @Override
-                    public void writeBuffer(final List<ByteBuffer> data) throws IOException {
-                        if (!active) {
-                            throw new IllegalStateException("Transceiver not open");
-                        }
-                        logger.debug("Dispatching queued ByteBuffer at server end with reply server transceiver " + this);
-                        serverEnd.observers.eventOccurred(new DataReceived(data, serverTransceiver));
-                    }
-
-                    @Override
-                    public ClientTransceiver getClientTransceiver() {
-                        throw new UnsupportedOperationException("This isn't Inception, you know...");
-                    }
-                };
-            }
-        };
-
+        }
+        logger.debug(" ---");
     }
 
     @Override
