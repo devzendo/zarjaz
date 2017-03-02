@@ -12,7 +12,9 @@ import org.devzendo.zarjaz.transceiver.Transceiver;
 import org.devzendo.zarjaz.transceiver.TransceiverObservableEvent;
 import org.devzendo.zarjaz.validation.DefaultClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.DefaultServerImplementationValidator;
+import org.hamcrest.Matchers;
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -205,6 +207,44 @@ public class TestTransceiverTransport {
             final TransceiverObservableEvent event = clientToServerTransceiverObservableEvents.get(0);
             assertFalse(event.isFailure());
             final List<ByteBuffer> data = event.getData();
+        }
+    }
+
+    private interface AddOnePrimitiveParameterInterface {
+        public int addOne(int input);
+    }
+
+    private class AddOneServer implements AddOnePrimitiveParameterInterface {
+
+        public boolean called = false;
+
+        @Override
+        public int addOne(int input) {
+            called = true;
+            return input + 1;
+        }
+    }
+
+    @Test
+    @Ignore
+    public void roundTrip() {
+        transport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
+                timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
+        final AddOnePrimitiveParameterInterface clientProxy = transport.createClientProxy(endpointName, AddOnePrimitiveParameterInterface.class, METHOD_TIMEOUT_MILLISECONDS);
+        final AddOneServer serverImplementation = new AddOneServer();
+        transport.registerServerImplementation(endpointName, AddOnePrimitiveParameterInterface.class, serverImplementation);
+
+        assertThat(serverImplementation.called, equalTo(false));
+
+        transport.start();
+
+        try {
+            final int six = clientProxy.addOne(5);
+            assertThat(six, equalTo(6));
+
+            assertThat(serverImplementation.called, equalTo(true));
+        } finally {
+             transport.stop();
         }
     }
 }

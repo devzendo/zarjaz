@@ -43,6 +43,18 @@ public class NullTransceiver implements Transceiver {
     private final ClientTransceiver clientTransceiver;
 
     private class NullClientTransceiver implements ClientTransceiver {
+        public NullClientTransceiver() {
+            clientEnd.observers.addObserver(new TransceiverObserver() {
+                @Override
+                public void eventOccurred(final TransceiverObservableEvent observableEvent) {
+                    if (!observableEvent.isFailure()) {
+                        logger.debug("Received queued ByteBuffer at client end with reply server transceiver " + observableEvent.getServerTransceiver());
+                        NullTransceiver.dumpBuffers(observableEvent.getData());
+                    }
+                }
+            });
+        }
+
         @Override
         public void addTransceiverObserver(final TransceiverObserver observer) {
             clientEnd.observers.addObserver(observer);
@@ -77,6 +89,8 @@ public class NullTransceiver implements Transceiver {
     private class NullReplyServerTransceiver implements ServerTransceiver {
         @Override
         public void writeBuffer(final List<ByteBuffer> data) throws IOException {
+            logger.debug("Dispatching queued ByteBuffer at server end with reply server transceiver null");
+            NullTransceiver.dumpBuffers(data);
             serverEnd.observers.eventOccurred(new DataReceived(data, null));
         }
 
@@ -158,10 +172,10 @@ public class NullTransceiver implements Transceiver {
     }
 
     private static void dumpBuffers(final List<ByteBuffer> buffers) {
-        logger.debug(" --- There are " + buffers.size() + "buffers ---");
+        logger.debug(" --- There are " + buffers.size() + " buffer(s) ---");
         for (ByteBuffer buffer: buffers) {
             final byte[] array = buffer.array();
-            final String[] strings = HexDump.asciiDump(array);
+            final String[] strings = HexDump.hexDump(array, 0, buffer.limit());
             for (String string: strings) {
                 logger.debug(string);
             }
