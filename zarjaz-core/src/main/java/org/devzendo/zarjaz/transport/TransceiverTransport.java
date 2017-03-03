@@ -18,7 +18,10 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -91,6 +94,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             } else {
                 final List<ByteBuffer> buffers = observableEvent.getData();
                 // TODO test for null buffers, empty buffers
+                // TODO use the InvocationCodec to parse the incoming data, and return a DecodedFrame subtype
                 final ByteBufferDecoder decoder = new ByteBufferDecoder(buffers);
                 try {
                     final byte initialFrameByte = decoder.readByte();
@@ -152,36 +156,31 @@ public class TransceiverTransport extends AbstractTransport implements Transport
                 try {
                     logger.debug("Decoding buffers");
                     final InvocationCodec.DecodedFrame decodedFrame = invocationCodec.decodeFrame(buffers);
+                    logger.debug("Decoded buffers");
 
                     // TODO convert to visitor
                     if (decodedFrame instanceof InvocationCodec.HashedMethodInvocation) {
                         final InvocationCodec.HashedMethodInvocation hmi = (InvocationCodec.HashedMethodInvocation) decodedFrame;
-                        processHashedMethodInvocation(observableEvent.getServerTransceiver(), hmi.sequence, hmi.endpointInterfaceMethod.getEndpointName(), hmi.endpointInterfaceMethod.getClientInterface(), hmi.endpointInterfaceMethod.getMethod(), hmi.args);
+                        processHashedMethodInvocation(observableEvent.getReplyWriter(), hmi.sequence, hmi.endpointInterfaceMethod.getEndpointName(), hmi.endpointInterfaceMethod.getClientInterface(), hmi.endpointInterfaceMethod.getMethod(), hmi.args);
+                    } else {
+                        // TODO METRIC increment bad/unsupported incoming frames
+                        // TODO test for bad incoming frames
+                        logger.error("Unsupported incoming frame");
                     }
                 } catch (final Exception e) {
+
                     // TODO METRIC invocation failure
                     // TODO reply with failure
 //                    final List<ByteBuffer> failure = invocationCodec.generateMethodFailureResponse();
 //                    observableEvent.getServerTransceiver().writeBuffer(failure);
                     logger.warn("Invocation failure: " + e.getMessage(), e);
                 }
-                /*
-
-                final ByteBufferDecoder decoder = new ByteBufferDecoder(buffers);
-                try {
-                    final byte initialFrameByte = decoder.readByte();
-                    processFrame(observableEvent.getServerTransceiver(), initialFrameByte, decoder);
-                } catch (final IOException e) {
-                    // TODO METRIC increment bad incoming frames
-                    // TODO test for this
-                    logger.warn("Incoming frame decode: " + e.getMessage(), e);
-                }
-                 */
             }
         }
 
-        private void processHashedMethodInvocation(final Transceiver.ServerTransceiver replyTransceiver, final int sequence, final EndpointName endpointName, final Class<?> clientInterface, final Method method, final Object[] args) throws InvocationTargetException, IllegalAccessException, IOException {
+        private void processHashedMethodInvocation(final Transceiver.BufferWriter replyTransceiver, final int sequence, final EndpointName endpointName, final Class<?> clientInterface, final Method method, final Object[] args) throws InvocationTargetException, IllegalAccessException, IOException {
             // TODO server request logging
+            logger.debug("process hashed method invocation");
             final NamedInterface namedInterface = new NamedInterface(endpointName, clientInterface);
             final Object implementation = lookupImplementation.apply(namedInterface);
             final Object result = method.invoke(implementation, args);
@@ -190,24 +189,6 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             final List<ByteBuffer> resultBuffers = invocationCodec.generateMethodReturnResponse(sequence, method.getReturnType(), result);
             replyTransceiver.writeBuffer(resultBuffers);
         }
-/*
-        private void processFrame(final Transceiver.ServerTransceiver replyTransceiver, final byte initialFrameByte, final ByteBufferDecoder decoder) throws IOException {
-            if (initialFrameByte == Protocol.InitialFrameType.METHOD_INVOCATION_HASHED.getInitialFrameType()) {
-                processHashedMethodInvocation(replyTransceiver, decoder);
-            } else {
-                // TODO METRIC increment unsupported incoming frames
-                // TODO test for this
-                throw new IOException("Unsupported incoming frame type 0x" + HexDump.byte2hex(initialFrameByte));
-            }
-        }
-
-        private void processHashedMethodInvocation(final Transceiver.ServerTransceiver replyTransceiver, final ByteBufferDecoder decoder) {
-            // need to look up impl via final Map<NamedInterface, Object> implementations = new HashMap<>();
-
-            final InvocationCodec.HashedMethodInvocation hashedMethodInvocation = invocationCodec.decodeHashedMethodInvocation(decoder);
-
-        }
-*/
     }
 
     private class TransceiverTransportInvocationHandler implements TransportInvocationHandler {
@@ -236,7 +217,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
 
             final List<ByteBuffer> bytes = invocationCodec.generateHashedMethodInvocation(thisSequence, endpointName, interfaceClass, method, args);
             try {
-                transceiver.getServerTransceiver().writeBuffer(bytes);
+                transceiver.getServerWriter().writeBuffer(bytes);
             } catch (IOException e) {
                 logger.warn("Could not write buffer to server transceiver: " + e.getMessage());
             }
@@ -272,12 +253,12 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         if (hasClientProxiesBound()) {
             // On the client side, listen for incoming responses from the server
             logger.debug("Listening for incoming responses from the server");
-            transceiver.getClientTransceiver().addTransceiverObserver(serverResponseTransceiverObserver);
+            transceiver.getClientEnd().addTransceiverObserver(serverResponseTransceiverObserver);
         }
         if (hasServerImplementationsBound()) {
             // On the server side, listen for incoming requests from the client
             logger.debug("Listening for incoming requests from the client");
-            transceiver.getClientTransceiver().addTransceiverObserver(serverRequestTransceiverObserver);
+            transceiver.getServerEnd().addTransceiverObserver(serverRequestTransceiverObserver);
         }
         transceiver.open();
         // TODO how do incoming server responses get decoded and dispatched to the server impl?
@@ -286,7 +267,8 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     @Override
     public void stop() {
         try {
-            transceiver.getClientTransceiver().removeTransceiverObserver(serverResponseTransceiverObserver);
+            transceiver.getClientEnd().removeTransceiverObserver(serverResponseTransceiverObserver);
+            transceiver.getServerEnd().removeTransceiverObserver(serverRequestTransceiverObserver);
             transceiver.close();
         } catch (final IOException e) {
             logger.warn("Could not close transceiver: " + e.getMessage());

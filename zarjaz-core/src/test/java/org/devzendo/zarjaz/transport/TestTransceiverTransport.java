@@ -12,7 +12,6 @@ import org.devzendo.zarjaz.transceiver.Transceiver;
 import org.devzendo.zarjaz.transceiver.TransceiverObservableEvent;
 import org.devzendo.zarjaz.validation.DefaultClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.DefaultServerImplementationValidator;
-import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -91,8 +90,8 @@ public class TestTransceiverTransport {
         }
     }
 
-    private void captureFromNullTransceiver() {
-        nullTransceiver.getClientTransceiver().addTransceiverObserver(clientToServerTransceiverObservableEvents::add);
+    private void captureFromNullTransceiverServerEnd() {
+        nullTransceiver.getServerEnd().addTransceiverObserver(clientToServerTransceiverObservableEvents::add);
     }
 
     private interface SampleInterface {
@@ -132,7 +131,7 @@ public class TestTransceiverTransport {
 
     @Test
     public void clientRequestIsEncodedAndSentToTransceiver() {
-        captureFromNullTransceiver();
+        captureFromNullTransceiverServerEnd();
         transport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
                 timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
         try {

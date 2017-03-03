@@ -1,6 +1,5 @@
 package org.devzendo.zarjaz.transceiver;
 
-import com.sun.deploy.util.SessionState;
 import org.devzendo.commoncode.patterns.observer.ObserverList;
 import org.devzendo.commoncode.string.HexDump;
 import org.slf4j.Logger;
@@ -29,6 +28,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 public class NullTransceiver implements Transceiver {
     private static final Logger logger = LoggerFactory.getLogger(NullTransceiver.class);
 
+    // TODO internalise in NullObservableTransceiverEnd
     private static class NullTransceiverEnd {
         private final ObserverList<TransceiverObservableEvent> observers = new ObserverList<>();
     }
@@ -39,72 +39,21 @@ public class NullTransceiver implements Transceiver {
     private final Thread dispatchThread;
     private volatile boolean active = false;
 
-    private final ServerTransceiver serverTransceiver;
-    private final ClientTransceiver clientTransceiver;
+    private final NullBufferWriter sendToServer;
+    private final NullBufferWriter sendToClient;
+    private class NullBufferWriter implements BufferWriter {
 
-    private class NullClientTransceiver implements ClientTransceiver {
-        public NullClientTransceiver() {
-            clientEnd.observers.addObserver(new TransceiverObserver() {
-                @Override
-                public void eventOccurred(final TransceiverObservableEvent observableEvent) {
-                    if (!observableEvent.isFailure()) {
-                        logger.debug("Received queued ByteBuffer at client end with reply server transceiver " + observableEvent.getServerTransceiver());
-                        NullTransceiver.dumpBuffers(observableEvent.getData());
-                    }
-                }
-            });
+        private final NullTransceiverEnd sendToEnd;
+        private final String sendToEndName;
+        private BufferWriter replyWriter;
+
+        public NullBufferWriter(final NullTransceiverEnd sendToEnd, final String sendToEndName) {
+            this.sendToEnd = sendToEnd;
+            this.sendToEndName = sendToEndName;
         }
 
-        @Override
-        public void addTransceiverObserver(final TransceiverObserver observer) {
-            clientEnd.observers.addObserver(observer);
-        }
-
-        @Override
-        public void removeTransceiverObserver(final TransceiverObserver observer) {
-            clientEnd.observers.removeListener(observer);
-        }
-
-        @Override
-        public ServerTransceiver getServerTransceiver() {
-            return new ServerTransceiver() {
-                @Override
-                public void writeBuffer(final List<ByteBuffer> data) throws IOException {
-                    if (!active) {
-                        throw new IllegalStateException("Transceiver not open");
-                    }
-                    logger.debug("Dispatching queued ByteBuffer at server end with reply server transceiver " + this);
-                    NullTransceiver.dumpBuffers(data);
-                    serverEnd.observers.eventOccurred(new DataReceived(data, serverTransceiver));
-                }
-
-                @Override
-                public ClientTransceiver getClientTransceiver() {
-                    throw new UnsupportedOperationException("This isn't Inception, you know...");
-                }
-            };
-        }
-    }
-
-    private class NullReplyServerTransceiver implements ServerTransceiver {
-        @Override
-        public void writeBuffer(final List<ByteBuffer> data) throws IOException {
-            logger.debug("Dispatching queued ByteBuffer at server end with reply server transceiver null");
-            NullTransceiver.dumpBuffers(data);
-            serverEnd.observers.eventOccurred(new DataReceived(data, null));
-        }
-
-        @Override
-        public ClientTransceiver getClientTransceiver() {
-            throw new IllegalStateException("Can't get the client to reply to");
-        }
-    }
-
-    private class NullServerTransceiver implements ServerTransceiver {
-        private final ServerTransceiver replyServerTransceiver;
-
-        public NullServerTransceiver(final ServerTransceiver replyServerTransceiver) {
-            this.replyServerTransceiver = replyServerTransceiver;
+        public void setOtherEnd(final BufferWriter replyWriter) {
+            this.replyWriter = replyWriter;
         }
 
         @Override
@@ -114,35 +63,33 @@ public class NullTransceiver implements Transceiver {
             }
             logger.debug("Queueing ByteBuffer for sending to observers");
 
-            queue.add(new Runnable() {
-                @Override
-                public void run() {
-                    logger.debug("Dispatching queued ByteBuffer at client end with reply server transceiver " + replyServerTransceiver);
-                    NullTransceiver.dumpBuffers(data);
-                    clientEnd.observers.eventOccurred(new DataReceived(data, replyServerTransceiver));
-                    logger.debug("Dispatched to observers");
-                }
+            queue.add(() -> {
+                logger.debug("Dispatching queued ByteBuffer to " + sendToEndName + " end");
+                NullTransceiver.dumpBuffers(data);
+                sendToEnd.observers.eventOccurred(new DataReceived(data, replyWriter));
             });
+        }
+    }
+
+    private final NullObservableTransceiverEnd serverObservableEnd;
+    private final NullObservableTransceiverEnd clientObservableEnd;
+    private class NullObservableTransceiverEnd implements ObservableTransceiverEnd {
+
+        private final NullTransceiverEnd attachEnd;
+
+        public NullObservableTransceiverEnd(final NullTransceiverEnd attachEnd) {
+            this.attachEnd = attachEnd;
         }
 
         @Override
-        public ClientTransceiver getClientTransceiver() {
-            return new ClientTransceiver() {
-                @Override
-                public void addTransceiverObserver(final TransceiverObserver observer) {
-                    serverEnd.observers.addObserver(observer);
-                }
+        public void addTransceiverObserver(final TransceiverObserver observer) {
+            attachEnd.observers.addObserver(observer);
+        }
 
-                @Override
-                public void removeTransceiverObserver(final TransceiverObserver observer) {
-                    serverEnd.observers.removeListener(observer);
-                }
-
-                @Override
-                public ServerTransceiver getServerTransceiver() {
-                    throw new UnsupportedOperationException("This isn't Inception, you know...");
-                }
-            };
+        @Override
+        public void removeTransceiverObserver(TransceiverObserver observer) {
+            // TODO rename removeListener in common code to removeObserver
+            attachEnd.observers.removeListener(observer);
         }
     }
 
@@ -167,8 +114,13 @@ public class NullTransceiver implements Transceiver {
         dispatchThread.setDaemon(true);
         dispatchThread.setName("NullTransceiver dispatch thread");
 
-        serverTransceiver = new NullServerTransceiver(new NullReplyServerTransceiver());
-        clientTransceiver = new NullClientTransceiver();
+        sendToClient = new NullBufferWriter(clientEnd, "client");
+        sendToServer = new NullBufferWriter(serverEnd, "server");
+        sendToClient.setOtherEnd(sendToServer);
+        sendToServer.setOtherEnd(sendToClient);
+
+        serverObservableEnd = new NullObservableTransceiverEnd(serverEnd);
+        clientObservableEnd = new NullObservableTransceiverEnd(clientEnd);
     }
 
     private static void dumpBuffers(final List<ByteBuffer> buffers) {
@@ -200,12 +152,17 @@ public class NullTransceiver implements Transceiver {
     }
 
     @Override
-    public ClientTransceiver getClientTransceiver() {
-        return clientTransceiver;
+    public ObservableTransceiverEnd getClientEnd() {
+        return clientObservableEnd;
     }
 
     @Override
-    public ServerTransceiver getServerTransceiver() {
-        return serverTransceiver;
+    public ObservableTransceiverEnd getServerEnd() {
+        return serverObservableEnd;
+    }
+
+    @Override
+    public BufferWriter getServerWriter() {
+        return sendToServer;
     }
 }

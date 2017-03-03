@@ -21,24 +21,18 @@ import java.util.List;
  * limitations under the License.
  */
 public interface Transceiver extends Closeable {
-    public interface ClientTransceiver {
-        void addTransceiverObserver(TransceiverObserver observer);
-        void removeTransceiverObserver(TransceiverObserver observer);
-        ServerTransceiver getServerTransceiver();
+    public interface BufferWriter {
+        void writeBuffer(List<ByteBuffer> data) throws IOException;
     }
 
-    public interface ServerTransceiver {
-        /**
-         * Synchronously send a request.
-         **/
-        // TODO rename to writeBuffers
-        void writeBuffer(List<ByteBuffer> data) throws IOException;
-        ClientTransceiver getClientTransceiver();
+    public interface ObservableTransceiverEnd {
+        void addTransceiverObserver(TransceiverObserver observer);
+        void removeTransceiverObserver(TransceiverObserver observer);
     }
 
     void open();
 
-    ClientTransceiver getClientTransceiver();
-
-    ServerTransceiver getServerTransceiver();
+    ObservableTransceiverEnd getClientEnd();
+    ObservableTransceiverEnd getServerEnd();
+    BufferWriter getServerWriter();
 }

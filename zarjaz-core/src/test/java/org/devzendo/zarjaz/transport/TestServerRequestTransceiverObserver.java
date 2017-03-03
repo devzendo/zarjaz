@@ -60,17 +60,12 @@ public class TestServerRequestTransceiverObserver {
         };
     }
 
-    private class RecordingServerTransceiver implements Transceiver.ServerTransceiver {
+    private class RecordingServerTransceiver implements Transceiver.BufferWriter {
         public List<List<ByteBuffer>> received = new ArrayList<>();
 
         @Override
         public void writeBuffer(final List<ByteBuffer> data) throws IOException {
             received.add(data);
-        }
-
-        @Override
-        public Transceiver.ClientTransceiver getClientTransceiver() {
-            throw new UnsupportedOperationException("not today, thanks");
         }
     }
 

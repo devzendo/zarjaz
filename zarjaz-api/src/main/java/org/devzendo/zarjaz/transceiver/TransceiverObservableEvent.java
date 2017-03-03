@@ -24,5 +24,5 @@ public interface TransceiverObservableEvent extends ObservableEvent {
     boolean isFailure();
     Exception getCause();
     List<ByteBuffer> getData();
-    Transceiver.ServerTransceiver getServerTransceiver();
+    Transceiver.BufferWriter getReplyWriter();
 }

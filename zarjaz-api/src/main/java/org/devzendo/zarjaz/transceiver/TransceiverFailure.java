@@ -41,7 +41,7 @@ public class TransceiverFailure implements TransceiverObservableEvent {
     }
 
     @Override
-    public Transceiver.ServerTransceiver getServerTransceiver() {
+    public Transceiver.BufferWriter getReplyWriter() {
         throw new UnsupportedOperationException("Failures cannot be replied to");
     }
 }
