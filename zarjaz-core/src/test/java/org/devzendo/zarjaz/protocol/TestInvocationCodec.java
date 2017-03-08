@@ -1,9 +1,11 @@
 package org.devzendo.zarjaz.protocol;
 
+import org.apache.log4j.BasicConfigurator;
+import org.devzendo.commoncode.string.HexDump;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
 import org.devzendo.zarjaz.transport.EndpointName;
-import org.junit.Before;
+import org.hamcrest.Matchers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -17,10 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasXPath;
-import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.*;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -41,14 +42,20 @@ public class TestInvocationCodec {
     private static final int SEQUENCE = 69;
     private static final Logger logger = LoggerFactory.getLogger(TestInvocationCodec.class);
 
+    {
+        BasicConfigurator.configure();
+    }
+
     private static final byte[] fixedHash = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 
     private final InvocationCodec codec = new DefaultInvocationCodec();
     private final EndpointName endpointName = new EndpointName("endpoint");
     private final EndpointName intentionallyMissingEndpoint = new EndpointName("IntentionallyMissing");
-    private Method addOneMethod;
-    private Method addOneWrapperMethod;
-    private Method intentionallyNotRegisteredMethod;
+    private final Method addOneMethod = AddOnePrimitiveParameterInterface.class.getDeclaredMethods()[0];
+    private final Method addOneWrapperMethod = AddOneWrapperParameterInterface.class.getDeclaredMethods()[0];
+    private final Method intentionallyNotRegisteredMethod = IntentionallyNotRegisteredInterface.class.getDeclaredMethods()[0];
+    private final Method firstMethod = SampleInterface.class.getDeclaredMethods()[0];
+    private final Method noArgsMethod = NoArgsMethodInterface.class.getDeclaredMethods()[0];
 
     private interface SampleInterface {
         void firstMethod(int integer, boolean bool, String string);
@@ -71,25 +78,15 @@ public class TestInvocationCodec {
         void intentionallyNotRegisteredMethod();
     }
 
+    private interface NoArgsMethodInterface {
+        void noArgsMethod();
+    }
+
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-
-    @Before
-    public void registerHashes() {
-        final DefaultInvocationHashGenerator hashGenerator = new DefaultInvocationHashGenerator(endpointName);
-        // it's valid (but dodgy) to have multiple interfaces registered under the same endpoint name - they will have
-        // different hashes.
-        codec.registerHashes(endpointName, AddOnePrimitiveParameterInterface.class, hashGenerator.generate(AddOnePrimitiveParameterInterface.class));
-        codec.registerHashes(endpointName, AddOneWrapperParameterInterface.class, hashGenerator.generate(AddOneWrapperParameterInterface.class));
-
-        addOneMethod = AddOnePrimitiveParameterInterface.class.getDeclaredMethods()[0];
-        addOneWrapperMethod = AddOneWrapperParameterInterface.class.getDeclaredMethods()[0];
-        intentionallyNotRegisteredMethod = IntentionallyNotRegisteredInterface.class.getDeclaredMethods()[0];
-    }
-
     @Test
-    public void detectsHashExistence() throws NoSuchMethodException {
+    public void detectsHashCollision() throws NoSuchMethodException {
         final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
         final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
 
@@ -121,7 +118,7 @@ public class TestInvocationCodec {
     }
 
     @Test
-    public void encodingOfMethodCall() throws NoSuchMethodException {
+    public void encodingOfHashedMethodInvocation() throws NoSuchMethodException {
         final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
         final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
         final Method firstMethod = SampleInterface.class.getMethod("firstMethod", int.class, boolean.class, String.class);
@@ -184,6 +181,8 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationIncompatibleArgumentTypes() {
+        registerAddOneHashes();
+
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("The parameter value type 'String' cannot be converted to the parameter type 'int'");
 
@@ -192,6 +191,8 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationArgumentConversionCannotBeAssignedBecauseTooWide() {
+        registerAddOneHashes();
+
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("The parameter value type 'Long' cannot be converted to the parameter type 'int'");
 
@@ -200,6 +201,8 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationArgumentConversionCanBeAssignedButWidened() {
+        registerAddOneHashes();
+
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("The parameter value type 'Short' cannot be converted to the parameter type 'int'"); // TODO yet
 
@@ -208,6 +211,8 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationIncompatibleArgumentTypesWrapperInterface() {
+        registerAddOneHashes();
+
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("The parameter value type 'String' cannot be converted to the parameter type 'Integer'");
 
@@ -216,6 +221,8 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationArgumentConversionCannotBeAssignedBecauseTooWideWrapperInterface() {
+        registerAddOneHashes();
+
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("The parameter value type 'Long' cannot be converted to the parameter type 'Integer'");
 
@@ -224,6 +231,8 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationArgumentConversionCanBeAssignedButWidenedWrapperInterface() {
+        registerAddOneHashes();
+
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("The parameter value type 'Short' cannot be converted to the parameter type 'Integer'"); // TODO yet
 
@@ -232,6 +241,8 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationEndpointNotFound() {
+        registerAddOneHashes();
+
         expectLookupFailure();
 
         codec.generateHashedMethodInvocation(SEQUENCE, intentionallyMissingEndpoint, AddOnePrimitiveParameterInterface.class, addOneMethod, new Object[0]);
@@ -239,6 +250,8 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationClientInterfaceNotFound() {
+        registerAddOneHashes();
+
         expectLookupFailure();
 
         codec.generateHashedMethodInvocation(SEQUENCE, endpointName, IntentionallyNotRegisteredInterface.class, addOneMethod, new Object[0]);
@@ -246,6 +259,8 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationMethodNotFound() {
+        registerAddOneHashes();
+
         expectLookupFailure();
 
         codec.generateHashedMethodInvocation(SEQUENCE, endpointName, AddOnePrimitiveParameterInterface.class, intentionallyNotRegisteredMethod, new Object[0]);
@@ -253,6 +268,8 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationEndpointAndClientInterfaceNotFound() {
+        registerAddOneHashes();
+
         expectLookupFailure();
 
         codec.generateHashedMethodInvocation(SEQUENCE, intentionallyMissingEndpoint, IntentionallyNotRegisteredInterface.class, addOneMethod, new Object[0]);
@@ -260,6 +277,8 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationClientInterfaceAndMethodNotFound() {
+        registerAddOneHashes();
+
         expectLookupFailure();
 
         codec.generateHashedMethodInvocation(SEQUENCE, endpointName, IntentionallyNotRegisteredInterface.class, intentionallyNotRegisteredMethod, new Object[0]);
@@ -267,13 +286,137 @@ public class TestInvocationCodec {
 
     @Test
     public void receiveMethodInvocationEndpointAndMethodNotFound() {
+        registerAddOneHashes();
+
         expectLookupFailure();
 
         codec.generateHashedMethodInvocation(SEQUENCE, endpointName, AddOnePrimitiveParameterInterface.class, intentionallyNotRegisteredMethod, new Object[0]);
     }
 
+    @Test
+    public void decodeInvalidFrame() throws NoSuchMethodException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeByte(Protocol.InitialFrameType.TEST_INVALID_FRAME.getInitialFrameType());
+        final List<ByteBuffer> buffers = encoder.getBuffers();
+
+        final Optional<InvocationCodec.DecodedFrame> decodedFrame = codec.decodeFrame(buffers);
+        assertThat(decodedFrame.isPresent(), is(false));
+    }
+
+    @Test
+    public void decodeHashedMethodInvocationNoSuchHashExists() throws NoSuchMethodException {
+        final List<ByteBuffer> byteBuffers = generateSampleHashedMethodInvocation();
+        // munge the hash
+        final byte[] array = Arrays.copyOf(byteBuffers.get(0).array(), byteBuffers.get(0).limit());
+        for (int i = 5; i < array.length; i++) {
+            array[i]++;
+        }
+        final ByteBuffer buffer = ByteBuffer.allocate(array.length);
+        buffer.put(Arrays.copyOf(array, array.length));
+        buffer.flip();
+
+        assert(!codec.decodeFrame(asList(buffer)).isPresent());
+        // TODO METRIC hash lookup failure increment
+        // which would be the way to detect this specific parse failure
+    }
+
+    @Test
+    public void decodeHashedMethodInvocationOfNoArgsMethod() throws NoSuchMethodException {
+        final List<ByteBuffer> byteBuffers = generateNoArgsMethodHashedMethodInvocation();
+        dumpBuffers(byteBuffers);
+
+        final Optional<InvocationCodec.DecodedFrame> decodedFrame = codec.decodeFrame(byteBuffers);
+        assert(decodedFrame.isPresent());
+
+        final InvocationCodec.HashedMethodInvocation frame = (InvocationCodec.HashedMethodInvocation) decodedFrame.get();
+        assertThat(frame.sequence, equalTo(42));
+
+        assertThat(frame.endpointInterfaceMethod.getEndpointName(), equalTo(endpointName));
+        assertThat(frame.endpointInterfaceMethod.getClientInterface(), equalTo(NoArgsMethodInterface.class));
+        assertThat(frame.endpointInterfaceMethod.getMethod(), equalTo(noArgsMethod));
+
+        assertThat(frame.args, not(nullValue()));
+        assertThat(frame.args.length, equalTo(0));
+    }
+
+    @Test
+    public void decodeHashedMethodInvocation() throws NoSuchMethodException {
+        final List<ByteBuffer> byteBuffers = generateSampleHashedMethodInvocation();
+        dumpBuffers(byteBuffers);
+
+        final Optional<InvocationCodec.DecodedFrame> decodedFrame = codec.decodeFrame(byteBuffers);
+        assert(decodedFrame.isPresent());
+
+        final InvocationCodec.HashedMethodInvocation frame = (InvocationCodec.HashedMethodInvocation) decodedFrame.get();
+        assertThat(frame.sequence, equalTo(42));
+
+        assertThat(frame.endpointInterfaceMethod.getEndpointName(), equalTo(endpointName));
+        assertThat(frame.endpointInterfaceMethod.getClientInterface(), equalTo(SampleInterface.class));
+        assertThat(frame.endpointInterfaceMethod.getMethod(), equalTo(firstMethod));
+
+        assertThat(frame.args, not(nullValue()));
+        assertThat(frame.args.length, equalTo(3));
+        assertThat(frame.args[0], Matchers.instanceOf(Integer.TYPE)); // note, primitive, as in interface/method
+        assertThat(frame.args[0], equalTo(201));
+        assertThat(frame.args[1], Matchers.instanceOf(Boolean.TYPE)); // note, primitive, as in interface/method
+        assertThat(frame.args[1], equalTo(true));
+        assertThat(frame.args[2], Matchers.instanceOf(String.class));
+        assertThat(frame.args[2], equalTo("boo"));
+    }
+
+    @Test
+    public void decodeHashedMethodInvocationOfTruncatedFrames() throws NoSuchMethodException {
+        final List<ByteBuffer> byteBuffers = generateNoArgsMethodHashedMethodInvocation();
+        assert(codec.decodeFrame(byteBuffers).isPresent()); // the good case
+
+        // now truncate this repeatedly until empty, observer decode failure
+        final byte[] array = Arrays.copyOf(byteBuffers.get(0).array(), byteBuffers.get(0).limit());
+        for (int truncatedLength = array.length - 1; truncatedLength >= 0; truncatedLength--) {
+            final ByteBuffer buffer = ByteBuffer.allocate(truncatedLength);
+            buffer.put(Arrays.copyOf(array, truncatedLength));
+            buffer.flip();
+            logger.debug("length is " + truncatedLength);
+            assertThat(codec.decodeFrame(asList(buffer)).isPresent(), equalTo(false));
+        }
+    }
+
+    private void registerAddOneHashes() {
+        final DefaultInvocationHashGenerator hashGenerator = new DefaultInvocationHashGenerator(endpointName);
+        // it's valid (but dodgy) to have multiple interfaces registered under the same endpoint name - they will have
+        // different hashes.
+        codec.registerHashes(endpointName, AddOnePrimitiveParameterInterface.class, hashGenerator.generate(AddOnePrimitiveParameterInterface.class));
+        codec.registerHashes(endpointName, AddOneWrapperParameterInterface.class, hashGenerator.generate(AddOneWrapperParameterInterface.class));
+    }
+
     private void expectLookupFailure() {
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Hash lookup of endpoint name / client interface / method failed");
+    }
+
+    private List<ByteBuffer> generateNoArgsMethodHashedMethodInvocation() {
+        return generateHashedMethodInvocation(NoArgsMethodInterface.class, new Object[0]);
+    }
+
+    private List<ByteBuffer> generateSampleHashedMethodInvocation() {
+        return generateHashedMethodInvocation(SampleInterface.class, new Object[]{201, true, "boo"});
+    }
+
+    private List<ByteBuffer> generateHashedMethodInvocation(final Class<?> interfaceClass, final Object[] args) {
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
+        final Map<Method, byte[]> methodMap = gen.generate(interfaceClass);
+        final Method method = interfaceClass.getDeclaredMethods()[0];
+        final byte[] hash = methodMap.get(method);
+        logger.debug("hash of method is: " + HexDump.bytes2hex(hash));
+        codec.registerHashes(endpointName, interfaceClass, methodMap);
+        return codec.generateHashedMethodInvocation(42, endpointName, interfaceClass, method, args);
+    }
+
+    // precondition: there's just one buffer
+    private void dumpBuffers(List<ByteBuffer> byteBuffers) {
+        final byte[] array = Arrays.copyOf(byteBuffers.get(0).array(), byteBuffers.get(0).limit());
+        final String[] strings = HexDump.hexDump(array);
+        for (String string : strings) {
+            logger.debug(string);
+        }
     }
 }

@@ -139,5 +139,5 @@ public interface InvocationCodec {
         }
     }
 
-    DecodedFrame decodeFrame(List<ByteBuffer> frames);
+    Optional<DecodedFrame> decodeFrame(List<ByteBuffer> frames);
 }

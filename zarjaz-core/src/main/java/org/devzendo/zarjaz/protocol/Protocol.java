@@ -61,7 +61,12 @@ public class Protocol {
          * METHOD_INVOCATION_DECLARED). It is followed by a MethodCallIdentifier, then the encoded exception as a
          * MethodReturnException.
          */
-        METHOD_RETURN_EXCEPTION((byte) 4);
+        METHOD_RETURN_EXCEPTION((byte) 4),
+
+        /**
+         * This frame is intentionally reserved for testing; it is not a valid frame.
+         */
+        TEST_INVALID_FRAME((byte) 255);
 
         /*
         some thoughts on why REST is popular, and how you use a health-checking/routing front end service like ARR....

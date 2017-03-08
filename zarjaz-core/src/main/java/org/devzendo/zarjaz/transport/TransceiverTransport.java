@@ -155,13 +155,16 @@ public class TransceiverTransport extends AbstractTransport implements Transport
                 // TODO rate limiting?
                 try {
                     logger.debug("Decoding buffers");
-                    final InvocationCodec.DecodedFrame decodedFrame = invocationCodec.decodeFrame(buffers);
-                    logger.debug("Decoded buffers");
+                    final Optional<InvocationCodec.DecodedFrame> decodedFrame = invocationCodec.decodeFrame(buffers);
+                    if (decodedFrame.isPresent()) {
+                        logger.debug("Decoded buffers");
 
-                    // TODO convert to visitor
-                    if (decodedFrame instanceof InvocationCodec.HashedMethodInvocation) {
-                        final InvocationCodec.HashedMethodInvocation hmi = (InvocationCodec.HashedMethodInvocation) decodedFrame;
-                        processHashedMethodInvocation(observableEvent.getReplyWriter(), hmi.sequence, hmi.endpointInterfaceMethod.getEndpointName(), hmi.endpointInterfaceMethod.getClientInterface(), hmi.endpointInterfaceMethod.getMethod(), hmi.args);
+                        // TODO convert to visitor
+                        final InvocationCodec.DecodedFrame frame = decodedFrame.get();
+                        if (frame instanceof InvocationCodec.HashedMethodInvocation) {
+                            final InvocationCodec.HashedMethodInvocation hmi = (InvocationCodec.HashedMethodInvocation) frame;
+                            processHashedMethodInvocation(observableEvent.getReplyWriter(), hmi.sequence, hmi.endpointInterfaceMethod.getEndpointName(), hmi.endpointInterfaceMethod.getClientInterface(), hmi.endpointInterfaceMethod.getMethod(), hmi.args);
+                        }
                     } else {
                         // TODO METRIC increment bad/unsupported incoming frames
                         // TODO test for bad incoming frames
