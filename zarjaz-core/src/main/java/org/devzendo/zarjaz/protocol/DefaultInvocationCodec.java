@@ -166,7 +166,12 @@ public class DefaultInvocationCodec implements InvocationCodec {
 
     @Override
     public List<ByteBuffer> generateMethodReturnResponse(int sequence, final Class<?> returnType, final Object result) {
-        return null;
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeByte(Protocol.InitialFrameType.METHOD_RETURN_RESULT.getInitialFrameType());
+        encoder.writeInt(sequence);
+        // A little unsure of boxing (method has an int, reflectively can't pass one) and widening (method has an int, passing a short), here...
+        encoder.writeObject(returnType, result);
+        return encoder.getBuffers();
     }
 
     @Override

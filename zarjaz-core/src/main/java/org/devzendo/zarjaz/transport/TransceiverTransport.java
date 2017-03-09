@@ -157,10 +157,10 @@ public class TransceiverTransport extends AbstractTransport implements Transport
                     logger.debug("Decoding buffers");
                     final Optional<InvocationCodec.DecodedFrame> decodedFrame = invocationCodec.decodeFrame(buffers);
                     if (decodedFrame.isPresent()) {
-                        logger.debug("Decoded buffers");
 
                         // TODO convert to visitor
                         final InvocationCodec.DecodedFrame frame = decodedFrame.get();
+                        logger.debug("Incoming frame: " + frame.getClass().getSimpleName());
                         if (frame instanceof InvocationCodec.HashedMethodInvocation) {
                             final InvocationCodec.HashedMethodInvocation hmi = (InvocationCodec.HashedMethodInvocation) frame;
                             processHashedMethodInvocation(observableEvent.getReplyWriter(), hmi.sequence, hmi.endpointInterfaceMethod.getEndpointName(), hmi.endpointInterfaceMethod.getClientInterface(), hmi.endpointInterfaceMethod.getMethod(), hmi.args);
@@ -183,7 +183,6 @@ public class TransceiverTransport extends AbstractTransport implements Transport
 
         private void processHashedMethodInvocation(final Transceiver.BufferWriter replyTransceiver, final int sequence, final EndpointName endpointName, final Class<?> clientInterface, final Method method, final Object[] args) throws InvocationTargetException, IllegalAccessException, IOException {
             // TODO server request logging
-            logger.debug("process hashed method invocation");
             final NamedInterface namedInterface = new NamedInterface(endpointName, clientInterface);
             final Object implementation = lookupImplementation.apply(namedInterface);
             final Object result = method.invoke(implementation, args);

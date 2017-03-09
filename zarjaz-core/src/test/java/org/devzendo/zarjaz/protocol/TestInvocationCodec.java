@@ -440,6 +440,43 @@ public class TestInvocationCodec {
         }
     }
 
+    @Test
+    public void encodingOfMethodReturnResponse() {
+        final List<ByteBuffer> byteBuffers = codec.generateMethodReturnResponse(201, String.class, "endofunctor");
+        dumpBuffers(byteBuffers);
+        assertThat(byteBuffers.size(), equalTo(1));
+        final ByteBuffer buffer = byteBuffers.get(0);
+        assertThat(buffer.limit(), equalTo(20));
+        final byte[] frame = Arrays.copyOf(buffer.array(), buffer.limit());
+
+        assertThat(frame, equalTo(new byte[] {
+                Protocol.InitialFrameType.METHOD_RETURN_RESULT.getInitialFrameType(),
+
+                // sequence
+                0,
+                0,
+                0,
+                (byte) 201,
+
+                // String length
+                0,
+                0,
+                0,
+                11,
+                'e',
+                'n',
+                'd',
+                'o',
+                'f',
+                'u',
+                'n',
+                'c',
+                't',
+                'o',
+                'r'
+        }));
+    }
+
     private void registerAddOneHashes() {
         final DefaultInvocationHashGenerator hashGenerator = new DefaultInvocationHashGenerator(endpointName);
         // it's valid (but dodgy) to have multiple interfaces registered under the same endpoint name - they will have

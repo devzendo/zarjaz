@@ -13,7 +13,6 @@ import org.devzendo.zarjaz.transceiver.TransceiverObservableEvent;
 import org.devzendo.zarjaz.validation.DefaultClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.DefaultServerImplementationValidator;
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -225,7 +224,6 @@ public class TestTransceiverTransport {
     }
 
     @Test
-    @Ignore
     public void roundTrip() {
         transport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
                 timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
