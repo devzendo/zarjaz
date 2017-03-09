@@ -85,18 +85,78 @@ public class TestInvocationCodec {
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
+    // -----------------------------------------------------------------------------------------------------------------
+    // Hash collision tests.
+    //
+    // Store this hash under some other endpoint/interface/method, so when we register SampleInterface, we get a hash collision.
+    // If we stored it under the same endpoint/interface/method, the collision check would not trigger, as multiple registrations of
+    // the same details are allowed (pointless, but not in the case of the NullTransceiver/TransceiverTransport round trip
+    // test, where the same transceiver has both client and servers registered - both these halves need to register hashes,
+    // and if the check wasn't made for the different endpoint/interface/method, then these two registrations of
+    // the same information would collide.
+
     @Test
-    public void detectsHashCollision() throws NoSuchMethodException {
+    public void detectsHashCollisionDifferentInterfaceClass() throws NoSuchMethodException {
         final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
         final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
+        final Method method = SampleInterface.class.getDeclaredMethods()[0];
+        final byte[] hash = methodMap.get(method);
 
-        assertThat(codec.registerHashes(endpointName, SampleInterface.class, methodMap), equalTo(Optional.empty()));
+        final Class<NoArgsMethodInterface> differentInterfaceClass = NoArgsMethodInterface.class;
+        ((DefaultInvocationCodec)codec)._createHashCollision(endpointName, differentInterfaceClass, hash, method);
 
         final Optional<InvocationCodec.EndpointInterfaceMethod> secondRegistration = codec.registerHashes(endpointName, SampleInterface.class, methodMap);
         assertThat(secondRegistration, not(equalTo(Optional.empty())));
         final InvocationCodec.EndpointInterfaceMethod collision = secondRegistration.get();
-        assertThat(collision.toString(), equalTo("Endpoint 'endpoint', Client interface 'SampleInterface', Method 'firstMethod'"));
+        assertThat(collision.toString(), equalTo("Endpoint 'endpoint', Client interface 'NoArgsMethodInterface', Method 'firstMethod'"));
     }
+
+    @Test
+    public void detectsHashCollisionDifferentMethod() throws NoSuchMethodException {
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
+        final Map<Method, byte[]> methodMap = gen.generate(ComplexInterface.class);
+        final Method firstMethod = ComplexInterface.class.getDeclaredMethods()[0];
+        final Method secondMethod = ComplexInterface.class.getDeclaredMethods()[1];
+        final byte[] hash = methodMap.get(firstMethod);
+
+        final Method differentMethod = secondMethod;
+        ((DefaultInvocationCodec)codec)._createHashCollision(endpointName, ComplexInterface.class, hash, differentMethod);
+
+        final Optional<InvocationCodec.EndpointInterfaceMethod> secondRegistration = codec.registerHashes(endpointName, ComplexInterface.class, methodMap);
+        assertThat(secondRegistration, not(equalTo(Optional.empty())));
+        final InvocationCodec.EndpointInterfaceMethod collision = secondRegistration.get();
+        assertThat(collision.toString(), equalTo("Endpoint 'endpoint', Client interface 'ComplexInterface', Method 'secondMethod'"));
+    }
+
+    @Test
+    public void detectsHashCollisionDifferentEndpointName() throws NoSuchMethodException {
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
+        final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
+        final Method method = SampleInterface.class.getDeclaredMethods()[0];
+        final byte[] hash = methodMap.get(method);
+
+        final EndpointName differentEndpointName = new EndpointName("slartibartfast");
+        ((DefaultInvocationCodec)codec)._createHashCollision(differentEndpointName, SampleInterface.class, hash, method);
+
+        final Optional<InvocationCodec.EndpointInterfaceMethod> secondRegistration = codec.registerHashes(endpointName, SampleInterface.class, methodMap);
+        assertThat(secondRegistration, not(equalTo(Optional.empty())));
+        final InvocationCodec.EndpointInterfaceMethod collision = secondRegistration.get();
+        assertThat(collision.toString(), equalTo("Endpoint 'slartibartfast', Client interface 'SampleInterface', Method 'firstMethod'"));
+    }
+
+    @Test
+    public void reRegistrationOfSameDoesNotCauseHashCollision() throws NoSuchMethodException {
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
+        final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
+
+        // first registration
+        assertThat(codec.registerHashes(endpointName, SampleInterface.class, methodMap), equalTo(Optional.empty()));
+
+        // second registration
+        assertThat(codec.registerHashes(endpointName, SampleInterface.class, methodMap), equalTo(Optional.empty()));
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
 
     @Test
     public void getMethodMap() throws NoSuchMethodException {

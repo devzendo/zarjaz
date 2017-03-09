@@ -62,13 +62,29 @@ public class DefaultInvocationCodec implements InvocationCodec {
         }
     }
 
+    /*
+     * This method is ONLY to be used in testing, to forcibly generate hash collisions since it is very hard to build
+     * two endpoints/interface classes/method maps that legitimately have collisions.
+     */
+    void _createHashCollision(final EndpointName endpointName, final Class<?> interfaceClass, final byte[] hash, final Method method) {
+        synchronized (lock) {
+            hashToMethod.put(new ByteArrayWrapper(hash), new EndpointInterfaceMethod(endpointName, interfaceClass, method));
+        }
+    }
+
     @Override
     public Optional<EndpointInterfaceMethod> registerHashes(final EndpointName endpointName, final Class<?> interfaceClass, final Map<Method, byte[]> methodMap) {
         synchronized (lock) {
             // First detect any potential collisions... for now, return the first.
-            for (byte[] hashToAdd: methodMap.values()) {
-                final EndpointInterfaceMethod existingEndpointInterfaceMethod = hashToMethod.get(new ByteArrayWrapper(hashToAdd));
-                if (existingEndpointInterfaceMethod != null) {
+            // TODO return all collisions
+            final Set<Map.Entry<Method, byte[]>> entries = methodMap.entrySet();
+            for (Map.Entry<Method, byte[]> entry: entries) {
+                final EndpointInterfaceMethod existingEndpointInterfaceMethod = hashToMethod.get(new ByteArrayWrapper(entry.getValue()));
+                if (existingEndpointInterfaceMethod != null &&
+                        (!existingEndpointInterfaceMethod.getMethod().equals(entry.getKey()) ||
+                         !existingEndpointInterfaceMethod.getEndpointName().equals(endpointName) ||
+                         !existingEndpointInterfaceMethod.getClientInterface().equals(interfaceClass))
+                        ) {
                     logger.warn("Existing registered method hash collision: " + existingEndpointInterfaceMethod.getEndpointName() + ": " + existingEndpointInterfaceMethod.getMethod().getName());
                     return Optional.of(existingEndpointInterfaceMethod);
                 }

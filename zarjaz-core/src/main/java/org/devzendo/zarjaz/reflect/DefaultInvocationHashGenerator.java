@@ -64,7 +64,7 @@ public class DefaultInvocationHashGenerator implements InvocationHashGenerator {
         md5.update(endpointNameUTF8);
         // TODO add endpointName.getVersion() when we have that.
 
-        md5.update(toUTF8(method.getReturnType().getSimpleName()));
+        md5.update(toUTF8(method.getReturnType().getSimpleName())); // wonder whether return type needed, java doesn't distinguish methods by it?
         md5.update(toUTF8(method.getName()));
         // this is always an array, never null
         for (final Class paramType: method.getParameterTypes()) {
