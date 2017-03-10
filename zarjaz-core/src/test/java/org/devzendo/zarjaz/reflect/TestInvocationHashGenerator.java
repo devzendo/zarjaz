@@ -38,7 +38,7 @@ public class TestInvocationHashGenerator {
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-    private InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
+    private InvocationHashGenerator gen = new DefaultInvocationHashGenerator();
 
     // MD5 is 16 bytes (128 bits), and when the MessageDigest is constructed, the digest is reset.
 
@@ -49,7 +49,7 @@ public class TestInvocationHashGenerator {
     // not sure about this - what's the point of an empty method map/interface?
     // the validator will throw it out.
     public void generateEmptyMapForEmptyInterface() throws NoSuchMethodException {
-        final Map<Method, byte[]> map = gen.generate(EmptyInterface.class);
+        final Map<Method, byte[]> map = gen.generate(endpointName, EmptyInterface.class);
         assertThat(map.size(), equalTo(0));
     }
 
@@ -57,19 +57,19 @@ public class TestInvocationHashGenerator {
     public void throwOnNullInterface() throws NoSuchMethodException {
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("Cannot generate hashes for 'null");
-        gen.generate(null);
+        gen.generate(endpointName, null);
     }
 
     @Test
     public void nullEndpointNameNotAllowed() {
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("Cannot generate hashes for endpoint name 'null");
-        new DefaultInvocationHashGenerator(null);
+        gen.generate(null, SampleInterface.class);
     }
 
     @Test
     public void generateHashes() throws NoSuchMethodException {
-        final Map<Method, byte[]> map = gen.generate(SampleInterface.class);
+        final Map<Method, byte[]> map = gen.generate(endpointName, SampleInterface.class);
         assertThat(map.size(), equalTo(3));
         final Method firstMethod = SampleInterface.class.getMethod("firstMethod", int.class, boolean.class, String.class);
         final Method secondMethod = SampleInterface.class.getMethod("secondMethod", int.class, boolean.class, String.class);
@@ -88,12 +88,12 @@ public class TestInvocationHashGenerator {
     public void differentEndpointNamesGenerateDifferentHashesForSameMethods() throws NoSuchMethodException {
         final Method firstMethod = SampleInterface.class.getMethod("firstMethod", int.class, boolean.class, String.class);
 
-        final Map<Method, byte[]> endpoint1Map = gen.generate(SampleInterface.class);
+        final Map<Method, byte[]> endpoint1Map = gen.generate(endpointName, SampleInterface.class);
         final byte[] firstMethodHash = endpoint1Map.get(firstMethod);
 
         final EndpointName endpoint2Name = new EndpointName("sampleInterfaceWithDifferentName");
-        final InvocationHashGenerator gen2 = new DefaultInvocationHashGenerator(endpoint2Name);
-        final Map<Method, byte[]> endpoint2Map = gen2.generate(SampleInterface.class);
+        final InvocationHashGenerator gen2 = new DefaultInvocationHashGenerator();
+        final Map<Method, byte[]> endpoint2Map = gen2.generate(endpoint2Name, SampleInterface.class);
         final byte[] firstMethodHash2 = endpoint2Map.get(firstMethod);
 
         assertThat(firstMethodHash, not(equalTo(firstMethodHash2)));
@@ -106,7 +106,7 @@ public class TestInvocationHashGenerator {
     public void clientInterfacesAreReflectedUponWithInheritance() throws NoSuchMethodException {
         final Method fourthMethod = DerivedSampleInterface.class.getMethod("fourthMethod");
 
-        final Map<Method, byte[]> endpointMap = gen.generate(DerivedSampleInterface.class);
+        final Map<Method, byte[]> endpointMap = gen.generate(endpointName, DerivedSampleInterface.class);
         assertThat(endpointMap.keySet().size(), equalTo(4));
         final byte[] fourthMethodHash = endpointMap.get(fourthMethod);
         assertThat(fourthMethodHash, not(equalTo(null)));

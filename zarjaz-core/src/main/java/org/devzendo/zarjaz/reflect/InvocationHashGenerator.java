@@ -1,5 +1,7 @@
 package org.devzendo.zarjaz.reflect;
 
+import org.devzendo.zarjaz.transport.EndpointName;
+
 import java.lang.reflect.Method;
 import java.util.Map;
 
@@ -19,5 +21,5 @@ import java.util.Map;
  * limitations under the License.
  */
 public interface InvocationHashGenerator {
-    Map<Method, byte[]> generate(Class<?> interfaceClass);
+    Map<Method, byte[]> generate(EndpointName endpointName, Class<?> interfaceClass);
 }

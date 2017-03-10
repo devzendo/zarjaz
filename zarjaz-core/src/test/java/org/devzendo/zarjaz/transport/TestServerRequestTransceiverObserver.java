@@ -74,7 +74,7 @@ public class TestServerRequestTransceiverObserver {
 
     @Before
     public void registerHashes() {
-        methodMap = new DefaultInvocationHashGenerator(endpointName).generate(SampleInterface.class);
+        methodMap = new DefaultInvocationHashGenerator().generate(endpointName, SampleInterface.class);
         invocationCodec.registerHashes(endpointName, SampleInterface.class, methodMap);
         addOneMethod = SampleInterface.class.getDeclaredMethods()[0];
         implementations.put(new NamedInterface(endpointName, SampleInterface.class), new SampleImplementation());

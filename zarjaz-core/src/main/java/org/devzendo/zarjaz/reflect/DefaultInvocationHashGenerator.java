@@ -25,17 +25,10 @@ import java.util.Map;
  * limitations under the License.
  */
 public class DefaultInvocationHashGenerator implements InvocationHashGenerator {
-    private final EndpointName endpointName;
     private final MessageDigest md5;
     private final Charset utf8Charset;
-    private final byte[] endpointNameUTF8;
 
-    public DefaultInvocationHashGenerator(final EndpointName endpointName) {
-        if (endpointName == null) {
-            throw new IllegalArgumentException("Cannot generate hashes for endpoint name 'null'");
-        }
-        this.endpointName = endpointName;
-
+    public DefaultInvocationHashGenerator() {
         try {
             this.md5 = MessageDigest.getInstance("MD5");
         } catch (final NoSuchAlgorithmException e) {
@@ -43,23 +36,26 @@ public class DefaultInvocationHashGenerator implements InvocationHashGenerator {
         }
 
         this.utf8Charset = Charset.forName("UTF-8");
-        this.endpointNameUTF8 = toUTF8(endpointName.toString());
     }
 
     @Override
-    public Map<Method, byte[]> generate(final Class<?> interfaceClass) {
+    public Map<Method, byte[]> generate(final EndpointName endpointName, final Class<?> interfaceClass) {
+        if (endpointName == null) {
+            throw new IllegalArgumentException("Cannot generate hashes for endpoint name 'null'");
+        }
         if (interfaceClass == null) {
             throw new IllegalArgumentException("Cannot generate hashes for 'null'");
         }
+        final byte[] endpointNameUTF8 = toUTF8(endpointName.toString());
         final Map<Method, byte[]> map = new HashMap<>();
         for (Method method: interfaceClass.getMethods()) {
-            final byte[] hash = generateHash(endpointName, method);
+            final byte[] hash = generateHash(endpointNameUTF8, method);
             map.put(method, hash);
         }
         return map;
     }
 
-    private byte[] generateHash(final EndpointName endpointName, final Method method) {
+    private byte[] generateHash(final byte[] endpointNameUTF8, final Method method) {
         md5.reset();
         md5.update(endpointNameUTF8);
         // TODO add endpointName.getVersion() when we have that.

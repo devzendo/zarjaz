@@ -97,8 +97,8 @@ public class TestInvocationCodec {
 
     @Test
     public void detectsHashCollisionDifferentInterfaceClass() throws NoSuchMethodException {
-        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
-        final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator();
+        final Map<Method, byte[]> methodMap = gen.generate(endpointName, SampleInterface.class);
         final Method method = SampleInterface.class.getDeclaredMethods()[0];
         final byte[] hash = methodMap.get(method);
 
@@ -113,8 +113,8 @@ public class TestInvocationCodec {
 
     @Test
     public void detectsHashCollisionDifferentMethod() throws NoSuchMethodException {
-        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
-        final Map<Method, byte[]> methodMap = gen.generate(ComplexInterface.class);
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator();
+        final Map<Method, byte[]> methodMap = gen.generate(endpointName, ComplexInterface.class);
         final Method firstMethod = ComplexInterface.class.getDeclaredMethods()[0];
         final Method secondMethod = ComplexInterface.class.getDeclaredMethods()[1];
         final byte[] hash = methodMap.get(firstMethod);
@@ -130,8 +130,8 @@ public class TestInvocationCodec {
 
     @Test
     public void detectsHashCollisionDifferentEndpointName() throws NoSuchMethodException {
-        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
-        final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator();
+        final Map<Method, byte[]> methodMap = gen.generate(endpointName, SampleInterface.class);
         final Method method = SampleInterface.class.getDeclaredMethods()[0];
         final byte[] hash = methodMap.get(method);
 
@@ -146,8 +146,8 @@ public class TestInvocationCodec {
 
     @Test
     public void reRegistrationOfSameDoesNotCauseHashCollision() throws NoSuchMethodException {
-        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
-        final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator();
+        final Map<Method, byte[]> methodMap = gen.generate(endpointName, SampleInterface.class);
 
         // first registration
         assertThat(codec.registerHashes(endpointName, SampleInterface.class, methodMap), equalTo(Optional.empty()));
@@ -160,8 +160,8 @@ public class TestInvocationCodec {
 
     @Test
     public void getMethodMap() throws NoSuchMethodException {
-        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
-        final Map<Method, byte[]> methodMap = gen.generate(ComplexInterface.class);
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator();
+        final Map<Method, byte[]> methodMap = gen.generate(endpointName, ComplexInterface.class);
 
         codec.registerHashes(endpointName, ComplexInterface.class, methodMap);
 
@@ -179,8 +179,8 @@ public class TestInvocationCodec {
 
     @Test
     public void encodingOfHashedMethodInvocation() throws NoSuchMethodException {
-        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
-        final Map<Method, byte[]> methodMap = gen.generate(SampleInterface.class);
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator();
+        final Map<Method, byte[]> methodMap = gen.generate(endpointName, SampleInterface.class);
         final Method firstMethod = SampleInterface.class.getMethod("firstMethod", int.class, boolean.class, String.class);
         final byte[] hash = methodMap.get(firstMethod);
         assertThat(hash.length, equalTo(16));
@@ -478,11 +478,11 @@ public class TestInvocationCodec {
     }
 
     private void registerAddOneHashes() {
-        final DefaultInvocationHashGenerator hashGenerator = new DefaultInvocationHashGenerator(endpointName);
+        final DefaultInvocationHashGenerator hashGenerator = new DefaultInvocationHashGenerator();
         // it's valid (but dodgy) to have multiple interfaces registered under the same endpoint name - they will have
         // different hashes.
-        codec.registerHashes(endpointName, AddOnePrimitiveParameterInterface.class, hashGenerator.generate(AddOnePrimitiveParameterInterface.class));
-        codec.registerHashes(endpointName, AddOneWrapperParameterInterface.class, hashGenerator.generate(AddOneWrapperParameterInterface.class));
+        codec.registerHashes(endpointName, AddOnePrimitiveParameterInterface.class, hashGenerator.generate(endpointName, AddOnePrimitiveParameterInterface.class));
+        codec.registerHashes(endpointName, AddOneWrapperParameterInterface.class, hashGenerator.generate(endpointName, AddOneWrapperParameterInterface.class));
     }
 
     private void expectLookupFailure() {
@@ -499,8 +499,8 @@ public class TestInvocationCodec {
     }
 
     private List<ByteBuffer> generateHashedMethodInvocation(final Class<?> interfaceClass, final Object[] args) {
-        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator(endpointName);
-        final Map<Method, byte[]> methodMap = gen.generate(interfaceClass);
+        final InvocationHashGenerator gen = new DefaultInvocationHashGenerator();
+        final Map<Method, byte[]> methodMap = gen.generate(endpointName, interfaceClass);
         final Method method = interfaceClass.getDeclaredMethods()[0];
         final byte[] hash = methodMap.get(method);
         logger.debug("hash of method is: " + HexDump.bytes2hex(hash));

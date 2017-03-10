@@ -2,7 +2,9 @@ package org.devzendo.zarjaz.transport;
 
 import org.apache.log4j.BasicConfigurator;
 import org.devzendo.commoncode.concurrency.ThreadUtils;
+import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
+import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
 import org.devzendo.zarjaz.sample.primes.DefaultPrimeGenerator;
 import org.devzendo.zarjaz.sample.primes.PrimeGenerator;
@@ -82,12 +84,6 @@ public class TestTransports {
     @Mock
     ServerImplementationValidator serverValidator;
 
-    @Mock
-    InvocationHashGenerator invocationHashGenerator;
-
-    @Mock
-    InvocationCodec invocationCodec;
-
     @Rule
     public MockitoRule mockitoRule = MockitoJUnit.rule();
 
@@ -101,7 +97,7 @@ public class TestTransports {
             clientTransport = new NullTransport(serverValidator, clientValidator, timeoutScheduler);
             serverTransport = clientTransport;
         } else if (transportClass.equals((TransceiverTransport.class))) {
-            clientTransport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, new NullTransceiver(), invocationHashGenerator, invocationCodec);
+            clientTransport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, new NullTransceiver(), new DefaultInvocationHashGenerator(), new DefaultInvocationCodec());
             serverTransport = clientTransport;
         }
     }
@@ -143,12 +139,14 @@ public class TestTransports {
 
         EndpointName timeoutEndpointName = new EndpointName("timeout");
         // for the null clientTransport, the impl has to be registered even tho only interested in the 'client' side.
+        int invocationTimes = 1;
         if (clientTransport instanceof NullTransport) {
             clientTransport.registerServerImplementation(timeoutEndpointName, TimeoutGenerator.class, serverImplementation);
+            invocationTimes++;
         }
 
         final TimeoutGenerator clientProxy = clientTransport.createClientProxy(timeoutEndpointName, TimeoutGenerator.class, 500L);
-        Mockito.verify(clientValidator, Mockito.times(2)).validateClientInterface(TimeoutGenerator.class);
+        Mockito.verify(clientValidator, Mockito.times(invocationTimes)).validateClientInterface(TimeoutGenerator.class);
     }
 
     @Test

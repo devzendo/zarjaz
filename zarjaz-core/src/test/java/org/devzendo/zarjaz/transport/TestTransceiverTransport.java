@@ -66,7 +66,7 @@ public class TestTransceiverTransport {
     private final TimeoutScheduler timeoutScheduler = new TimeoutScheduler();
     private final InvocationCodec invocationCodec = new DefaultInvocationCodec();
     private final EndpointName endpointName = new EndpointName("MyEndpoint");
-    private final InvocationHashGenerator invocationHashGenerator = new DefaultInvocationHashGenerator(endpointName);
+    private final InvocationHashGenerator invocationHashGenerator = new DefaultInvocationHashGenerator();
 
     private TransceiverTransport transport;
 
@@ -80,7 +80,7 @@ public class TestTransceiverTransport {
     private class IntentionallyCollidingInvocationHashGenerator implements InvocationHashGenerator {
         private byte[] fixedHash = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
         @Override
-        public Map<Method, byte[]> generate(final Class<?> interfaceClass) {
+        public Map<Method, byte[]> generate(final EndpointName endpointName, final Class<?> interfaceClass) {
             final Map<Method, byte[]> map = new HashMap<>();
             for (Method method: interfaceClass.getMethods()) {
                 map.put(method, fixedHash);

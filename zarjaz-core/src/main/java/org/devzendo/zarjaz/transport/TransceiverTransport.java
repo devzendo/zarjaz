@@ -239,7 +239,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     }
 
     private <T> void registerHashes(EndpointName endpointName, Class<T> interfaceClass) {
-        final Map<Method, byte[]> methodMap = invocationHashGenerator.generate(interfaceClass);
+        final Map<Method, byte[]> methodMap = invocationHashGenerator.generate(endpointName, interfaceClass);
 
         // Register hashes...
         final Optional<InvocationCodec.EndpointInterfaceMethod> collidingEndpointInterfaceMethod = invocationCodec.registerHashes(endpointName, interfaceClass, methodMap);
