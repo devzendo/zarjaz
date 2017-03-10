@@ -59,7 +59,7 @@ public class NullTransceiver implements Transceiver {
             queue.add(() -> {
                 logger.debug("Dispatching queued ByteBuffer to " + sendToEndName + " end");
                 NullTransceiver.dumpBuffers(data);
-                sendToEnd.observers.eventOccurred(new DataReceived(data, replyWriter));
+                sendToEnd.fireEvent(new DataReceived(data, replyWriter));
             });
         }
     }
@@ -69,6 +69,10 @@ public class NullTransceiver implements Transceiver {
     private class NullObservableTransceiverEnd implements ObservableTransceiverEnd {
 
         private final ObserverList<TransceiverObservableEvent> observers = new ObserverList<>();
+
+        public void fireEvent(final TransceiverObservableEvent event) {
+            observers.eventOccurred(event);
+        }
 
         @Override
         public void addTransceiverObserver(final TransceiverObserver observer) {
