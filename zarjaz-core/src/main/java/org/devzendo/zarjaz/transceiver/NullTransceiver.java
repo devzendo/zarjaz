@@ -28,13 +28,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 public class NullTransceiver implements Transceiver {
     private static final Logger logger = LoggerFactory.getLogger(NullTransceiver.class);
 
-    // TODO internalise in NullObservableTransceiverEnd
-    private static class NullTransceiverEnd {
-        private final ObserverList<TransceiverObservableEvent> observers = new ObserverList<>();
-    }
-    private final NullTransceiverEnd clientEnd = new NullTransceiverEnd();
-    private final NullTransceiverEnd serverEnd = new NullTransceiverEnd();
-
     private final ArrayBlockingQueue<Runnable> queue = new ArrayBlockingQueue<Runnable>(10);
     private final Thread dispatchThread;
     private volatile boolean active = false;
@@ -43,11 +36,11 @@ public class NullTransceiver implements Transceiver {
     private final NullBufferWriter sendToClient;
     private class NullBufferWriter implements BufferWriter {
 
-        private final NullTransceiverEnd sendToEnd;
+        private final NullObservableTransceiverEnd sendToEnd;
         private final String sendToEndName;
         private BufferWriter replyWriter;
 
-        public NullBufferWriter(final NullTransceiverEnd sendToEnd, final String sendToEndName) {
+        public NullBufferWriter(final NullObservableTransceiverEnd sendToEnd, final String sendToEndName) {
             this.sendToEnd = sendToEnd;
             this.sendToEndName = sendToEndName;
         }
@@ -75,21 +68,17 @@ public class NullTransceiver implements Transceiver {
     private final NullObservableTransceiverEnd clientObservableEnd;
     private class NullObservableTransceiverEnd implements ObservableTransceiverEnd {
 
-        private final NullTransceiverEnd attachEnd;
-
-        public NullObservableTransceiverEnd(final NullTransceiverEnd attachEnd) {
-            this.attachEnd = attachEnd;
-        }
+        private final ObserverList<TransceiverObservableEvent> observers = new ObserverList<>();
 
         @Override
         public void addTransceiverObserver(final TransceiverObserver observer) {
-            attachEnd.observers.addObserver(observer);
+            observers.addObserver(observer);
         }
 
         @Override
         public void removeTransceiverObserver(TransceiverObserver observer) {
             // TODO rename removeListener in common code to removeObserver
-            attachEnd.observers.removeListener(observer);
+            observers.removeListener(observer);
         }
     }
 
@@ -114,13 +103,14 @@ public class NullTransceiver implements Transceiver {
         dispatchThread.setDaemon(true);
         dispatchThread.setName("NullTransceiver dispatch thread");
 
-        sendToClient = new NullBufferWriter(clientEnd, "client");
-        sendToServer = new NullBufferWriter(serverEnd, "server");
+        serverObservableEnd = new NullObservableTransceiverEnd();
+        clientObservableEnd = new NullObservableTransceiverEnd();
+
+        sendToClient = new NullBufferWriter(clientObservableEnd, "client");
+        sendToServer = new NullBufferWriter(serverObservableEnd, "server");
         sendToClient.setOtherEnd(sendToServer);
         sendToServer.setOtherEnd(sendToClient);
 
-        serverObservableEnd = new NullObservableTransceiverEnd(serverEnd);
-        clientObservableEnd = new NullObservableTransceiverEnd(clientEnd);
     }
 
     private static void dumpBuffers(final List<ByteBuffer> buffers) {
