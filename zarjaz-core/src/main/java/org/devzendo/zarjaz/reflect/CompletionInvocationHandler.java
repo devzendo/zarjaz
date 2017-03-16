@@ -34,14 +34,14 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
     private static final Logger logger = LoggerFactory.getLogger(CompletionInvocationHandler.class);
 
     private final TimeoutScheduler timeoutScheduler;
-    private final EndpointName name;
+    private final EndpointName endpointName;
     private final Class<T> interfaceClass;
     private final TransportInvocationHandler transportHandler;
     private final long methodTimeoutMs;
 
-    public CompletionInvocationHandler(final TimeoutScheduler timeoutScheduler, final EndpointName name, final Class<T> interfaceClass, final TransportInvocationHandler transportHandler, final long methodTimeoutMs) {
+    public CompletionInvocationHandler(final TimeoutScheduler timeoutScheduler, final EndpointName endpointName, final Class<T> interfaceClass, final TransportInvocationHandler transportHandler, final long methodTimeoutMs) {
         this.timeoutScheduler = timeoutScheduler;
-        this.name = name;
+        this.endpointName = endpointName;
         this.interfaceClass = interfaceClass;
         this.transportHandler = transportHandler;
         this.methodTimeoutMs = methodTimeoutMs;
@@ -49,7 +49,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
 
     public Object invoke(final Object proxy, final Method method, final Object[] args) {
         if (logger.isDebugEnabled()) {
-            logger.debug("Invoking [" + name + "] " + method.getDeclaringClass().getName() + "." + method.getName());
+            logger.debug("Invoking [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName());
         }
 
         String name = method.getName();
@@ -65,11 +65,11 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
             return "Client for endpoint '" + name + "', interface class '" + interfaceClass + "'";
         }
         else {
-            return invokeRemote(method, args, name);
+            return invokeRemote(method, args);
         }
     }
 
-    private Object invokeRemote(final Method method, final Object[] args, final String name) {
+    private Object invokeRemote(final Method method, final Object[] args) {
         // And every response needs to reuse this logic. Synchronous calls can get.
 
         final CompletableFuture<Object> future = new CompletableFuture<Object>();
@@ -77,7 +77,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         // method invocation.
         final LinkedList<Runnable> timeoutRunnables = new LinkedList<>();
         final Runnable timeoutHandler = () -> {
-            final String message = "method call [" + name + "] '" + method.getName() + "' timed out after " + methodTimeoutMs + "ms";
+            final String message = "method call [" + endpointName + "] '" + method.getName() + "' timed out after " + methodTimeoutMs + "ms";
             if (logger.isDebugEnabled()) {
                 logger.debug(message);
             }
