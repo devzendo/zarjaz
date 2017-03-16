@@ -39,6 +39,14 @@ public class SampleInterfaces {
         void method(Integer x);
     }
 
+    public interface LongPrimitiveInterface {
+        void method(long x);
+    }
+
+    public interface LongWrapperInterface {
+        void method(Long x);
+    }
+
     public interface StringInterface {
         void method(String x);
     }

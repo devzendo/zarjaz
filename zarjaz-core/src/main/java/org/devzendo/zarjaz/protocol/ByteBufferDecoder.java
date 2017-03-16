@@ -139,6 +139,8 @@ public class ByteBufferDecoder {
             return readByte();
         } else if (parameterType.equals(Integer.class) || parameterType.equals(Integer.TYPE)) {
             return readInt();
+        } else if (parameterType.equals(Long.class) || parameterType.equals(Long.TYPE)) {
+            return readLong();
         } else if (parameterType.equals(Boolean.class) || parameterType.equals(Boolean.TYPE)) {
             return readBoolean();
         } else if (parameterType.equals(String.class)) {

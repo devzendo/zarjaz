@@ -257,6 +257,24 @@ public class TestByteBufferDecoder {
     }
 
     @Test
+    public void decodeObjectLongPrimitive() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeLong(0x0102030405060708L);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.LongPrimitiveInterface.class)), is(0x0102030405060708L));
+    }
+
+    @Test
+    public void decodeObjectLongWrapper() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeLong(0x0102030405060708L);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.LongWrapperInterface.class)), is(0x0102030405060708L));
+    }
+
+    @Test
     public void decodeObjectBooleanPrimitive() throws IOException {
         final ByteBufferEncoder encoder = new ByteBufferEncoder();
         encoder.writeBoolean(true);
