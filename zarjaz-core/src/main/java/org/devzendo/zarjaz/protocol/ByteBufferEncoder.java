@@ -174,6 +174,13 @@ public class ByteBufferEncoder {
                 fail = true;
             }
 
+        } else if (parameterType.equals(Long.class) || parameterType.equals(Long.TYPE)) {
+            if (parameterValueType.equals(Long.class) || parameterValueType.equals(Long.TYPE)) {
+                writeLong((long) parameterValue);
+            } else {
+                fail = true;
+            }
+
         } else if (parameterType.equals(Boolean.class) || parameterType.equals(Boolean.TYPE)) {
             if (parameterValueType.equals(Boolean.class) || parameterValueType.equals(Boolean.TYPE)) {
                 writeBoolean((boolean) parameterValue);

@@ -302,6 +302,35 @@ public class TestByteBufferEncoder {
     }
 
     @Test
+    public void encodeObjectLongPrimitive() {
+        encoder.writeObject(Long.TYPE, 0x0102030405060708L);
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(8);
+        assertThat(buffer.get(0), equalTo((byte) 0x01));
+        assertThat(buffer.get(1), equalTo((byte) 0x02));
+        assertThat(buffer.get(2), equalTo((byte) 0x03));
+        assertThat(buffer.get(3), equalTo((byte) 0x04));
+        assertThat(buffer.get(4), equalTo((byte) 0x05));
+        assertThat(buffer.get(5), equalTo((byte) 0x06));
+        assertThat(buffer.get(6), equalTo((byte) 0x07));
+        assertThat(buffer.get(7), equalTo((byte) 0x08));
+    }
+
+    @Test
+    public void encodeObjectLongWrapper() {
+        encoder.writeObject(Long.class, Long.valueOf(0x0102030405060708L));
+        final ByteBuffer buffer = getSingleByteBufferWithExpectedBytes(8);
+        assertThat(buffer.get(0), equalTo((byte) 0x01));
+        assertThat(buffer.get(1), equalTo((byte) 0x02));
+        assertThat(buffer.get(2), equalTo((byte) 0x03));
+        assertThat(buffer.get(3), equalTo((byte) 0x04));
+        assertThat(buffer.get(4), equalTo((byte) 0x05));
+        assertThat(buffer.get(5), equalTo((byte) 0x06));
+        assertThat(buffer.get(6), equalTo((byte) 0x07));
+        assertThat(buffer.get(7), equalTo((byte) 0x08));
+    }
+
+
+    @Test
     public void encodeObjectIntWrapperIncompatibleType() {
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("The parameter value type 'String' cannot be converted to the parameter type 'Integer'");
