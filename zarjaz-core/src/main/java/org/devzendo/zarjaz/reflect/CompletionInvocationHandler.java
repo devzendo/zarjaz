@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -51,6 +52,24 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
             logger.debug("Invoking [" + name + "] " + method.getDeclaringClass().getName() + "." + method.getName());
         }
 
+        String name = method.getName();
+        if (name.equals("hashCode")) {
+            return hashCode();
+        }
+        else if (name.equals("equals")) {
+            final Object other = args[0];
+            return (proxy == other) ||
+                   (other != null && Proxy.isProxyClass(other.getClass()) && this.equals(Proxy.getInvocationHandler(other)));
+        }
+        else if (name.equals("toString")) {
+            return "Client for endpoint '" + name + "', interface class '" + interfaceClass + "'";
+        }
+        else {
+            return invokeRemote(method, args, name);
+        }
+    }
+
+    private Object invokeRemote(final Method method, final Object[] args, final String name) {
         // And every response needs to reuse this logic. Synchronous calls can get.
 
         final CompletableFuture<Object> future = new CompletableFuture<Object>();
@@ -77,7 +96,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         try {
             transportHandler.invoke(method, args, future, timeoutRunnables);
         } catch (final Exception e) {
-            logger.warn("Transport handler invocation failed: " + e.getMessage());
+            logger.warn("Transport handler invocation failed: " + e.getMessage(), e);
             timeoutRunnables.remove(timeoutHandler);
             future.completeExceptionally(e);
         }
