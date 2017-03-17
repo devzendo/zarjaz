@@ -4,9 +4,9 @@ import org.devzendo.zarjaz.protocol.ByteBufferEncoder;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
+import org.devzendo.zarjaz.reflect.MethodReturnTypeResolver;
 import org.devzendo.zarjaz.transceiver.DataReceived;
 import org.devzendo.zarjaz.transceiver.Transceiver;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -46,7 +46,8 @@ public class TestServerRequestTransceiverObserver {
     private Method addOneMethod;
     private Method intentionallyNotRegisteredMethod;
     private final Map<NamedInterface, Object> implementations = new HashMap<>();
-    private final TransceiverTransport.ServerRequestTransceiverObserver observer = new TransceiverTransport.ServerRequestTransceiverObserver(invocationCodec, implementations::get);
+    private final MethodReturnTypeResolver typeResolver = new MethodReturnTypeResolver();
+    private final TransceiverTransport.ServerRequestTransceiverObserver observer = new TransceiverTransport.ServerRequestTransceiverObserver(invocationCodec, implementations::get, typeResolver);
 
     private interface SampleInterface {
         public int addOne(int input);

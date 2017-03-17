@@ -5,6 +5,7 @@ import org.devzendo.zarjaz.protocol.ByteBufferDecoder;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
 import org.devzendo.zarjaz.protocol.Protocol;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
+import org.devzendo.zarjaz.reflect.MethodReturnTypeResolver;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.Transceiver;
 import org.devzendo.zarjaz.transceiver.TransceiverObservableEvent;
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -48,6 +50,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     private final InvocationHashGenerator invocationHashGenerator;
     private final InvocationCodec invocationCodec;
     private final AtomicInteger sequence = new AtomicInteger(0);
+
     static class OutstandingMethodCall {
         public final byte[] hash;
         public final Method method;
@@ -72,8 +75,9 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         this.transceiver = transceiver;
         this.invocationHashGenerator = invocationHashGenerator;
         this.invocationCodec = invocationCodec;
-        this.serverResponseTransceiverObserver = new ServerResponseTransceiverObserver(outstandingMethodCalls);
-        this.serverRequestTransceiverObserver = new ServerRequestTransceiverObserver(invocationCodec, this::getImplementation);
+        final MethodReturnTypeResolver typeResolver = new MethodReturnTypeResolver();
+        this.serverResponseTransceiverObserver = new ServerResponseTransceiverObserver(outstandingMethodCalls, typeResolver);
+        this.serverRequestTransceiverObserver = new ServerRequestTransceiverObserver(invocationCodec, this::getImplementation, typeResolver);
     }
 
     /*
@@ -81,9 +85,12 @@ public class TransceiverTransport extends AbstractTransport implements Transport
      */
     static class ServerResponseTransceiverObserver implements TransceiverObserver {
         private final Map<Integer, OutstandingMethodCall> outstandingMethodCalls;
+        private final MethodReturnTypeResolver typeResolver;
 
-        public ServerResponseTransceiverObserver(final Map<Integer, OutstandingMethodCall> outstandingMethodCalls) {
+        public ServerResponseTransceiverObserver(final Map<Integer, OutstandingMethodCall> outstandingMethodCalls,
+                                                 final MethodReturnTypeResolver typeResolver) {
             this.outstandingMethodCalls = outstandingMethodCalls;
+            this.typeResolver = typeResolver;
         }
 
         @Override
@@ -125,8 +132,14 @@ public class TransceiverTransport extends AbstractTransport implements Transport
                 throw new IOException("Incoming method return with sequence " + sequence + " is not outstanding");
             }
             final Class<?> returnType = outstandingMethodCall.method.getReturnType();
-            final Object returnValue = decoder.readObject(returnType);
-            outstandingMethodCall.future.complete(returnValue);
+            if (returnType.isAssignableFrom(Future.class)) {
+                final Class<?> genericReturnType = typeResolver.getReturnType(outstandingMethodCall.method);
+                final Object returnValue = decoder.readObject(genericReturnType);
+                outstandingMethodCall.future.complete(returnValue);
+            } else {
+                final Object returnValue = decoder.readObject(returnType);
+                outstandingMethodCall.future.complete(returnValue);
+            }
             // TODO METRIC increment successful method decode
             // TODO REQUEST/RESPONSE LOGGING log method return
         }
@@ -138,10 +151,13 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     static class ServerRequestTransceiverObserver implements TransceiverObserver {
         private final InvocationCodec invocationCodec;
         private final Function<NamedInterface, Object> lookupImplementation;
+        private final MethodReturnTypeResolver typeResolver;
 
-        public ServerRequestTransceiverObserver(final InvocationCodec invocationCodec, final Function<NamedInterface, Object> lookupImplementation) {
+        public ServerRequestTransceiverObserver(final InvocationCodec invocationCodec, final Function<NamedInterface, Object> lookupImplementation,
+                                                final MethodReturnTypeResolver typeResolver) {
             this.invocationCodec = invocationCodec;
             this.lookupImplementation = lookupImplementation;
+            this.typeResolver = typeResolver;
         }
 
         @Override
@@ -185,11 +201,31 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             // TODO server request logging
             final NamedInterface namedInterface = new NamedInterface(endpointName, clientInterface);
             final Object implementation = lookupImplementation.apply(namedInterface);
+            logger.debug("invoking implementation method");
             final Object result = method.invoke(implementation, args);
             // TODO server response generation logging
             // TODO METRIC method duration timing
-            final List<ByteBuffer> resultBuffers = invocationCodec.generateMethodReturnResponse(sequence, method.getReturnType(), result);
-            replyTransceiver.writeBuffer(resultBuffers);
+            final Class<?> returnType = method.getReturnType();
+            if (method.getReturnType().isAssignableFrom(Future.class)) {
+                final Class genericReturnType = typeResolver.getReturnType(method);
+                logger.debug("Replying with generic return type " + genericReturnType);
+                final CompletableFuture<?> future = (CompletableFuture<?>) result;
+                future.whenComplete((completedValue, throwable) -> {
+                    final List<ByteBuffer> resultBuffers = invocationCodec.generateMethodReturnResponse(sequence, genericReturnType, completedValue);
+                    logger.debug("Replying future contents to requestor");
+                    try {
+                        replyTransceiver.writeBuffer(resultBuffers);
+                    } catch (final IOException e) {
+                        logger.warn("Could not reply with future contents: " + e.getMessage(), e);
+                        // TODO METRIC invocation failure
+                        // TODO reply with failure
+                    }
+                });
+            } else {
+                final List<ByteBuffer> resultBuffers = invocationCodec.generateMethodReturnResponse(sequence, returnType, result);
+                logger.debug("Replying to requestor");
+                replyTransceiver.writeBuffer(resultBuffers);
+            }
         }
     }
 

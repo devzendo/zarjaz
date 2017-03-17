@@ -3,9 +3,7 @@ package org.devzendo.zarjaz.transport;
 import org.apache.log4j.BasicConfigurator;
 import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
-import org.devzendo.zarjaz.protocol.InvocationCodec;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
-import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
 import org.devzendo.zarjaz.sample.primes.DefaultPrimeGenerator;
 import org.devzendo.zarjaz.sample.primes.PrimeGenerator;
 import org.devzendo.zarjaz.sample.timeout.DefaultTimeoutGenerator;
@@ -64,7 +62,7 @@ public class TestTransports {
 
     @Parameters
     public static Collection<Class> data() {
-        return asList(NullTransport.class /*, TransceiverTransport.class*/);
+        return asList(NullTransport.class , TransceiverTransport.class);
     }
 
     private final String userName = "Matt";

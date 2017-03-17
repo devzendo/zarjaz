@@ -2,6 +2,7 @@ package org.devzendo.zarjaz.transport;
 
 import org.devzendo.zarjaz.protocol.ByteBufferEncoder;
 import org.devzendo.zarjaz.protocol.Protocol;
+import org.devzendo.zarjaz.reflect.MethodReturnTypeResolver;
 import org.devzendo.zarjaz.transceiver.DataReceived;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,7 +36,8 @@ public class TestServerResponseTransceiverObserver {
     private final ByteBufferEncoder encoder = new ByteBufferEncoder();
     private final Map<Integer, TransceiverTransport.OutstandingMethodCall> outstandingMethodCalls = new ConcurrentHashMap<>();
     private final CompletableFuture<Object> future = new CompletableFuture<>();
-    private final TransceiverTransport.ServerResponseTransceiverObserver observer = new TransceiverTransport.ServerResponseTransceiverObserver(outstandingMethodCalls);
+    private final MethodReturnTypeResolver typeResolver = new MethodReturnTypeResolver();
+    private final TransceiverTransport.ServerResponseTransceiverObserver observer = new TransceiverTransport.ServerResponseTransceiverObserver(outstandingMethodCalls, typeResolver);
 
     private interface SampleInterface {
         String someMethod();
