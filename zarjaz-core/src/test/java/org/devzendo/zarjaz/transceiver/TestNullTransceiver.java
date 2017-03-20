@@ -44,17 +44,7 @@ public class TestNullTransceiver {
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-    private static class EventCollectingTransceiverObserver implements TransceiverObserver {
-        public List<TransceiverObservableEvent> events = new ArrayList<>();
-
-        @Override
-        public void eventOccurred(final TransceiverObservableEvent observableEvent) {
-            logger.debug("Received a " + observableEvent.getClass().getSimpleName());
-            events.add(observableEvent);
-        }
-    }
-
-    private NullTransceiver transceiver;
+    private Transceiver transceiver;
 
     @Before
     public void setupTransceiver() {
@@ -82,72 +72,10 @@ public class TestNullTransceiver {
 
         ThreadUtils.waitNoInterruption(500);
 
-        assertThat(observer.events, hasSize(2));
-        assertThat(observer.events.get(0).getData(), equalTo(buf0));
-        assertThat(observer.events.get(1).getData(), equalTo(buf1));
-    }
-
-    /*
-    @Test(timeout = 2000)
-    public void bidirectionalTest() throws IOException {
-        transceiver.open();
-
-        // the client transceiver is that transceiver that talks TO THE CLIENT
-        // the server transceiver is that transceiver that talks TO THE SERVER
-        final Transceiver.ClientTransceiver clientTransceiver = transceiver.getClientTransceiver();
-        final Transceiver.ServerTransceiver serverTransceiver = transceiver.getServerTransceiver();
-
-        // server sending to client
-        final EventCollectingTransceiverObserver clientObserver = new EventCollectingTransceiverObserver();
-        transceiver.getClientEnd().addTransceiverObserver(clientObserver);
-
-        final List<ByteBuffer> s2c0 = createByteBuffer();
-        transceiver.getServerWriter().writeBuffer(s2c0);
-        final List<ByteBuffer> s2c1 = createByteBuffer();
-        transceiver.getServerWriter().writeBuffer(s2c1);
-
-        ThreadUtils.waitNoInterruption(500);
-
-        assertThat(clientObserver.events, hasSize(2));
-        assertThat(clientObserver.events.get(0).getData(), equalTo(s2c0));
-        assertThat(clientObserver.events.get(1).getData(), equalTo(s2c1));
-
-        // and now in the other direction... client sending to server
-        final EventCollectingTransceiverObserver serverObserver = new EventCollectingTransceiverObserver();
-        final Transceiver.ClientTransceiver serverToClientTransceiver = serverTransceiver.getClientTransceiver();
-        serverToClientTransceiver.addTransceiverObserver(serverObserver);
-
-        final Transceiver.ServerTransceiver clientToServerTransceiver = clientTransceiver.getServerTransceiver();
-        final List<ByteBuffer> c2s0 = createByteBuffer();
-        clientToServerTransceiver.writeBuffer(c2s0);
-        final List<ByteBuffer> c2s1 = createByteBuffer();
-        clientToServerTransceiver.writeBuffer(c2s1);
-
-        ThreadUtils.waitNoInterruption(500);
-
-        assertThat(serverObserver.events, hasSize(2));
-        assertThat(serverObserver.events.get(0).getData(), equalTo(c2s0));
-        assertThat(serverObserver.events.get(1).getData(), equalTo(c2s1));
-    }
-*/
-    private class ReplyingTransceiverObserver implements TransceiverObserver {
-
-        private final List<ByteBuffer> buffersToReplyWith;
-
-        public ReplyingTransceiverObserver(List<ByteBuffer> buffersToReplyWith) {
-            this.buffersToReplyWith = buffersToReplyWith;
-        }
-
-        @Override
-        public void eventOccurred(final TransceiverObservableEvent observableEvent) {
-            try {
-                logger.debug("ReplyingTransceiverObserver got data " + observableEvent.getData() + " - replying");
-                observableEvent.getReplyWriter().writeBuffer(buffersToReplyWith);
-                logger.debug("replied");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        final List<TransceiverObservableEvent> events = observer.getCollectedEvents();
+        assertThat(events, hasSize(2));
+        assertThat(events.get(0).getData(), equalTo(buf0));
+        assertThat(events.get(1).getData(), equalTo(buf1));
     }
 
     @Test(timeout = 1000)
@@ -172,8 +100,9 @@ public class TestNullTransceiver {
         ThreadUtils.waitNoInterruption(500);
 
         // the server has received a reply to its request
-        assertThat(serverReplyObserver.events, hasSize(1));
-        assertThat(serverReplyObserver.events.get(0).getData(), equalTo(replyWith));
+        final List<TransceiverObservableEvent> collectedEvents = serverReplyObserver.getCollectedEvents();
+        assertThat(collectedEvents, hasSize(1));
+        assertThat(collectedEvents.get(0).getData(), equalTo(replyWith));
     }
 
     @Test
