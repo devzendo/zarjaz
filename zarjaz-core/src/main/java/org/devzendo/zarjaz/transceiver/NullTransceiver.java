@@ -1,7 +1,7 @@
 package org.devzendo.zarjaz.transceiver;
 
 import org.devzendo.commoncode.patterns.observer.ObserverList;
-import org.devzendo.commoncode.string.HexDump;
+import org.devzendo.zarjaz.util.BufferDumper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +58,10 @@ public class NullTransceiver implements Transceiver {
 
             queue.add(() -> {
                 logger.debug("Dispatching queued ByteBuffer to " + sendToEndName + " end");
-                NullTransceiver.dumpBuffers(data);
+                for (ByteBuffer buffer: data) {
+                    buffer.rewind(); // now fake the sending over a channel
+                }
+                BufferDumper.dumpBuffers(data);
                 sendToEnd.fireEvent(new DataReceived(data, replyWriter));
             });
         }
@@ -115,18 +118,6 @@ public class NullTransceiver implements Transceiver {
         sendToClient.setOtherEnd(sendToServer);
         sendToServer.setOtherEnd(sendToClient);
 
-    }
-
-    private static void dumpBuffers(final List<ByteBuffer> buffers) {
-        logger.debug(" --- There are " + buffers.size() + " buffer(s) ---");
-        for (ByteBuffer buffer: buffers) {
-            final byte[] array = buffer.array();
-            final String[] strings = HexDump.hexDump(array, 0, buffer.limit());
-            for (String string: strings) {
-                logger.debug(string);
-            }
-        }
-        logger.debug(" ---");
     }
 
     @Override

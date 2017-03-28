@@ -12,9 +12,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
+import static java.util.Collections.singletonList;
+import static org.devzendo.zarjaz.transceiver.BufferUtils.createByteBuffer;
+import static org.devzendo.zarjaz.transceiver.BufferUtils.duplicateOutgoingByteBuffer;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
@@ -65,17 +67,22 @@ public class TestNullTransceiver {
 
         transceiver.getServerEnd().addTransceiverObserver(observer);
 
-        final List<ByteBuffer> buf0 = createByteBuffer();
-        transceiver.getServerWriter().writeBuffer(buf0);
-        final List<ByteBuffer> buf1 = createByteBuffer();
-        transceiver.getServerWriter().writeBuffer(buf1);
+        final ByteBuffer buf0 = createByteBuffer();
+        final ByteBuffer expectedBuffer0 = duplicateOutgoingByteBuffer(buf0);
+        transceiver.getServerWriter().writeBuffer(singletonList(buf0));
+
+        final ByteBuffer buf1 = createByteBuffer();
+        final ByteBuffer expectedBuffer1 = duplicateOutgoingByteBuffer(buf1);
+        transceiver.getServerWriter().writeBuffer(singletonList(buf1));
 
         ThreadUtils.waitNoInterruption(500);
 
         final List<TransceiverObservableEvent> events = observer.getCollectedEvents();
         assertThat(events, hasSize(2));
-        assertThat(events.get(0).getData(), equalTo(buf0));
-        assertThat(events.get(1).getData(), equalTo(buf1));
+        assertThat(events.get(0).getData(), hasSize(1));
+        assertThat(events.get(0).getData().get(0), equalTo(expectedBuffer0));
+        assertThat(events.get(1).getData(), hasSize(1));
+        assertThat(events.get(1).getData().get(0), equalTo(expectedBuffer1));
     }
 
     @Test(timeout = 1000)
@@ -87,28 +94,30 @@ public class TestNullTransceiver {
         transceiver.getClientEnd().addTransceiverObserver(serverReplyObserver);
 
         // the server will reply to its request
-        final List<ByteBuffer> replyWith = createByteBuffer();
-        final ReplyingTransceiverObserver replyingObserver = new ReplyingTransceiverObserver(replyWith);
+        final ByteBuffer replyWithBuffer = createByteBuffer();
+        final ByteBuffer expectedReplyWithBuffer = duplicateOutgoingByteBuffer(replyWithBuffer);
+        final ReplyingTransceiverObserver replyingObserver = new ReplyingTransceiverObserver(singletonList(replyWithBuffer));
         transceiver.getServerEnd().addTransceiverObserver(replyingObserver);
 
         // the server transceiver is that transceiver that talks TO THE SERVER
         final Transceiver.BufferWriter toServerTransceiver = transceiver.getServerWriter();
         // send the request to the server
-        logger.debug("sending initial buffer to server");
-        toServerTransceiver.writeBuffer(createByteBuffer());
+        logger.debug("sending initial receiveBuffer to server");
+        toServerTransceiver.writeBuffer(singletonList(createByteBuffer()));
 
         ThreadUtils.waitNoInterruption(500);
 
         // the server has received a reply to its request
         final List<TransceiverObservableEvent> collectedEvents = serverReplyObserver.getCollectedEvents();
         assertThat(collectedEvents, hasSize(1));
-        assertThat(collectedEvents.get(0).getData(), equalTo(replyWith));
+        assertThat(collectedEvents.get(0).getData(), hasSize(1));
+        assertThat(collectedEvents.get(0).getData().get(0), equalTo(expectedReplyWithBuffer));
     }
 
     @Test
     public void cannotSendToUnopenedServerTransceiver() throws IOException {
         expectTransceiverNotOpen();
-        transceiver.getServerWriter().writeBuffer(createByteBuffer());
+        transceiver.getServerWriter().writeBuffer(singletonList(createByteBuffer()));
     }
 
     @Test
@@ -118,7 +127,7 @@ public class TestNullTransceiver {
         ThreadUtils.waitNoInterruption(250);
         transceiver.close();
         ThreadUtils.waitNoInterruption(250);
-        transceiver.getServerWriter().writeBuffer(createByteBuffer());
+        transceiver.getServerWriter().writeBuffer(singletonList(createByteBuffer()));
     }
 
     private void expectTransceiverNotOpen() {
@@ -127,15 +136,4 @@ public class TestNullTransceiver {
     }
 
     // TODO exception if data sent to non open transceiver
-
-    private byte startByte = 0;
-    private List<ByteBuffer> createByteBuffer() {
-        final List<ByteBuffer> list = new ArrayList<>();
-        final ByteBuffer bb = ByteBuffer.allocate(10);
-        for (int i = 0; i < 10; i++) {
-            bb.put(startByte++);
-        }
-        list.add(bb);
-        return list;
-    }
 }

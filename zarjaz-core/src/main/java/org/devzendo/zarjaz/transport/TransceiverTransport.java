@@ -298,7 +298,11 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             logger.debug("Listening for incoming requests from the client");
             transceiver.getServerEnd().addTransceiverObserver(serverRequestTransceiverObserver);
         }
-        transceiver.open();
+        try {
+            transceiver.open();
+        } catch (final IOException e) {
+            logger.error("Could not open transceiver: " + e.getMessage(), e);
+        }
         // TODO how do incoming server responses get decoded and dispatched to the server impl?
     }
 

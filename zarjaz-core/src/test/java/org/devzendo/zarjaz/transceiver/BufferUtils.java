@@ -1,9 +1,6 @@
 package org.devzendo.zarjaz.transceiver;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -20,19 +17,21 @@ import java.util.List;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public interface Transceiver extends Closeable {
-    public interface BufferWriter {
-        void writeBuffer(List<ByteBuffer> data) throws IOException;
+public class BufferUtils {
+    private static byte startByte = 0;
+
+    public static ByteBuffer createByteBuffer() {
+        final int bufferSize = 10;
+        final ByteBuffer bb = ByteBuffer.allocate(bufferSize);
+        for (int i = 0; i < bufferSize; i++) {
+            bb.put(startByte++);
+        }
+        return bb;
     }
 
-    public interface ObservableTransceiverEnd {
-        void addTransceiverObserver(TransceiverObserver observer);
-        void removeTransceiverObserver(TransceiverObserver observer);
+    public static ByteBuffer duplicateOutgoingByteBuffer(final ByteBuffer buffer) {
+        final ByteBuffer duplicate = buffer.duplicate();
+        duplicate.rewind();
+        return duplicate;
     }
-
-    void open() throws IOException;
-
-    ObservableTransceiverEnd getClientEnd();
-    ObservableTransceiverEnd getServerEnd();
-    BufferWriter getServerWriter();
 }
