@@ -37,8 +37,8 @@ import static org.hamcrest.Matchers.hasSize;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class TestNullTransceiver {
-    private static final Logger logger = LoggerFactory.getLogger(TestNullTransceiver.class);
+public class TestTransceivers {
+    private static final Logger logger = LoggerFactory.getLogger(TestTransceivers.class);
 
     {
         BasicConfigurator.configure();
