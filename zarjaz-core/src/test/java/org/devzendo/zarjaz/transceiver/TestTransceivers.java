@@ -8,13 +8,17 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.List;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.devzendo.zarjaz.transceiver.BufferUtils.createByteBuffer;
 import static org.devzendo.zarjaz.transceiver.BufferUtils.duplicateOutgoingByteBuffer;
@@ -37,6 +41,7 @@ import static org.hamcrest.Matchers.hasSize;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@RunWith(Parameterized.class)
 public class TestTransceivers {
     private static final Logger logger = LoggerFactory.getLogger(TestTransceivers.class);
 
@@ -44,16 +49,29 @@ public class TestTransceivers {
         BasicConfigurator.configure();
     }
 
+    @Parameterized.Parameters
+    public static Collection<Class> data() {
+        return asList(NullTransceiver.class/*, UDPTransceiver.class*/);
+    }
+
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
+    private final Class<? extends Transceiver> transceiverClass;
     private Transceiver serverTransceiver;
     private Transceiver clientTransceiver;
 
+    // runs before mocks initialised, so do real construction in @Before.
+    public TestTransceivers(final Class<? extends Transceiver> transceiverClass) {
+        this.transceiverClass = transceiverClass;
+    }
+
     @Before
     public void setupTransceiver() {
-        serverTransceiver = new NullTransceiver();
-        clientTransceiver = serverTransceiver;
+        if (transceiverClass.equals(NullTransceiver.class)) {
+            serverTransceiver = new NullTransceiver();
+            clientTransceiver = serverTransceiver;
+        }
     }
 
     @After
