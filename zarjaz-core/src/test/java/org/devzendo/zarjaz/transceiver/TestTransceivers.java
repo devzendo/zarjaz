@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
@@ -51,7 +52,7 @@ public class TestTransceivers {
 
     @Parameterized.Parameters
     public static Collection<Class> data() {
-        return asList(NullTransceiver.class/*, UDPTransceiver.class*/);
+        return asList(NullTransceiver.class, UDPTransceiver.class);
     }
 
     @Rule
@@ -67,10 +68,13 @@ public class TestTransceivers {
     }
 
     @Before
-    public void setupTransceiver() {
+    public void setupTransceiver() throws IOException {
         if (transceiverClass.equals(NullTransceiver.class)) {
             serverTransceiver = new NullTransceiver();
             clientTransceiver = serverTransceiver;
+        } else if (transceiverClass.equals(UDPTransceiver.class)) {
+            serverTransceiver = UDPTransceiver.createServer(new InetSocketAddress(9876));
+            clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(9876), true);
         }
     }
 
@@ -86,6 +90,8 @@ public class TestTransceivers {
 
     @Test(timeout = 2000)
     public void bufferSentFromClientIsReceivedByServer() throws IOException {
+        clientTransceiver.open();
+
         final EventCollectingTransceiverObserver observer = new EventCollectingTransceiverObserver();
         serverTransceiver.getServerEnd().addTransceiverObserver(observer);
         serverTransceiver.open();
@@ -123,8 +129,6 @@ public class TestTransceivers {
 
     @Test(timeout = 1000)
     public void sentBufferCanBeRepliedTo() throws IOException {
-        serverTransceiver.open();
-
         // the client collects the reply coming from the server
         final EventCollectingTransceiverObserver serverReplyObserver = new EventCollectingTransceiverObserver();
         clientTransceiver.getClientEnd().addTransceiverObserver(serverReplyObserver);
@@ -135,11 +139,13 @@ public class TestTransceivers {
         final ReplyingTransceiverObserver replyingObserver = new ReplyingTransceiverObserver(singletonList(replyWithBuffer));
         serverTransceiver.getServerEnd().addTransceiverObserver(replyingObserver);
 
-        // the server transceiver is that transceiver that talks TO THE SERVER
-        final Transceiver.BufferWriter toServerTransceiver = clientTransceiver.getServerWriter();
+        serverTransceiver.open();
+        clientTransceiver.open();
+
         // send the request to the server
-        logger.debug("sending initial receiveBuffer to server");
-        toServerTransceiver.writeBuffer(singletonList(createByteBuffer()));
+        final Transceiver.BufferWriter serverWriter = clientTransceiver.getServerWriter();
+        logger.debug("sending initial uffer to server");
+        serverWriter.writeBuffer(singletonList(createByteBuffer()));
 
         ThreadUtils.waitNoInterruption(500);
 
@@ -159,11 +165,11 @@ public class TestTransceivers {
     @Test
     public void cannotSendToClosedServerTransceiver() throws IOException {
         expectTransceiverNotOpen();
-        serverTransceiver.open();
+        clientTransceiver.open();
         ThreadUtils.waitNoInterruption(250);
-        serverTransceiver.close();
+        clientTransceiver.close();
         ThreadUtils.waitNoInterruption(250);
-        serverTransceiver.getServerWriter().writeBuffer(singletonList(createByteBuffer()));
+        clientTransceiver.getServerWriter().writeBuffer(singletonList(createByteBuffer()));
     }
 
     private void expectTransceiverNotOpen() {

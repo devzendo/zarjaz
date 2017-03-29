@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.transceiver;
 
+import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.commoncode.patterns.observer.ObserverList;
 import org.devzendo.zarjaz.util.BufferDumper;
 import org.slf4j.Logger;
@@ -101,6 +102,7 @@ public class NullTransceiver implements Transceiver {
                         runnable.run();
                         logger.debug("Run");
                     }
+                    logger.info("Dispatch thread ended");
                 } catch (InterruptedException e) {
                     logger.warn("Dispatch thread interrupted");
                     active = false;
@@ -117,23 +119,26 @@ public class NullTransceiver implements Transceiver {
         sendToServer = new NullBufferWriter(serverObservableEnd, "server");
         sendToClient.setOtherEnd(sendToServer);
         sendToServer.setOtherEnd(sendToClient);
-
     }
 
     @Override
     public void close() throws IOException {
         logger.info("Closing NullTransceiver");
         active = false;
-        if (dispatchThread.isAlive()) {
+        while (dispatchThread.isAlive()) {
             dispatchThread.interrupt();
+            ThreadUtils.waitNoInterruption(100);
         }
+        logger.info("Closed NullTransceiver");
     }
 
     @Override
     public void open() {
-        logger.info("Opening NullTransceiver");
-        dispatchThread.start();
-        active = true;
+        if (!active) {
+            logger.info("Opening NullTransceiver");
+            dispatchThread.start();
+            active = true;
+        }
     }
 
     @Override

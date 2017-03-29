@@ -15,6 +15,7 @@ import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -38,6 +39,7 @@ public class UDPTransceiver implements Transceiver {
     private final DatagramChannel channel;
     private volatile ServerObservableTransceiverEnd serverEnd;
     private volatile ClientObservableTransceiverEnd clientEnd;
+    private volatile boolean active = false;
 
     public UDPTransceiver(final SocketAddress remote) throws IOException {
         this.channel = DatagramChannel.open();
@@ -50,6 +52,7 @@ public class UDPTransceiver implements Transceiver {
     }
 
     public static UDPTransceiver createServer(final SocketAddress remote) throws IOException {
+        logger.info("Creating server UDPTransceiver on address " + remote);
         final DatagramChannel channel = DatagramChannel.open();
         final DatagramSocket socket = channel.socket();
         socket.bind(remote);
@@ -57,6 +60,7 @@ public class UDPTransceiver implements Transceiver {
     }
 
     public static UDPTransceiver createClient(final SocketAddress remote, final boolean broadcast) throws IOException {
+        logger.info("Creating client UDPTransceiver on address " + remote + "; " + (broadcast ? "broadcast" : "non-broadcast"));
         final DatagramChannel channel = DatagramChannel.open();
         final DatagramSocket socket = channel.socket();
         socket.setBroadcast(broadcast);
@@ -82,6 +86,7 @@ public class UDPTransceiver implements Transceiver {
         if (clientEnd != null) {
             clientEnd.open();
         }
+        active = true;
     }
 
     @Override
@@ -105,18 +110,23 @@ public class UDPTransceiver implements Transceiver {
         if (!remote.isPresent()) {
             throw new IllegalStateException("No endpoint to which to write");
         }
-        return new RemoteBufferWriter(remote.get(), channel);
+        return new RemoteBufferWriter(() -> active, remote.get(), channel);
     }
 
     @Override
     public void close() throws IOException {
         logger.info("Closing UDPTransceiver");
+        active = false;
         if (serverEnd != null) {
             serverEnd.close();
         }
         if (clientEnd != null) {
             clientEnd.close();
         }
+        if (channel.isConnected()) {
+            channel.disconnect();
+        }
+        channel.close();
     }
 
     private static class ClientObservableTransceiverEnd extends UDPObservableTransceiverEnd {
@@ -181,7 +191,7 @@ public class UDPTransceiver implements Transceiver {
                         logger.debug("Received UDP data:");
                         BufferDumper.dumpBuffers(buffers);
                     }
-                    final BufferWriter replyWriter = new RemoteBufferWriter(remote, channel);
+                    final BufferWriter replyWriter = new RemoteBufferWriter(() -> active, remote, channel);
                     fireEvent(new DataReceived(buffers, replyWriter));
                 } catch (final ClosedByInterruptException cli) {
                     logger.info("Channel closed");
@@ -225,16 +235,22 @@ public class UDPTransceiver implements Transceiver {
 
     private static class RemoteBufferWriter implements BufferWriter {
         private final ByteBuffer writeBuffer = ByteBuffer.allocate(Protocol.BUFFER_SIZE * 4);
+        private final Supplier<Boolean> isActive;
         private final SocketAddress socketAddress;
         private final DatagramChannel channel;
 
-        public RemoteBufferWriter(final SocketAddress socketAddress, final DatagramChannel channel) {
+        public RemoteBufferWriter(final Supplier<Boolean> isActive, final SocketAddress socketAddress, final DatagramChannel channel) {
+            this.isActive = isActive;
             this.socketAddress = socketAddress;
             this.channel = channel;
         }
 
         @Override
         public void writeBuffer(final List<ByteBuffer> data) throws IOException {
+            if (!isActive.get()) {
+                throw new IllegalStateException("Transceiver not open");
+            }
+
             //logger.debug("Sending receiveBuffer list");
             // Need to write all the data buffers in one write, no way though?
             writeBuffer.clear();
