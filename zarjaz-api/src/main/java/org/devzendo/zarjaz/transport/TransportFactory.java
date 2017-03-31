@@ -1,5 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.zarjaz.transceiver.Transceiver;
+
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org <http://devzendo.org>
  * <p/>
@@ -17,4 +19,5 @@ package org.devzendo.zarjaz.transport;
  */
 public interface TransportFactory {
     public Transport create();
+    public Transport create(Transceiver transceiver);
 }

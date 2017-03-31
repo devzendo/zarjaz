@@ -10,6 +10,7 @@ import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.Transceiver;
 import org.devzendo.zarjaz.transceiver.TransceiverObservableEvent;
 import org.devzendo.zarjaz.transceiver.TransceiverObserver;
+import org.devzendo.zarjaz.util.BufferDumper;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.slf4j.Logger;
@@ -246,6 +247,10 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             final byte[] hash = methodsToHashMap.get(method);
             // Allocate a sequence number for this call and register as an outstanding call.
             final int thisSequence = sequence.incrementAndGet();
+            if (logger.isDebugEnabled()) {
+                logger.debug("Invoking [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName() + " hash " + HexDump.bytes2hex(hash) + " sequence " + thisSequence);
+            }
+
             outstandingMethodCalls.put(thisSequence, new OutstandingMethodCall(hash, method, future));
             // TODO METRIC increment number of outstanding method calls
             timeoutRunnables.addFirst(() -> {
@@ -254,6 +259,10 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             });
 
             final List<ByteBuffer> bytes = invocationCodec.generateHashedMethodInvocation(thisSequence, endpointName, interfaceClass, method, args);
+            if (logger.isDebugEnabled()) {
+                logger.debug("Hashed method invocation:");
+                BufferDumper.dumpBuffers(bytes);
+            }
             try {
                 transceiver.getServerWriter().writeBuffer(bytes);
             } catch (IOException e) {

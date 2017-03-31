@@ -251,25 +251,29 @@ public class UDPTransceiver implements Transceiver {
                 throw new IllegalStateException("Transceiver not open");
             }
 
-            //logger.debug("Sending receiveBuffer list");
+            logger.debug("Sending buffer list");
             // Need to write all the data buffers in one write, no way though?
             writeBuffer.clear();
             for (ByteBuffer eachData: data) {
                 eachData.flip();
-                //BufferDumper.dumpBuffer("individual send buffer", eachData);
+                // TODO test for this
+                if (eachData.remaining() == 0) {
+                    throw new IOException("RemoteBufferWriter has been given pre-flipped ByteBuffers");
+                }
+                BufferDumper.dumpBuffer("individual send buffer", eachData);
                 final int limit = eachData.limit();
-                //logger.debug("putting length int of " + limit);
+                logger.debug("putting length int of " + limit);
                 writeBuffer.putInt(limit);
                 writeBuffer.put(eachData);
             }
-            //logger.debug("putting zero length");
+            logger.debug("putting zero length");
             writeBuffer.putInt(0);
             writeBuffer.flip();
             if (logger.isDebugEnabled()) {
                 BufferDumper.dumpBuffer("writeBuffer sending " + writeBuffer.limit() + " bytes to socket address " + socketAddress, writeBuffer);
             }
             channel.send(writeBuffer, socketAddress);
-            //logger.info("writeBuffer sent");
+            logger.info("writeBuffer sent");
         }
     }
 }

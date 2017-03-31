@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.zarjaz.transceiver.Transceiver;
 import org.devzendo.zarjaz.validation.DefaultClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.DefaultServerImplementationValidator;
 
@@ -23,5 +24,10 @@ public class NullTransportFactory implements TransportFactory {
     @Override
     public Transport create() {
         return new NullTransport(new DefaultServerImplementationValidator(), new DefaultClientInterfaceValidator());
+    }
+
+    @Override
+    public Transport create(final Transceiver transceiver) {
+        throw new UnsupportedOperationException("NullTransportFactory cannot create Transports with transceivers");
     }
 }
