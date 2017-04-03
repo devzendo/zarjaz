@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.protocol;
 
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.transport.EndpointName;
 
 import java.lang.reflect.Method;
@@ -119,9 +120,9 @@ public interface InvocationCodec {
      */
     Map<Method, byte[]> getMethodsToHashMap(EndpointName endpointName, Class<?> interfaceClass);
 
-    List<ByteBuffer> generateHashedMethodInvocation(int sequence, EndpointName endpointName, Class<?> interfaceClass, Method method, Object[] args);
+    List<ReadableByteBuffer> generateHashedMethodInvocation(int sequence, EndpointName endpointName, Class<?> interfaceClass, Method method, Object[] args);
 
-    List<ByteBuffer> generateMethodReturnResponse(int sequence, Class<?> returnType, Object result);
+    List<ReadableByteBuffer> generateMethodReturnResponse(int sequence, Class<?> returnType, Object result);
 
     abstract class DecodedFrame {
         // nothing here yet
@@ -139,5 +140,5 @@ public interface InvocationCodec {
         }
     }
 
-    Optional<DecodedFrame> decodeFrame(List<ByteBuffer> frames);
+    Optional<DecodedFrame> decodeFrame(List<ReadableByteBuffer> frames);
 }

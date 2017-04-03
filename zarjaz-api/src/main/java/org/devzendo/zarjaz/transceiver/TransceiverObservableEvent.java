@@ -1,6 +1,7 @@
 package org.devzendo.zarjaz.transceiver;
 
 import org.devzendo.commoncode.patterns.observer.ObservableEvent;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -23,6 +24,6 @@ import java.util.List;
 public interface TransceiverObservableEvent extends ObservableEvent {
     boolean isFailure();
     Exception getCause();
-    List<ByteBuffer> getData();
+    List<ReadableByteBuffer> getData();
     Transceiver.BufferWriter getReplyWriter();
 }

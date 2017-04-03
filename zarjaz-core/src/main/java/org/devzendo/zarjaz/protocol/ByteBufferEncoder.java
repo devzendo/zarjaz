@@ -1,10 +1,13 @@
 package org.devzendo.zarjaz.protocol;
 
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
+import org.devzendo.zarjaz.nio.DefaultWritableByteBuffer;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
+import org.devzendo.zarjaz.nio.WritableByteBuffer;
+
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -23,31 +26,32 @@ import java.util.List;
  */
 public class ByteBufferEncoder {
 
-    private final LinkedList<ByteBuffer> buffers = new LinkedList<>();
+    private final LinkedList<WritableByteBuffer> buffers = new LinkedList<>();
 
-    public List<ByteBuffer> getBuffers() {
-        buffers.forEach(Buffer::flip);
+    // TODO this is wrong? should this be flipping? this is the current behaviour, so replicate it with the current right type
+    // then refactoring will be made much easier as I can lean on the compiler to find bad users.
+    public List<ReadableByteBuffer> getBuffers() {
+        return Collections.unmodifiableList(buffers.stream().map(WritableByteBuffer::flip).collect(Collectors.toList()));
         // TODO reset?
-        return Collections.unmodifiableList(buffers);
     }
 
     public void writeByte(final byte b) {
-        ByteBuffer currentBuffer = getCurrentBuffer();
+        WritableByteBuffer currentBuffer = getCurrentBuffer();
         if (currentBuffer.remaining() == 0) {
             currentBuffer = addBuffer();
         }
         currentBuffer.put(b);
     }
 
-    private ByteBuffer getCurrentBuffer() {
+    private WritableByteBuffer getCurrentBuffer() {
         if (buffers.size() == 0) {
             addBuffer();
         }
         return buffers.getLast();
     }
 
-    private ByteBuffer addBuffer() {
-        final ByteBuffer buffer = ByteBuffer.allocate(Protocol.BUFFER_SIZE);
+    private WritableByteBuffer addBuffer() {
+        final WritableByteBuffer buffer = DefaultWritableByteBuffer.allocate(Protocol.BUFFER_SIZE);
         buffers.add(buffer);
         return buffer;
     }
@@ -55,7 +59,7 @@ public class ByteBufferEncoder {
     // Conversion of other primitive data types is faster with a buffer and a call to writeBytes, rather than
     // multiple calls to writeByte.
     public void writeBytes(final byte[] bs) {
-        ByteBuffer currentBuffer = getCurrentBuffer();
+        WritableByteBuffer currentBuffer = getCurrentBuffer();
         int length = bs.length;
         int offset = 0;
         int remaining = currentBuffer.remaining();

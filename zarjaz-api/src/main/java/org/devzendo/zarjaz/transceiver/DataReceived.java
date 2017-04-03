@@ -1,6 +1,7 @@
 package org.devzendo.zarjaz.transceiver;
 
-import java.nio.ByteBuffer;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
+
 import java.util.List;
 
 /**
@@ -19,10 +20,10 @@ import java.util.List;
  * limitations under the License.
  */
 public class DataReceived implements TransceiverObservableEvent {
-    private final List<ByteBuffer> buffers;
+    private final List<ReadableByteBuffer> buffers;
     private final Transceiver.BufferWriter replyWriter;
 
-    public DataReceived(final List<ByteBuffer> buffers, final Transceiver.BufferWriter replyWriter) {
+    public DataReceived(final List<ReadableByteBuffer> buffers, final Transceiver.BufferWriter replyWriter) {
         this.buffers = buffers;
         this.replyWriter = replyWriter;
     }
@@ -38,7 +39,7 @@ public class DataReceived implements TransceiverObservableEvent {
     }
 
     @Override
-    public List<ByteBuffer> getData() {
+    public List<ReadableByteBuffer> getData() {
         return buffers;
     }
 

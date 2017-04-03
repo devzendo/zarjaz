@@ -1,5 +1,7 @@
 package org.devzendo.zarjaz.nio;
 
+import java.nio.ByteBuffer;
+
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
  * <p>
@@ -17,4 +19,25 @@ package org.devzendo.zarjaz.nio;
  */
 public interface WritableByteBuffer {
     ReadableByteBuffer flip();
+
+    int remaining();
+
+    int limit();
+
+    void put(byte b);
+
+    void put(byte[] bs, int offset, int remaining);
+
+    void put(byte[] bs);
+
+    void putInt(int i);
+
+    void put(ReadableByteBuffer readableByteBuffer);
+
+    void clear();
+
+    ByteBuffer raw();
+
+    void rewind();
+
 }

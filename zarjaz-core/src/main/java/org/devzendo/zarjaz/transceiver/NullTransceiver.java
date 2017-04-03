@@ -2,6 +2,7 @@ package org.devzendo.zarjaz.transceiver;
 
 import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.commoncode.patterns.observer.ObserverList;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.util.BufferDumper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,17 +52,20 @@ public class NullTransceiver implements Transceiver {
         }
 
         @Override
-        public void writeBuffer(final List<ByteBuffer> data) throws IOException {
+        public void writeBuffer(final List<ReadableByteBuffer> data) throws IOException {
             if (!active) {
                 throw new IllegalStateException("Transceiver not open");
             }
             logger.debug("Queueing ByteBuffer for sending to observers");
+            for (ReadableByteBuffer buffer: data) {
+                if (buffer.remaining() == 0) {
+                    throw new IOException("RemoteBufferWriter has been given pre-flipped ByteBuffers");
+                }
+                buffer.raw().rewind(); // now fake the sending over a channel
+            }
 
             queue.add(() -> {
                 logger.debug("Dispatching queued ByteBuffer to " + sendToEndName + " end");
-                for (ByteBuffer buffer: data) {
-                    buffer.rewind(); // now fake the sending over a channel
-                }
                 BufferDumper.dumpBuffers(data);
                 sendToEnd.fireEvent(new DataReceived(data, replyWriter));
             });

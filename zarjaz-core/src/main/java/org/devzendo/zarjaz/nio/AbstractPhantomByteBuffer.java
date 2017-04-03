@@ -24,8 +24,33 @@ public class AbstractPhantomByteBuffer {
         this.data = data;
     }
 
-    protected void flipData() {
+    protected final void flipData() {
         flipped = true;
         data.flip();
+    }
+
+    protected final void assertNotFlipped() {
+        if (flipped) {
+            throw new IllegalStateException("Readable/WritableByteBuffer read/write operation performed when already flipped");
+        }
+    }
+
+    public final int remaining() {
+        // TODO check?
+        return data.remaining();
+    }
+
+    public boolean hasRemaining() {
+        return data.hasRemaining();
+    }
+
+    public final int limit() {
+        // TODO check?
+        return data.limit();
+    }
+
+    public final int capacity() {
+        // TODO check?
+        return data.capacity();
     }
 }

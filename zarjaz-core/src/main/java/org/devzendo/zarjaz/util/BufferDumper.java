@@ -1,6 +1,7 @@
 package org.devzendo.zarjaz.util;
 
 import org.devzendo.commoncode.string.HexDump;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,11 +55,11 @@ public class BufferDumper {
         logger.debug("data equal; true");
     }
 
-    public static void dumpBuffers(final List<ByteBuffer> buffers) {
+    public static void dumpBuffers(final List<ReadableByteBuffer> buffers) {
         logger.debug(" --- There are " + buffers.size() + " buffer(s) ---");
         int count = 0;
-        for (ByteBuffer buffer: buffers) {
-            dumpBuffer(" --- buffer # " + (count++), buffer);
+        for (ReadableByteBuffer buffer: buffers) {
+            dumpBuffer(" --- buffer # " + (count++), buffer.raw());
         }
         logger.debug(" ---");
     }

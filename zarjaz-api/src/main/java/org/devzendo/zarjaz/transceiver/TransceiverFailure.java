@@ -1,5 +1,7 @@
 package org.devzendo.zarjaz.transceiver;
 
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
+
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -36,7 +38,7 @@ public class TransceiverFailure implements TransceiverObservableEvent {
     }
 
     @Override
-    public List<ByteBuffer> getData() {
+    public List<ReadableByteBuffer> getData() {
         throw new UnsupportedOperationException("No data in a failure");
     }
 

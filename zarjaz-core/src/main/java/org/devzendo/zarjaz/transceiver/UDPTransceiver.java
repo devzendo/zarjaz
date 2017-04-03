@@ -1,6 +1,10 @@
 package org.devzendo.zarjaz.transceiver;
 
 import org.devzendo.commoncode.patterns.observer.ObserverList;
+import org.devzendo.zarjaz.nio.DefaultReadableByteBuffer;
+import org.devzendo.zarjaz.nio.DefaultWritableByteBuffer;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
+import org.devzendo.zarjaz.nio.WritableByteBuffer;
 import org.devzendo.zarjaz.protocol.Protocol;
 import org.devzendo.zarjaz.util.BufferDumper;
 import org.slf4j.Logger;
@@ -168,7 +172,7 @@ public class UDPTransceiver implements Transceiver {
                     final SocketAddress remote = channel.receive(receiveBuffer);
                     receiveBuffer.flip();
                     //BufferDumper.dumpBuffer("Received from SocketAddress " + remote, receiveBuffer);
-                    final List<ByteBuffer> buffers = new ArrayList<ByteBuffer>();
+                    final List<ReadableByteBuffer> buffers = new ArrayList<ReadableByteBuffer>();
                     int length = 0;
                     do {
                         //logger.debug("Top of chunk loop, receiveBuffer position " + receiveBuffer.position() + " limit " + receiveBuffer.limit() + " - getting a length int...");
@@ -183,7 +187,7 @@ public class UDPTransceiver implements Transceiver {
                             //logger.debug("chunk limit is " + chunk.limit() + " remaining " + chunk.remaining() + " position " + chunk.position());
                             //logger.debug("receiveBuffer limit is " + receiveBuffer.limit() + " remaining " + receiveBuffer.remaining() + " position " + receiveBuffer.position());
                             receiveBuffer.position(receiveBuffer.position() + length);
-                            buffers.add(chunk);
+                            buffers.add(new DefaultReadableByteBuffer(chunk));
                         }
                     } while (length != 0);
                     // End of receiveBuffer stream..
@@ -234,7 +238,7 @@ public class UDPTransceiver implements Transceiver {
     };
 
     private static class RemoteBufferWriter implements BufferWriter {
-        private final ByteBuffer writeBuffer = ByteBuffer.allocate(Protocol.BUFFER_SIZE * 4);
+        private final WritableByteBuffer writeBuffer = DefaultWritableByteBuffer.allocate(Protocol.BUFFER_SIZE * 4);
         private final Supplier<Boolean> isActive;
         private final SocketAddress socketAddress;
         private final DatagramChannel channel;
@@ -246,7 +250,7 @@ public class UDPTransceiver implements Transceiver {
         }
 
         @Override
-        public void writeBuffer(final List<ByteBuffer> data) throws IOException {
+        public void writeBuffer(final List<ReadableByteBuffer> data) throws IOException {
             if (!isActive.get()) {
                 throw new IllegalStateException("Transceiver not open");
             }
@@ -254,25 +258,24 @@ public class UDPTransceiver implements Transceiver {
             logger.debug("Sending buffer list");
             // Need to write all the data buffers in one write, no way though?
             writeBuffer.clear();
-            for (ByteBuffer eachData: data) {
-                eachData.flip();
+            for (ReadableByteBuffer readable: data) {
                 // TODO test for this
-                if (eachData.remaining() == 0) {
+                if (readable.remaining() == 0) {
                     throw new IOException("RemoteBufferWriter has been given pre-flipped ByteBuffers");
                 }
-                BufferDumper.dumpBuffer("individual send buffer", eachData);
-                final int limit = eachData.limit();
+                BufferDumper.dumpBuffer("individual send buffer", readable.raw());
+                final int limit = readable.limit();
                 logger.debug("putting length int of " + limit);
                 writeBuffer.putInt(limit);
-                writeBuffer.put(eachData);
+                writeBuffer.put(readable);
             }
             logger.debug("putting zero length");
             writeBuffer.putInt(0);
             writeBuffer.flip();
             if (logger.isDebugEnabled()) {
-                BufferDumper.dumpBuffer("writeBuffer sending " + writeBuffer.limit() + " bytes to socket address " + socketAddress, writeBuffer);
+                BufferDumper.dumpBuffer("writeBuffer sending " + writeBuffer.limit() + " bytes to socket address " + socketAddress, writeBuffer.raw());
             }
-            channel.send(writeBuffer, socketAddress);
+            channel.send(writeBuffer.raw(), socketAddress);
             logger.info("writeBuffer sent");
         }
     }

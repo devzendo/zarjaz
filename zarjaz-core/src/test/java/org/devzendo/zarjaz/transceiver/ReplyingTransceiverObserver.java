@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.transceiver;
 
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,9 +26,9 @@ import java.util.List;
 public class ReplyingTransceiverObserver implements TransceiverObserver {
     private static final Logger logger = LoggerFactory.getLogger(ReplyingTransceiverObserver.class);
 
-    private final List<ByteBuffer> buffersToReplyWith;
+    private final List<ReadableByteBuffer> buffersToReplyWith;
 
-    public ReplyingTransceiverObserver(List<ByteBuffer> buffersToReplyWith) {
+    public ReplyingTransceiverObserver(List<ReadableByteBuffer> buffersToReplyWith) {
         this.buffersToReplyWith = buffersToReplyWith;
     }
 

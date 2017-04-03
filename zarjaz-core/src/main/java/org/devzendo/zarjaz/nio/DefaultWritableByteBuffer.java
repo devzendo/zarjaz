@@ -19,6 +19,9 @@ import java.nio.ByteBuffer;
  */
 public class DefaultWritableByteBuffer extends AbstractPhantomByteBuffer implements WritableByteBuffer {
 
+    public static WritableByteBuffer allocate(int capacity) {
+        return new DefaultWritableByteBuffer(ByteBuffer.allocate(capacity));
+    }
 
     public DefaultWritableByteBuffer(final ByteBuffer data) {
         super(data);
@@ -28,5 +31,49 @@ public class DefaultWritableByteBuffer extends AbstractPhantomByteBuffer impleme
     public ReadableByteBuffer flip() {
         super.flipData();
         return new DefaultReadableByteBuffer(data);
+    }
+    public void put(final byte b) {
+        assertNotFlipped();
+        data.put(b);
+    }
+
+    @Override
+    public void put(final byte[] bs, final int offset, final int remaining) {
+        assertNotFlipped();
+        data.put(bs, offset, remaining);
+    }
+
+    @Override
+    public void put(byte[] bs) {
+        assertNotFlipped();
+        data.put(bs);
+    }
+
+    @Override
+    public void putInt(final int i) {
+        assertNotFlipped();
+        data.putInt(i);
+    }
+
+    @Override
+    public void put(final ReadableByteBuffer readableByteBuffer) {
+        assertNotFlipped();
+        data.put(readableByteBuffer.raw());
+    }
+
+    @Override
+    public void clear() {
+        data.clear(); // TODO test around this behaviour
+        flipped = false;
+    }
+
+    @Override
+    public ByteBuffer raw() {
+        return data;
+    }
+
+    @Override
+    public void rewind() {
+        data.rewind();
     }
 }

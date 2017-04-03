@@ -1,6 +1,8 @@
 package org.devzendo.zarjaz.nio;
 
-import java.nio.ByteBuffer;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -17,23 +19,18 @@ import java.nio.ByteBuffer;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public interface ReadableByteBuffer {
-    WritableByteBuffer flip();
-    ByteBuffer raw();
+public class TestPhantomByteBuffers {
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
-    int remaining();
+    @Test
+    public void cannotWriteToFlippedWritableByteBuffer() {
+        final WritableByteBuffer buffer = DefaultWritableByteBuffer.allocate(10);
+        buffer.put((byte) 0x01);
 
-    int limit();
+        thrown.expect(IllegalStateException.class);
+        buffer.flip();
 
-    boolean hasRemaining();
-
-    byte get();
-
-    byte get(int i);
-
-    void get(byte[] dest, int copyOffset, int copyLength);
-
-    void get(byte[] dst);
-
-    int capacity();
+        buffer.put((byte) 0x02);
+    }
 }

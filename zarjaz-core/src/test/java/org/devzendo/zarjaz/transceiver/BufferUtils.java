@@ -1,5 +1,10 @@
 package org.devzendo.zarjaz.transceiver;
 
+import org.devzendo.zarjaz.nio.DefaultReadableByteBuffer;
+import org.devzendo.zarjaz.nio.DefaultWritableByteBuffer;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
+import org.devzendo.zarjaz.nio.WritableByteBuffer;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -20,18 +25,18 @@ import java.nio.ByteBuffer;
 public class BufferUtils {
     private static byte startByte = 0;
 
-    public static ByteBuffer createByteBuffer() {
+    public static ReadableByteBuffer createByteBuffer() {
         final int bufferSize = 10;
-        final ByteBuffer bb = ByteBuffer.allocate(bufferSize);
+        final WritableByteBuffer bb = DefaultWritableByteBuffer.allocate(bufferSize);
         for (int i = 0; i < bufferSize; i++) {
             bb.put(startByte++);
         }
-        return bb;
+        return bb.flip();
     }
 
-    public static ByteBuffer duplicateOutgoingByteBuffer(final ByteBuffer buffer) {
-        final ByteBuffer duplicate = buffer.duplicate();
+    public static ReadableByteBuffer duplicateOutgoingByteBuffer(final ReadableByteBuffer buffer) {
+        final ByteBuffer duplicate = buffer.raw().duplicate();
         duplicate.rewind();
-        return duplicate;
+        return new DefaultReadableByteBuffer(duplicate);
     }
 }

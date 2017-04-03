@@ -1,5 +1,8 @@
 package org.devzendo.zarjaz.protocol;
 
+import org.devzendo.zarjaz.nio.DefaultWritableByteBuffer;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
+import org.devzendo.zarjaz.nio.WritableByteBuffer;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -45,10 +48,10 @@ public class TestByteBufferDecoder {
 
     @Test
     public void emptinessFromListWithEmptyBuffer() {
-        final ByteBuffer buffer = allocateBuffer();
-        buffer.flip();
+        final WritableByteBuffer buffer = allocateBuffer();
+        final ReadableByteBuffer readableByteBuffer = buffer.flip();
 
-        final ByteBufferDecoder decoder = decoder(singletonList(buffer));
+        final ByteBufferDecoder decoder = decoder(singletonList(readableByteBuffer));
         assertThat(decoder.empty(), is(true));
         assertThat(decoder.size(), is(0));
     }
@@ -76,24 +79,22 @@ public class TestByteBufferDecoder {
     public void readByteThrowsIfEmptyBuffer() throws IOException {
         thrown.expect(IOException.class);
 
-        final ByteBuffer buffer = allocateBuffer();
-        buffer.flip();
-        final ByteBufferDecoder decoder = decoder(singletonList(buffer));
+        final WritableByteBuffer buffer = allocateBuffer();
+        final ReadableByteBuffer readableByteBuffer = buffer.flip();
+        final ByteBufferDecoder decoder = decoder(singletonList(readableByteBuffer));
         decoder.readByte();
     }
 
     @Test
     public void byteArrayStraddlingBufferBoundaries() throws IOException {
-        final ByteBuffer first = ByteBuffer.allocate(2);
+        final WritableByteBuffer first = DefaultWritableByteBuffer.allocate(2);
         first.put((byte) 0x01);
         first.put((byte) 0x02);
-        first.flip();
-        final ByteBuffer second = ByteBuffer.allocate(2);
+        final WritableByteBuffer second = DefaultWritableByteBuffer.allocate(2);
         second.put((byte) 0x03);
         second.put((byte) 0x04);
-        second.flip();
 
-        final ByteBufferDecoder decoder = decoder(Arrays.asList(first, second));
+        final ByteBufferDecoder decoder = decoder(Arrays.asList(first.flip(), second.flip()));
         assertThat(decoder.empty(), is(false));
         assertThat(decoder.size(), is(4));
         final byte[] dest = new byte[4];
@@ -106,12 +107,11 @@ public class TestByteBufferDecoder {
     public void exhaustionReadingByteArray() throws IOException {
         thrown.expect(IOException.class);
 
-        final ByteBuffer first = ByteBuffer.allocate(2);
+        final WritableByteBuffer first = DefaultWritableByteBuffer.allocate(2);
         first.put((byte) 0x01);
         first.put((byte) 0x02);
-        first.flip();
 
-        final ByteBufferDecoder decoder = decoder(Arrays.asList(first));
+        final ByteBufferDecoder decoder = decoder(Arrays.asList(first.flip()));
         assertThat(decoder.empty(), is(false));
         assertThat(decoder.size(), is(2));
         decoder.readBytes(new byte[4], 4);
@@ -301,11 +301,11 @@ public class TestByteBufferDecoder {
         assertThat(decoder.readObject(parameterType(SampleInterfaces.StringInterface.class)), is("test it!"));
     }
 
-    private ByteBuffer allocateBuffer() {
-        return ByteBuffer.allocate(Protocol.BUFFER_SIZE);
+    private WritableByteBuffer allocateBuffer() {
+        return DefaultWritableByteBuffer.allocate(Protocol.BUFFER_SIZE);
     }
 
-    private ByteBufferDecoder decoder(final List<ByteBuffer> buffers) {
+    private ByteBufferDecoder decoder(final List<ReadableByteBuffer> buffers) {
         return new ByteBufferDecoder(buffers);
     }
 }

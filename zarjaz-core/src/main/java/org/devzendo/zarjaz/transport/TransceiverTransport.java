@@ -1,6 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
 import org.devzendo.commoncode.string.HexDump;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.protocol.ByteBufferDecoder;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
 import org.devzendo.zarjaz.protocol.Protocol;
@@ -100,7 +101,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             if (observableEvent.isFailure()) {
                 // TODO test for failures
             } else {
-                final List<ByteBuffer> buffers = observableEvent.getData();
+                final List<ReadableByteBuffer> buffers = observableEvent.getData();
                 // TODO test for null buffers, empty buffers
                 // TODO use the InvocationCodec to parse the incoming data, and return a DecodedFrame subtype
                 final ByteBufferDecoder decoder = new ByteBufferDecoder(buffers);
@@ -167,7 +168,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             if (observableEvent.isFailure()) {
                 // TODO test for this
             } else {
-                final List<ByteBuffer> buffers = observableEvent.getData();
+                final List<ReadableByteBuffer> buffers = observableEvent.getData();
                 // TODO METRIC empty list?
                 // TODO rate limiting?
                 try {
@@ -202,7 +203,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             // TODO server request logging
             final NamedInterface namedInterface = new NamedInterface(endpointName, clientInterface);
             final Object implementation = lookupImplementation.apply(namedInterface);
-            logger.debug("invoking implementation method");
+            logger.debug("invoking implementation " + implementation.getClass().getName() + " method " + method);
             final Object result = method.invoke(implementation, args);
             // TODO server response generation logging
             // TODO METRIC method duration timing
@@ -212,7 +213,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
                 logger.debug("Replying with generic return type " + genericReturnType);
                 final CompletableFuture<?> future = (CompletableFuture<?>) result;
                 future.whenComplete((completedValue, throwable) -> {
-                    final List<ByteBuffer> resultBuffers = invocationCodec.generateMethodReturnResponse(sequence, genericReturnType, completedValue);
+                    final List<ReadableByteBuffer> resultBuffers = invocationCodec.generateMethodReturnResponse(sequence, genericReturnType, completedValue);
                     logger.debug("Replying future contents to requestor");
                     try {
                         replyTransceiver.writeBuffer(resultBuffers);
@@ -223,7 +224,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
                     }
                 });
             } else {
-                final List<ByteBuffer> resultBuffers = invocationCodec.generateMethodReturnResponse(sequence, returnType, result);
+                final List<ReadableByteBuffer> resultBuffers = invocationCodec.generateMethodReturnResponse(sequence, returnType, result);
                 logger.debug("Replying to requestor");
                 replyTransceiver.writeBuffer(resultBuffers);
             }
@@ -258,7 +259,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
                 // TODO METRIC decrement number of outstanding method calls
             });
 
-            final List<ByteBuffer> bytes = invocationCodec.generateHashedMethodInvocation(thisSequence, endpointName, interfaceClass, method, args);
+            final List<ReadableByteBuffer> bytes = invocationCodec.generateHashedMethodInvocation(thisSequence, endpointName, interfaceClass, method, args);
             if (logger.isDebugEnabled()) {
                 logger.debug("Hashed method invocation:");
                 BufferDumper.dumpBuffers(bytes);

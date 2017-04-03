@@ -27,4 +27,34 @@ public class DefaultReadableByteBuffer extends AbstractPhantomByteBuffer impleme
         super.flipData();
         return new DefaultWritableByteBuffer(data);
     }
+
+    @Override
+    public ByteBuffer raw() {
+        return data;
+    }
+
+    @Override
+    public byte get() {
+        assertNotFlipped();
+        return data.get();
+    }
+
+    @Override
+    public byte get(int i) {
+        assertNotFlipped();
+        return data.get(i);
+    }
+
+    @Override
+    public void get(final byte[] dest, final int copyOffset, final int copyLength) {
+        assertNotFlipped();
+        data.get(dest, copyOffset, copyLength);
+    }
+
+    @Override
+    public void get(byte[] dst) {
+        assertNotFlipped();
+        data.get(dst);
+    }
+
 }

@@ -39,7 +39,9 @@ public class TestRoundTripUDP {
 
     private Transport serverTransport;
 
-    private interface Increment {
+    // TODO need to validate interfaces for public - if you change this to private, the round trip test fails,
+    // saying 'can't call method in impl with public abstract' - even though there's no abstract involved!
+    public interface Increment {
         int increment(int input);
     }
 

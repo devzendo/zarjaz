@@ -2,9 +2,13 @@ package org.devzendo.zarjaz.protocol;
 
 import org.apache.log4j.BasicConfigurator;
 import org.devzendo.commoncode.string.HexDump;
+import org.devzendo.zarjaz.nio.DefaultWritableByteBuffer;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
+import org.devzendo.zarjaz.nio.WritableByteBuffer;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
 import org.devzendo.zarjaz.transport.EndpointName;
+import org.devzendo.zarjaz.util.BufferDumper;
 import org.hamcrest.Matchers;
 import org.junit.Rule;
 import org.junit.Test;
@@ -13,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -186,11 +189,11 @@ public class TestInvocationCodec {
         assertThat(hash.length, equalTo(16));
 
         codec.registerHashes(endpointName, SampleInterface.class, methodMap);
-        final List<ByteBuffer> byteBuffers = codec.generateHashedMethodInvocation(0, endpointName, SampleInterface.class, firstMethod, new Object[]{ 201, true, "boo" });
+        final List<ReadableByteBuffer> byteBuffers = codec.generateHashedMethodInvocation(0, endpointName, SampleInterface.class, firstMethod, new Object[]{ 201, true, "boo" });
         assertThat(byteBuffers.size(), equalTo(1));
-        final ByteBuffer buffer = byteBuffers.get(0);
+        final ReadableByteBuffer buffer = byteBuffers.get(0);
         assertThat(buffer.limit(), equalTo(33));
-        final byte[] frame = Arrays.copyOf(buffer.array(), buffer.limit());
+        final byte[] frame = Arrays.copyOf(buffer.raw().array(), buffer.limit());
 
         assertThat(frame, equalTo(new byte[] {
                 Protocol.InitialFrameType.METHOD_INVOCATION_HASHED.getInitialFrameType(),
@@ -357,7 +360,7 @@ public class TestInvocationCodec {
     public void decodeInvalidFrame() throws NoSuchMethodException {
         final ByteBufferEncoder encoder = new ByteBufferEncoder();
         encoder.writeByte(Protocol.InitialFrameType.TEST_INVALID_FRAME.getInitialFrameType());
-        final List<ByteBuffer> buffers = encoder.getBuffers();
+        final List<ReadableByteBuffer> buffers = encoder.getBuffers();
 
         final Optional<InvocationCodec.DecodedFrame> decodedFrame = codec.decodeFrame(buffers);
         assertThat(decodedFrame.isPresent(), is(false));
@@ -365,25 +368,25 @@ public class TestInvocationCodec {
 
     @Test
     public void decodeHashedMethodInvocationNoSuchHashExists() throws NoSuchMethodException {
-        final List<ByteBuffer> byteBuffers = generateSampleHashedMethodInvocation();
+        final List<ReadableByteBuffer> byteBuffers = generateSampleHashedMethodInvocation();
         // munge the hash
-        final byte[] array = Arrays.copyOf(byteBuffers.get(0).array(), byteBuffers.get(0).limit());
+        final byte[] array = Arrays.copyOf(byteBuffers.get(0).raw().array(), byteBuffers.get(0).limit());
         for (int i = 5; i < array.length; i++) {
             array[i]++;
         }
-        final ByteBuffer buffer = ByteBuffer.allocate(array.length);
+        final WritableByteBuffer buffer = DefaultWritableByteBuffer.allocate(array.length);
         buffer.put(Arrays.copyOf(array, array.length));
-        buffer.flip();
+        final ReadableByteBuffer readableByteBuffer = buffer.flip();
 
-        assert(!codec.decodeFrame(asList(buffer)).isPresent());
+        assert(!codec.decodeFrame(asList(readableByteBuffer)).isPresent());
         // TODO METRIC hash lookup failure increment
         // which would be the way to detect this specific parse failure
     }
 
     @Test
     public void decodeHashedMethodInvocationOfNoArgsMethod() throws NoSuchMethodException {
-        final List<ByteBuffer> byteBuffers = generateNoArgsMethodHashedMethodInvocation();
-        dumpBuffers(byteBuffers);
+        final List<ReadableByteBuffer> byteBuffers = generateNoArgsMethodHashedMethodInvocation();
+        BufferDumper.dumpBuffers(byteBuffers);
 
         final Optional<InvocationCodec.DecodedFrame> decodedFrame = codec.decodeFrame(byteBuffers);
         assert(decodedFrame.isPresent());
@@ -401,8 +404,8 @@ public class TestInvocationCodec {
 
     @Test
     public void decodeHashedMethodInvocation() throws NoSuchMethodException {
-        final List<ByteBuffer> byteBuffers = generateSampleHashedMethodInvocation();
-        dumpBuffers(byteBuffers);
+        final List<ReadableByteBuffer> byteBuffers = generateSampleHashedMethodInvocation();
+        BufferDumper.dumpBuffers(byteBuffers);
 
         final Optional<InvocationCodec.DecodedFrame> decodedFrame = codec.decodeFrame(byteBuffers);
         assert(decodedFrame.isPresent());
@@ -426,28 +429,28 @@ public class TestInvocationCodec {
 
     @Test
     public void decodeHashedMethodInvocationOfTruncatedFrames() throws NoSuchMethodException {
-        final List<ByteBuffer> byteBuffers = generateNoArgsMethodHashedMethodInvocation();
+        final List<ReadableByteBuffer> byteBuffers = generateNoArgsMethodHashedMethodInvocation();
         assert(codec.decodeFrame(byteBuffers).isPresent()); // the good case
 
         // now truncate this repeatedly until empty, observer decode failure
-        final byte[] array = Arrays.copyOf(byteBuffers.get(0).array(), byteBuffers.get(0).limit());
+        final byte[] array = Arrays.copyOf(byteBuffers.get(0).raw().array(), byteBuffers.get(0).limit());
         for (int truncatedLength = array.length - 1; truncatedLength >= 0; truncatedLength--) {
-            final ByteBuffer buffer = ByteBuffer.allocate(truncatedLength);
+            final WritableByteBuffer buffer = DefaultWritableByteBuffer.allocate(truncatedLength);
             buffer.put(Arrays.copyOf(array, truncatedLength));
-            buffer.flip();
+            final ReadableByteBuffer readableByteBuffer = buffer.flip();
             logger.debug("length is " + truncatedLength);
-            assertThat(codec.decodeFrame(asList(buffer)).isPresent(), equalTo(false));
+            assertThat(codec.decodeFrame(asList(readableByteBuffer)).isPresent(), equalTo(false));
         }
     }
 
     @Test
     public void encodingOfMethodReturnResponse() {
-        final List<ByteBuffer> byteBuffers = codec.generateMethodReturnResponse(201, String.class, "endofunctor");
-        dumpBuffers(byteBuffers);
+        final List<ReadableByteBuffer> byteBuffers = codec.generateMethodReturnResponse(201, String.class, "endofunctor");
+        BufferDumper.dumpBuffers(byteBuffers);
         assertThat(byteBuffers.size(), equalTo(1));
-        final ByteBuffer buffer = byteBuffers.get(0);
+        final ReadableByteBuffer buffer = byteBuffers.get(0);
         assertThat(buffer.limit(), equalTo(20));
-        final byte[] frame = Arrays.copyOf(buffer.array(), buffer.limit());
+        final byte[] frame = Arrays.copyOf(buffer.raw().array(), buffer.limit());
 
         assertThat(frame, equalTo(new byte[] {
                 Protocol.InitialFrameType.METHOD_RETURN_RESULT.getInitialFrameType(),
@@ -490,15 +493,15 @@ public class TestInvocationCodec {
         thrown.expectMessage("Hash lookup of endpoint name / client interface / method failed");
     }
 
-    private List<ByteBuffer> generateNoArgsMethodHashedMethodInvocation() {
+    private List<ReadableByteBuffer> generateNoArgsMethodHashedMethodInvocation() {
         return generateHashedMethodInvocation(NoArgsMethodInterface.class, new Object[0]);
     }
 
-    private List<ByteBuffer> generateSampleHashedMethodInvocation() {
+    private List<ReadableByteBuffer> generateSampleHashedMethodInvocation() {
         return generateHashedMethodInvocation(SampleInterface.class, new Object[]{201, true, "boo"});
     }
 
-    private List<ByteBuffer> generateHashedMethodInvocation(final Class<?> interfaceClass, final Object[] args) {
+    private List<ReadableByteBuffer> generateHashedMethodInvocation(final Class<?> interfaceClass, final Object[] args) {
         final InvocationHashGenerator gen = new DefaultInvocationHashGenerator();
         final Map<Method, byte[]> methodMap = gen.generate(endpointName, interfaceClass);
         final Method method = interfaceClass.getDeclaredMethods()[0];
@@ -506,14 +509,5 @@ public class TestInvocationCodec {
         logger.debug("hash of method is: " + HexDump.bytes2hex(hash));
         codec.registerHashes(endpointName, interfaceClass, methodMap);
         return codec.generateHashedMethodInvocation(42, endpointName, interfaceClass, method, args);
-    }
-
-    // precondition: there's just one buffer
-    private void dumpBuffers(List<ByteBuffer> byteBuffers) {
-        final byte[] array = Arrays.copyOf(byteBuffers.get(0).array(), byteBuffers.get(0).limit());
-        final String[] strings = HexDump.hexDump(array);
-        for (String string : strings) {
-            logger.debug(string);
-        }
     }
 }

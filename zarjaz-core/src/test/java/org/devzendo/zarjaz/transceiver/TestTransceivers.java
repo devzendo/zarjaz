@@ -2,6 +2,7 @@ package org.devzendo.zarjaz.transceiver;
 
 import org.apache.log4j.BasicConfigurator;
 import org.devzendo.commoncode.concurrency.ThreadUtils;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.util.BufferDumper;
 import org.junit.After;
 import org.junit.Before;
@@ -96,16 +97,17 @@ public class TestTransceivers {
         serverTransceiver.getServerEnd().addTransceiverObserver(observer);
         serverTransceiver.open();
 
-        final ByteBuffer buf0 = createByteBuffer();
-        final ByteBuffer expectedBuffer0 = duplicateOutgoingByteBuffer(buf0);
-        final List<ByteBuffer> buf0List = singletonList(buf0);
-        BufferDumper.dumpBuffer("original buf0 (duplicate rewound):", expectedBuffer0);
+        final ReadableByteBuffer buf0 = createByteBuffer();
+        final ReadableByteBuffer expectedBuffer0 = duplicateOutgoingByteBuffer(buf0);
+        final List<ReadableByteBuffer> buf0List = singletonList(buf0);
+        BufferDumper.dumpBuffer("original buf0 (duplicate rewound):", expectedBuffer0.raw());
+        BufferDumper.dumpBuffers(buf0List);
         clientTransceiver.getServerWriter().writeBuffer(buf0List);
 
-        final ByteBuffer buf1 = createByteBuffer();
-        final ByteBuffer expectedBuffer1 = duplicateOutgoingByteBuffer(buf1);
-        final List<ByteBuffer> buf1List = singletonList(buf1);
-        BufferDumper.dumpBuffer("original buf1 (duplicate rewound):", expectedBuffer1);
+        final ReadableByteBuffer buf1 = createByteBuffer();
+        final ReadableByteBuffer expectedBuffer1 = duplicateOutgoingByteBuffer(buf1);
+        final List<ReadableByteBuffer> buf1List = singletonList(buf1);
+        BufferDumper.dumpBuffer("original buf1 (duplicate rewound):", expectedBuffer1.raw());
         clientTransceiver.getServerWriter().writeBuffer(buf1List);
 
         ThreadUtils.waitNoInterruption(500);
@@ -115,16 +117,16 @@ public class TestTransceivers {
         assertThat(events, hasSize(2));
         for (TransceiverObservableEvent event: events) {
             assertThat(event.getData(), hasSize(1));
-            BufferDumper.dumpBuffer("test received", event.getData().get(0));
+            BufferDumper.dumpBuffer("test received", event.getData().get(0).raw());
         }
 
-        final ByteBuffer receivedBuffer0 = events.get(0).getData().get(0);
-        BufferDumper.equalData("got0", receivedBuffer0, "expected0", expectedBuffer0);
-        assertThat(receivedBuffer0, equalTo(expectedBuffer0));
+        final ByteBuffer receivedBuffer0 = events.get(0).getData().get(0).raw();
+        BufferDumper.equalData("got0", receivedBuffer0, "expected0", expectedBuffer0.raw());
+        assertThat(receivedBuffer0, equalTo(expectedBuffer0.raw()));
 
-        final ByteBuffer receivedBuffer1 = events.get(1).getData().get(0);
-        BufferDumper.equalData("got1", receivedBuffer1, "expected1", expectedBuffer1);
-        assertThat(receivedBuffer1, equalTo(expectedBuffer1));
+        final ByteBuffer receivedBuffer1 = events.get(1).getData().get(0).raw();
+        BufferDumper.equalData("got1", receivedBuffer1, "expected1", expectedBuffer1.raw());
+        assertThat(receivedBuffer1, equalTo(expectedBuffer1.raw()));
     }
 
     @Test(timeout = 1000)
@@ -134,8 +136,8 @@ public class TestTransceivers {
         clientTransceiver.getClientEnd().addTransceiverObserver(serverReplyObserver);
 
         // the server will reply to its request
-        final ByteBuffer replyWithBuffer = createByteBuffer();
-        final ByteBuffer expectedReplyWithBuffer = duplicateOutgoingByteBuffer(replyWithBuffer);
+        final ReadableByteBuffer replyWithBuffer = createByteBuffer();
+        final ReadableByteBuffer expectedReplyWithBuffer = duplicateOutgoingByteBuffer(replyWithBuffer);
         final ReplyingTransceiverObserver replyingObserver = new ReplyingTransceiverObserver(singletonList(replyWithBuffer));
         serverTransceiver.getServerEnd().addTransceiverObserver(replyingObserver);
 
@@ -153,7 +155,7 @@ public class TestTransceivers {
         final List<TransceiverObservableEvent> collectedEvents = serverReplyObserver.getCollectedEvents();
         assertThat(collectedEvents, hasSize(1));
         assertThat(collectedEvents.get(0).getData(), hasSize(1));
-        assertThat(collectedEvents.get(0).getData().get(0), equalTo(expectedReplyWithBuffer));
+        assertThat(collectedEvents.get(0).getData().get(0).raw(), equalTo(expectedReplyWithBuffer.raw()));
     }
 
     @Test

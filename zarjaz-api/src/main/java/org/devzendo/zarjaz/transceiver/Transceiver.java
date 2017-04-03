@@ -1,5 +1,7 @@
 package org.devzendo.zarjaz.transceiver;
 
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -22,7 +24,7 @@ import java.util.List;
  */
 public interface Transceiver extends Closeable {
     public interface BufferWriter {
-        void writeBuffer(List<ByteBuffer> data) throws IOException;
+        void writeBuffer(List<ReadableByteBuffer> data) throws IOException;
     }
 
     public interface ObservableTransceiverEnd {

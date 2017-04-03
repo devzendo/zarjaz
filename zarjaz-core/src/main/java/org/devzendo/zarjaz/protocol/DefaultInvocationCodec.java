@@ -1,6 +1,7 @@
 package org.devzendo.zarjaz.protocol;
 
 import org.devzendo.commoncode.string.HexDump;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.transport.EndpointName;
 import org.devzendo.zarjaz.transport.NamedInterface;
 import org.slf4j.Logger;
@@ -114,7 +115,7 @@ public class DefaultInvocationCodec implements InvocationCodec {
     }
 
     @Override
-    public List<ByteBuffer> generateHashedMethodInvocation(int sequence, final EndpointName endpointName, final Class<?> interfaceClass, final Method method, final Object[] args) {
+    public List<ReadableByteBuffer> generateHashedMethodInvocation(int sequence, final EndpointName endpointName, final Class<?> interfaceClass, final Method method, final Object[] args) {
         // Note: args can be null for a method with no arguments
         final byte[] hash = getHash(endpointName, interfaceClass, method);
         if (hash == null) {
@@ -165,7 +166,7 @@ public class DefaultInvocationCodec implements InvocationCodec {
     }
 
     @Override
-    public List<ByteBuffer> generateMethodReturnResponse(int sequence, final Class<?> returnType, final Object result) {
+    public List<ReadableByteBuffer> generateMethodReturnResponse(int sequence, final Class<?> returnType, final Object result) {
         final ByteBufferEncoder encoder = new ByteBufferEncoder();
         encoder.writeByte(Protocol.InitialFrameType.METHOD_RETURN_RESULT.getInitialFrameType());
         encoder.writeInt(sequence);
@@ -175,7 +176,7 @@ public class DefaultInvocationCodec implements InvocationCodec {
     }
 
     @Override
-    public Optional<DecodedFrame> decodeFrame(final List<ByteBuffer> frames) {
+    public Optional<DecodedFrame> decodeFrame(final List<ReadableByteBuffer> frames) {
         final ByteBufferDecoder decoder = new ByteBufferDecoder(frames);
         try {
             final byte initialFrameByte = decoder.readByte();

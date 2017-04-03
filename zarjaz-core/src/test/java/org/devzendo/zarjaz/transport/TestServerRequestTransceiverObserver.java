@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.protocol.ByteBufferEncoder;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
@@ -62,10 +63,10 @@ public class TestServerRequestTransceiverObserver {
     }
 
     private class RecordingServerTransceiver implements Transceiver.BufferWriter {
-        public List<List<ByteBuffer>> received = new ArrayList<>();
+        public List<List<ReadableByteBuffer>> received = new ArrayList<>();
 
         @Override
-        public void writeBuffer(final List<ByteBuffer> data) throws IOException {
+        public void writeBuffer(final List<ReadableByteBuffer> data) throws IOException {
             received.add(data);
         }
     }
@@ -92,7 +93,7 @@ public class TestServerRequestTransceiverObserver {
 
     @Test
     public void receiveMethodInvocation() {
-        final List<ByteBuffer> invocation = invocationCodec.generateHashedMethodInvocation(SEQUENCE, endpointName, SampleInterface.class, addOneMethod, new Object[] { 5 });
+        final List<ReadableByteBuffer> invocation = invocationCodec.generateHashedMethodInvocation(SEQUENCE, endpointName, SampleInterface.class, addOneMethod, new Object[] { 5 });
 
         final RecordingServerTransceiver recorder = new RecordingServerTransceiver();
         observer.eventOccurred(new DataReceived(invocation, recorder));

@@ -1,6 +1,10 @@
 package org.devzendo.zarjaz.transceiver;
 
+import org.devzendo.zarjaz.nio.DefaultWritableByteBuffer;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
+import org.devzendo.zarjaz.nio.WritableByteBuffer;
 import org.devzendo.zarjaz.protocol.ByteBufferDecoder;
+import org.devzendo.zarjaz.util.BufferDumper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,15 +46,16 @@ public class EventCollectingTransceiverObserver implements TransceiverObserver {
         // incoming buffer can be re-used. Since this observer collects for later use, the incoming buffer will likely
         // be overwritten by the next received data.
         if (observableEvent.isFailure()) {
+            BufferDumper.dumpBuffers(observableEvent.getData());
             addEvent(observableEvent);
         } else {
-            final List<ByteBuffer> cloneList = new ArrayList<>();
-            final List<ByteBuffer> data = observableEvent.getData();
-            for (ByteBuffer buffer : data) {
-                final ByteBuffer cloneBuffer = ByteBuffer.allocate(buffer.limit());
+            final List<ReadableByteBuffer> cloneList = new ArrayList<>();
+            final List<ReadableByteBuffer> data = observableEvent.getData();
+            for (ReadableByteBuffer buffer : data) {
+                final WritableByteBuffer cloneBuffer = DefaultWritableByteBuffer.allocate(buffer.limit());
                 cloneBuffer.put(buffer);
-                cloneBuffer.rewind();
-                cloneList.add(cloneBuffer);
+                cloneList.add(cloneBuffer.flip());
+                BufferDumper.dumpBuffers(cloneList);
             }
             addEvent(new DataReceived(cloneList, observableEvent.getReplyWriter()));
         }

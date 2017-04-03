@@ -1,6 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
 import org.apache.log4j.BasicConfigurator;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
 import org.devzendo.zarjaz.protocol.Protocol;
@@ -145,12 +146,12 @@ public class TestTransceiverTransport {
             assertThat(clientToServerTransceiverObservableEvents, hasSize(1));
             final TransceiverObservableEvent event = clientToServerTransceiverObservableEvents.get(0);
             assertFalse(event.isFailure());
-            final List<ByteBuffer> data = event.getData();
+            final List<ReadableByteBuffer> data = event.getData();
             assertThat(data.size(), equalTo(1));
-            final ByteBuffer buffer = data.get(0);
+            final ReadableByteBuffer buffer = data.get(0);
             // not an exhaustive check on the buffer contents (don't know the hash)... this is done in TestInvocationCodec.
             assertThat(buffer.limit(), equalTo(21)); // frame type byte / sequence 4 bytes / hash 16 bytes / no args
-            final byte[] frame = Arrays.copyOf(buffer.array(), 5);
+            final byte[] frame = Arrays.copyOf(buffer.raw().array(), 5);
 
             assertThat(frame, equalTo(new byte[]{
                     Protocol.InitialFrameType.METHOD_INVOCATION_HASHED.getInitialFrameType(),
@@ -204,7 +205,8 @@ public class TestTransceiverTransport {
             assertThat(clientToServerTransceiverObservableEvents, hasSize(1));
             final TransceiverObservableEvent event = clientToServerTransceiverObservableEvents.get(0);
             assertFalse(event.isFailure());
-            final List<ByteBuffer> data = event.getData();
+            final List<ReadableByteBuffer> data = event.getData();
+            // TODO unfinished?
         }
     }
 

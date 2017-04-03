@@ -1,6 +1,7 @@
 package org.devzendo.zarjaz.protocol;
 
 import org.devzendo.commoncode.string.HexDump;
+import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -22,29 +23,29 @@ import java.util.List;
  * limitations under the License.
  */
 public class ByteBufferDecoder {
-    private final List<ByteBuffer> buffers;
+    private final List<ReadableByteBuffer> buffers;
     private int currentBuffer = 0;
 
-    public ByteBufferDecoder(final List<ByteBuffer> buffers) {
+    public ByteBufferDecoder(final List<ReadableByteBuffer> buffers) {
         this.buffers = buffers;
     }
 
     public boolean empty() {
-        final ByteBuffer buffer = getBuffer();
+        final ReadableByteBuffer buffer = getBuffer();
         return buffer == null || buffer.remaining() == 0;
     }
 
     public int size() {
         int size = 0;
-        for (ByteBuffer buffer : buffers) {
+        for (ReadableByteBuffer buffer : buffers) {
             size += buffer.remaining();
         }
         return size;
     }
 
-    private ByteBuffer getBuffer() {
+    private ReadableByteBuffer getBuffer() {
         while (currentBuffer < buffers.size()) {
-            ByteBuffer buffer = buffers.get(currentBuffer);
+            ReadableByteBuffer buffer = buffers.get(currentBuffer);
             if (buffer.hasRemaining())
                 return buffer;
             currentBuffer++;
@@ -53,7 +54,7 @@ public class ByteBufferDecoder {
     }
 
     public byte readByte() throws IOException {
-        final ByteBuffer buffer = getBuffer();
+        final ReadableByteBuffer buffer = getBuffer();
         if (buffer == null || buffer.remaining() == 0) {
             exhausted(1);
         }
@@ -64,7 +65,7 @@ public class ByteBufferDecoder {
         int remaining = length;
         int copyOffset = 0;
         while (remaining > 0) {
-            final ByteBuffer buffer = getBuffer();
+            final ReadableByteBuffer buffer = getBuffer();
             if (buffer == null || buffer.remaining() == 0) {
                 exhausted(remaining);
             }
