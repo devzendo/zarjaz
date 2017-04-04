@@ -68,11 +68,10 @@ public class TimeoutScheduler {
             throw new IllegalStateException("Cannot cancel when scheduler is stopped");
         }
 
-        final ScheduledFuture<?> schedule = activeTimeouts.get(timeoutId);
+        final ScheduledFuture<?> schedule = activeTimeouts.remove(timeoutId);
         if (schedule == null) {
             return false;
         }
-        activeTimeouts.remove(timeoutId);
         return schedule.cancel(false); // not sure whether to interrupt or not.
     }
 
