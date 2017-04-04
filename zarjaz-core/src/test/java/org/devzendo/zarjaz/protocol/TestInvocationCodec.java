@@ -114,6 +114,7 @@ public class TestInvocationCodec {
         assertThat(collision.toString(), equalTo("Endpoint 'endpoint', Client interface 'NoArgsMethodInterface', Method 'firstMethod'"));
     }
 
+    // TODO flapping test
     @Test
     public void detectsHashCollisionDifferentMethod() throws NoSuchMethodException {
         final InvocationHashGenerator gen = new DefaultInvocationHashGenerator();
