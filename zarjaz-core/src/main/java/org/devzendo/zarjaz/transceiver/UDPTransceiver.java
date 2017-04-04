@@ -56,7 +56,9 @@ public class UDPTransceiver implements Transceiver {
     }
 
     public static UDPTransceiver createServer(final SocketAddress remote) throws IOException {
-        logger.info("Creating server UDPTransceiver on address " + remote);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Creating server UDPTransceiver on address " + remote);
+        }
         final DatagramChannel channel = DatagramChannel.open();
         final DatagramSocket socket = channel.socket();
         socket.bind(remote);
@@ -64,7 +66,9 @@ public class UDPTransceiver implements Transceiver {
     }
 
     public static UDPTransceiver createClient(final SocketAddress remote, final boolean broadcast) throws IOException {
-        logger.info("Creating client UDPTransceiver on address " + remote + "; " + (broadcast ? "broadcast" : "non-broadcast"));
+        if (logger.isDebugEnabled()) {
+            logger.debug("Creating client UDPTransceiver on address " + remote + "; " + (broadcast ? "broadcast" : "non-broadcast"));
+        }
         final DatagramChannel channel = DatagramChannel.open();
         final DatagramSocket socket = channel.socket();
         socket.setBroadcast(broadcast);
@@ -119,7 +123,9 @@ public class UDPTransceiver implements Transceiver {
 
     @Override
     public void close() throws IOException {
-        logger.info("Closing UDPTransceiver");
+        if (logger.isDebugEnabled()) {
+            logger.debug("Closing UDPTransceiver");
+        }
         active = false;
         if (serverEnd != null) {
             serverEnd.close();
@@ -163,7 +169,9 @@ public class UDPTransceiver implements Transceiver {
 
         public void run() {
             while (active) {
-                logger.info("Waiting to receive incoming UDP data");
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Waiting to receive incoming UDP data");
+                }
                 receiveBuffer.clear();
                 try {
                     // channel.receive: If there are fewer bytes remaining in the buffer than are required to hold the
@@ -198,23 +206,29 @@ public class UDPTransceiver implements Transceiver {
                     final BufferWriter replyWriter = new RemoteBufferWriter(() -> active, remote, channel);
                     fireEvent(new DataReceived(buffers, replyWriter));
                 } catch (final ClosedByInterruptException cli) {
-                    logger.info("Channel closed");
+                    logger.debug("Channel closed");
                 } catch (final IOException ioe) {
                     logger.warn("Receive failure: " + ioe.getMessage(), ioe);
                     fireEvent(new TransceiverFailure(ioe));
                 }
             }
-            logger.info("UDP listening thread ending");
+            if (logger.isDebugEnabled()) {
+                logger.debug("UDP listening thread ending");
+            }
         }
 
         public void open() {
-            logger.info("Opening UDPTransceiver " + name + " end");
+            if (logger.isDebugEnabled()) {
+                logger.debug("Opening UDPTransceiver " + name + " end");
+            }
             active = true;
             listeningThread.start();
         }
 
         public void close() {
-            logger.info("Closing UDPTransceiver " + name + " end");
+            if (logger.isDebugEnabled()) {
+                logger.debug("Closing UDPTransceiver " + name + " end");
+            }
             active = false;
             if (listeningThread != null && listeningThread.isAlive()) {
                 listeningThread.interrupt();
@@ -255,7 +269,9 @@ public class UDPTransceiver implements Transceiver {
                 throw new IllegalStateException("Transceiver not open");
             }
 
-            logger.debug("Sending buffer list");
+            if (logger.isDebugEnabled()) {
+                logger.debug("Sending buffer list");
+            }
             // Need to write all the data buffers in one write, no way though?
             writeBuffer.clear();
             for (ReadableByteBuffer readable: data) {
@@ -263,20 +279,28 @@ public class UDPTransceiver implements Transceiver {
                 if (readable.remaining() == 0) {
                     throw new IOException("RemoteBufferWriter has been given pre-flipped ByteBuffers");
                 }
-                BufferDumper.dumpBuffer("individual send buffer", readable.raw());
+                if (logger.isDebugEnabled()) {
+                    BufferDumper.dumpBuffer("individual send buffer", readable.raw());
+                }
                 final int limit = readable.limit();
-                logger.debug("putting length int of " + limit);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("putting length int of " + limit);
+                }
                 writeBuffer.putInt(limit);
                 writeBuffer.put(readable);
             }
-            logger.debug("putting zero length");
+            if (logger.isDebugEnabled()) {
+                logger.debug("putting zero length");
+            }
             writeBuffer.putInt(0);
             writeBuffer.flip();
             if (logger.isDebugEnabled()) {
                 BufferDumper.dumpBuffer("writeBuffer sending " + writeBuffer.limit() + " bytes to socket address " + socketAddress, writeBuffer.raw());
             }
             channel.send(writeBuffer.raw(), socketAddress);
-            logger.info("writeBuffer sent");
+            if (logger.isDebugEnabled()) {
+                logger.debug("writeBuffer sent");
+            }
         }
     }
 }
