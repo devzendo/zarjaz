@@ -97,8 +97,9 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
             transportHandler.invoke(method, args, future, timeoutRunnables);
         } catch (final Exception e) {
             logger.warn("Transport handler invocation failed: " + e.getMessage(), e);
-            timeoutRunnables.remove(timeoutHandler);
             future.completeExceptionally(e);
+        } finally {
+            timeoutRunnables.remove(timeoutHandler);
         }
 
         if (method.getReturnType().isAssignableFrom(Future.class)) {

@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 
 import static org.devzendo.commoncode.concurrency.ThreadUtils.waitNoInterruption;
 import static org.devzendo.zarjaz.logging.IsLoggingEvent.loggingEvent;
@@ -51,15 +53,15 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
     private static final Logger logger = LoggerFactory.getLogger(TestCompletionInvocationHandler.class);
     private TimeoutScheduler timeoutScheduler;
 
-
     private interface SampleInterface {
         String getName();
-        CompletableFuture<String> getNameFuture();
+        Future<String> getNameFuture();
     }
 
     private TransportInvocationHandler transportInvocationHandler;
 
     private Method getNameMethod;
+    private Method getNameFutureMethod;
     private final Object[] noArgs = new Object[0];
 
     @Rule
@@ -71,6 +73,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
     @Before
     public void reflectOnThingsAndStartScheduler() throws NoSuchMethodException {
         getNameMethod = SampleInterface.class.getMethod("getName", new Class[0]);
+        getNameFutureMethod = SampleInterface.class.getMethod("getNameFuture", new Class[0]);
         timeoutScheduler = new TimeoutScheduler();
         timeoutScheduler.start();
     }
@@ -169,6 +172,49 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         // then
         logger.info("end of test");
         assertThat(wasRun[0], equalTo(true));
+    }
+
+    @Test(timeout = 4000L)
+    public void timeoutIsCancelledOnSuccessfulCompletion() throws NoSuchMethodException, InterruptedException {
+        BasicConfigurator.configure();
+
+        final boolean[] wasRun = new boolean[] { false };
+        assertThat(wasRun[0], equalTo(false));
+
+        logger.info("creating test objects");
+        List[] cachedTimeoutRunnables = new List[1];
+        cachedTimeoutRunnables[0] = null;
+        final CountDownLatch stored = new CountDownLatch(1);
+        // given
+        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+            logger.info("transport invocation handler, caching timeout runnables " + timeoutRunnables);
+            synchronized (cachedTimeoutRunnables) {
+                cachedTimeoutRunnables[0] = timeoutRunnables;
+            }
+            stored.countDown();
+            logger.info("finished transport invocation handler");
+        };
+        final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =
+                new CompletionInvocationHandler<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 500L);
+        final Object irrelevantProxy = null;
+
+        // when
+        logger.info("invoking handler");
+        completionInvocationHandler.invoke(irrelevantProxy, getNameFutureMethod, noArgs);
+        // returns a future which we ignore
+
+        stored.await();
+        // then
+        synchronized (cachedTimeoutRunnables) {
+            assertThat(cachedTimeoutRunnables[0], not(nullValue()));
+            final List<Runnable> timeoutRunnables = cachedTimeoutRunnables[0];
+            assertThat(timeoutRunnables, hasSize(0));
+        }
+
+        logger.info("end of test wait");
+        waitNoInterruption(1000L);
+
+        logger.info("end of test");
     }
 
     @Test(timeout = 4000L)
