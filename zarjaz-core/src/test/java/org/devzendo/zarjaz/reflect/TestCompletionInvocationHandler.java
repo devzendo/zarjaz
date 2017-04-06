@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -100,11 +101,12 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         final Object returnValue = handler.invoke(irrelevantProxy, getNameMethod, noArgs);
 
         // then
-        final List<LoggingEvent> events = capturingAppender.getEvents();
-        assertThat(events, Matchers.hasSize(3));
-        assertThat(events.get(0), loggingEvent(Level.DEBUG, "Invoking [Sample] org.devzendo.zarjaz.reflect.TestCompletionInvocationHandler$SampleInterface.getName"));
-        assertThat(events.get(1), loggingEvent(Level.DEBUG, "Waiting on Future"));
-        assertThat(events.get(2), loggingEvent(Level.DEBUG, "Wait over; returning value"));
+        // Copy to arraylist to prevent concurrent modification exceptions
+        final ArrayList<LoggingEvent> copiedEvents = new ArrayList<>(capturingAppender.getEvents());
+        assertThat(copiedEvents, Matchers.hasSize(3));
+        assertThat(copiedEvents.get(0), loggingEvent(Level.DEBUG, "Invoking [Sample] org.devzendo.zarjaz.reflect.TestCompletionInvocationHandler$SampleInterface.getName"));
+        assertThat(copiedEvents.get(1), loggingEvent(Level.DEBUG, "Waiting on Future"));
+        assertThat(copiedEvents.get(2), loggingEvent(Level.DEBUG, "Wait over; removing timeout handler; returning value"));
         assertThat(returnValue, instanceOf(String.class));
         assertThat(returnValue, hasToString("Bob"));
     }
@@ -124,7 +126,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
 
         // then
         thrown.expect(MethodInvocationTimeoutException.class);
-        thrown.expectMessage("method call [Sample] 'getName' timed out after 500ms");
+        thrown.expectMessage("Method call [Sample] 'getName' timed out after 500ms");
 
         // when
         handler.invoke(irrelevantProxy, getNameMethod, noArgs);
@@ -163,7 +165,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         } catch (final Exception e) {
             logger.info("exception caught: " + e.getMessage());
             assertThat(e, instanceOf(MethodInvocationTimeoutException.class));
-            assertThat(e.getMessage(), equalTo("method call [Sample] 'getName' timed out after 500ms"));
+            assertThat(e.getMessage(), equalTo("Method call [Sample] 'getName' timed out after 500ms"));
         }
 
         logger.info("end of test wait");
@@ -191,6 +193,10 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
             synchronized (cachedTimeoutRunnables) {
                 cachedTimeoutRunnables[0] = timeoutRunnables;
             }
+            logger.info("storing result in future, simulating completion");
+            future.complete("hello world");
+            ThreadUtils.waitNoInterruption(250); // give completion invocation handler some time to unblock
+            logger.info("letting test complete and check timeout handler");
             stored.countDown();
             logger.info("finished transport invocation handler");
         };
@@ -200,8 +206,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
 
         // when
         logger.info("invoking handler");
-        completionInvocationHandler.invoke(irrelevantProxy, getNameFutureMethod, noArgs);
-        // returns a future which we ignore
+        completionInvocationHandler.invoke(irrelevantProxy, getNameMethod, noArgs);
 
         stored.await();
         // then
@@ -241,7 +246,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
             fail("A timeout exception should have been thrown");
         } catch (final Exception e) {
             assertThat(e, instanceOf(MethodInvocationTimeoutException.class));
-            assertThat(e.getMessage(), equalTo("method call [Sample] 'getName' timed out after 500ms"));
+            assertThat(e.getMessage(), equalTo("Method call [Sample] 'getName' timed out after 500ms"));
         }
 
         waitNoInterruption(200L);
@@ -250,7 +255,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         assertThat(wasRun[0], equalTo(true));
         assertThat(wasRun[1], equalTo(true));
         assertThat(wasRun[2], equalTo(true));
-        assertTrue(capturingAppender.getEvents().stream().anyMatch(
+        assertTrue(new ArrayList<>(capturingAppender.getEvents()).stream().anyMatch(
                 e -> e.getMessage().equals("Method call timeout handler threw exception: boom") && e.getLevel().equals(Level.WARN)
         ));
     }
@@ -296,7 +301,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         ThreadUtils.waitNoInterruption(1000); // if the timeout handler has not been removed, give it time to run
 
         // now sense its log output. not an ideal way of testing this, but it'll do
-        assertTrue(capturingAppender.getEvents().stream().noneMatch(
+        assertTrue(new ArrayList<>(capturingAppender.getEvents()).stream().noneMatch(
                 e -> e.getMessage().toString().contains("method call [Sample] 'getName' timed out")));
     }
 }

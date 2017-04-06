@@ -19,9 +19,10 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
@@ -48,6 +49,8 @@ import static org.junit.Assert.fail;
  * limitations under the License.
  */
 public class TestTransceiverTransport {
+    private static final Logger logger = LoggerFactory.getLogger(TestTransceiverTransport.class);
+
     private static final int METHOD_TIMEOUT_MILLISECONDS = 500;
 
     {
@@ -129,7 +132,7 @@ public class TestTransceiverTransport {
         transport.registerServerImplementation(new EndpointName("endpoint2"), SampleInterface.class, irrelevantImplementation);
     }
 
-    @Test
+    @Test(timeout = 2000L)
     public void clientRequestIsEncodedAndSentToTransceiver() {
         captureFromNullTransceiverServerEnd();
         transport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
@@ -167,46 +170,50 @@ public class TestTransceiverTransport {
         }
     }
 
-    @Test
+    @Test(timeout = 2000L)
     public void clientRequestIncreasesOutstandingMethodCallCount() throws InterruptedException {
         transport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
                 timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
-        try {
-            final SampleInterface clientProxy = transport.createClientProxy(endpointName, SampleInterface.class, METHOD_TIMEOUT_MILLISECONDS);
-            transport.start();
+        final SampleInterface clientProxy = transport.createClientProxy(endpointName, SampleInterface.class, METHOD_TIMEOUT_MILLISECONDS);
+        transport.start();
 
-            // do on another thread... that will have the timeout exception thrown on it clientProxy.someMethod();
-            // then counts down a latch
-            final CountDownLatch aboutToCallOnOtherThread = new CountDownLatch(1);
-            final CountDownLatch done = new CountDownLatch(1);
-            new Thread(() -> {
-                // the transport handler isn't going to get a response, so the completion will time out
-                aboutToCallOnOtherThread.countDown();
-                try {
-                    clientProxy.someMethod();
-                } catch (Exception e) {
-                    // a timeout exception will be caught
+        // do on another thread... that will have the timeout exception thrown on it clientProxy.someMethod();
+        // then counts down a latch
+        final CountDownLatch aboutToCallOnOtherThread = new CountDownLatch(1);
+        final CountDownLatch done = new CountDownLatch(1);
+        final boolean[] timeoutCaught = new boolean[1];
+        synchronized (timeoutCaught) {
+            timeoutCaught[0] = false;
+        }
+        new Thread(() -> {
+            // the transport handler isn't going to get a response, so the completion will time out
+            aboutToCallOnOtherThread.countDown();
+            try {
+                logger.debug("calling proxy method...");
+                clientProxy.someMethod();
+                // never gets here
+            } catch (MethodInvocationTimeoutException e) {
+                logger.debug("thread caught a method timeout");
+                // a timeout exception will be caught
+                synchronized (timeoutCaught) {
+                    timeoutCaught[0] = true;
                 }
-                done.countDown();
-            }).start();
+            }
+            done.countDown();
+            logger.debug("thread finished");
+        }).start();
 
-            aboutToCallOnOtherThread.await();
-            waitNoInterruption(250); // give the thread time to make the call
-            assertThat(transport.getNumberOfOutstandingMethodCalls(), equalTo(1));
+        aboutToCallOnOtherThread.await();
+        waitNoInterruption(250); // give the thread time to make the call
+        assertThat(transport.getNumberOfOutstandingMethodCalls(), equalTo(1));
 
-            // wait for timeout to unlatch
-            done.await();
-            waitNoInterruption(250); // give the timeout handler time to remove the outstanding method call
+        // wait for timeout to unlatch
+        done.await();
+        waitNoInterruption(250); // give the timeout handler time to remove the outstanding method call
 
-            assertThat(transport.getNumberOfOutstandingMethodCalls(), equalTo(0));
-
-        } catch (final MethodInvocationTimeoutException me) {
-            // Check for a correctly encoded method request
-            assertThat(clientToServerTransceiverObservableEvents, hasSize(1));
-            final TransceiverObservableEvent event = clientToServerTransceiverObservableEvents.get(0);
-            assertFalse(event.isFailure());
-            final List<ReadableByteBuffer> data = event.getData();
-            // TODO unfinished?
+        assertThat(transport.getNumberOfOutstandingMethodCalls(), equalTo(0));
+        synchronized (timeoutCaught) {
+            assertThat(timeoutCaught[0], equalTo(true));
         }
     }
 

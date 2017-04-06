@@ -77,7 +77,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         // method invocation.
         final LinkedList<Runnable> timeoutRunnables = new LinkedList<>();
         final Runnable timeoutHandler = () -> {
-            final String message = "method call [" + endpointName + "] '" + method.getName() + "' timed out after " + methodTimeoutMs + "ms";
+            final String message = "Method call [" + endpointName + "] '" + method.getName() + "' timed out after " + methodTimeoutMs + "ms";
             if (logger.isDebugEnabled()) {
                 logger.debug(message);
             }
@@ -96,10 +96,10 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         try {
             transportHandler.invoke(method, args, future, timeoutRunnables);
         } catch (final Exception e) {
-            logger.warn("Transport handler invocation failed: " + e.getMessage(), e);
-            future.completeExceptionally(e);
-        } finally {
+            final String message = "Method call [" + endpointName + "] '" + method.getName() + "' invocation failed: " + e.getMessage();
+            logger.warn(message, e);
             timeoutRunnables.remove(timeoutHandler);
+            future.completeExceptionally(e);
         }
 
         if (method.getReturnType().isAssignableFrom(Future.class)) {
@@ -107,6 +107,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
                 logger.debug("Returning Future");
             }
             return future;
+            // TODO how to cancel the timeout handler on a correct method invocation return? nested future?
         } else {
             try {
                 if (logger.isDebugEnabled()) {
@@ -114,22 +115,24 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
                 }
                 final Object o = future.get();
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Wait over; returning value");
+                    logger.debug("Wait over; removing timeout handler; returning value");
                 }
+                timeoutRunnables.remove(timeoutHandler);
                 return o;
             } catch (final InterruptedException e) {
                 final String msg = "Invocation of " + method.getDeclaringClass().getName() + "." + method.getName() + " interrupted";
                 logger.warn(msg);
                 throw new InvocationException(msg, e);
             } catch (final ExecutionException e) {
-                final String msg = "Invocation of " + method.getDeclaringClass().getName() + "." + method.getName() + " threw an " +
-                        e.getCause().getClass().getName() + ": " + e.getCause().getMessage();
-                logger.warn(msg);
                 // If the cause is one of our timeouts, rethrow rather than embedding it in a thicket of stuff.
                 final Throwable cause = e.getCause();
                 if (cause instanceof MethodInvocationTimeoutException) {
                     throw (MethodInvocationTimeoutException) cause;
                 }
+                // Timeouts are already logged by the timeout handler; log other faults now.
+                final String msg = "Invocation of " + method.getDeclaringClass().getName() + "." + method.getName() + " threw an " +
+                        e.getCause().getClass().getName() + ": " + e.getCause().getMessage();
+                logger.warn(msg);
                 throw new InvocationException(msg, e);
             }
         }

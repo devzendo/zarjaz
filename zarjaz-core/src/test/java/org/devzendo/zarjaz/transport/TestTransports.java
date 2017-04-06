@@ -253,7 +253,7 @@ public class TestTransports {
         clientTransport.start();
 
         thrown.expect(MethodInvocationTimeoutException.class);
-        thrown.expectMessage("method call [timeout] 'sleepFor' timed out after 500ms");
+        thrown.expectMessage("Method call [timeout] 'sleepFor' timed out after 500ms");
 
         try {
             clientProxy.sleepFor(1000L);
