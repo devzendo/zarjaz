@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -45,8 +46,6 @@ public class TCPTransceiver implements Transceiver {
             logger.debug("Creating server TCPTransceiver on address " + local);
         }
         final ServerSocketChannel channel = ServerSocketChannel.open();
-        channel.socket().bind(local);
-
         return new TCPTransceiver(local, channel);
     }
 
@@ -55,43 +54,71 @@ public class TCPTransceiver implements Transceiver {
             logger.debug("Creating client TCPTransceiver on address " + remote);
         }
         final SocketChannel channel = SocketChannel.open();
-        final Socket socket = channel.socket();
-        socket.connect(remote);
         return new TCPTransceiver(remote, channel);
     }
 
-    private final ThreadGroup threadGroup = new ThreadGroup("TCPTransceiver");
     private final Optional<Thread> acceptingThread;
-    private final Optional<ConnectionHandler> clientConnectionHandler;
-    private final SocketAddress address;
-    private final SocketChannel channel;
+    private final Optional<ServerSocketChannel> serverChannel;
     private final TCPObservableTransceiverEnd serverEnd = new TCPObservableTransceiverEnd();
+
+    private final Optional<ConnectionHandler> clientConnectionHandler;
+    private final Optional<SocketChannel> clientChannel;
     private final TCPObservableTransceiverEnd clientEnd = new TCPObservableTransceiverEnd();
+
+    private final ThreadGroup threadGroup = new ThreadGroup("TCPTransceiver");
+    private final SocketAddress address;
 
     private volatile boolean active = false;
 
-    public TCPTransceiver(final SocketAddress remote, final SocketChannel channel) {
+    // client
+    private TCPTransceiver(final SocketAddress remote, final SocketChannel channel) {
         this.address = remote;
-        this.channel = channel;
+
+        this.clientChannel = Optional.of(channel);
+        this.clientConnectionHandler = Optional.of(new ConnectionHandler(() -> active, clientEnd, address, channel, threadGroup, "client"));
+
         this.acceptingThread = Optional.empty();
-        this.clientConnectionHandler = Optional.of(new ConnectionHandler(clientEnd, channel, threadGroup, "client"));
+        this.serverChannel = Optional.empty();
     }
 
-    public TCPTransceiver(final SocketAddress local, final ServerSocketChannel channel) {
+    // server
+    private TCPTransceiver(final SocketAddress local, final ServerSocketChannel channel) {
         this.address = local;
-        this.channel = null;
-        final Thread thread = new Thread(new AcceptHandler(() -> active, channel, threadGroup, serverEnd));
-        thread.setName("TCPTransceiver accept thread");
+
+        this.clientChannel = Optional.empty();
+        this.clientConnectionHandler = Optional.empty();
+
+        this.serverChannel = Optional.of(channel);
+        final Thread thread = new Thread(new AcceptHandler(() -> active, address, channel, threadGroup, serverEnd));
+        thread.setName("TCPTransceiver accept thread [" + local.toString() + "]");
         thread.setDaemon(true);
         this.acceptingThread = Optional.of(thread);
-        this.clientConnectionHandler = Optional.empty();
     }
 
     @Override
     public void open() throws IOException {
-        acceptingThread.ifPresent(Thread::start);
-        clientConnectionHandler.ifPresent(ConnectionHandler::open);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Opening TCPTransceiver");
+        }
         active = true;
+
+        if (serverChannel.isPresent()) {
+            logger.debug("binding server socket");
+            serverChannel.get().socket().bind(address);
+        }
+        if (acceptingThread.isPresent()) {
+            logger.debug("opening present accept thread");
+        }
+        acceptingThread.ifPresent(Thread::start);
+
+        if (clientChannel.isPresent()) {
+            final Socket socket = clientChannel.get().socket();
+            logger.debug("connecting client socket " + socket + " to address " + address);
+            final int connectTimeoutMs = 4000;
+            socket.connect(address, connectTimeoutMs); // TODO set an appropriate timeout here, rather than system default 1m 15s
+            logger.debug("connected client socket " + socket);
+        }
+        clientConnectionHandler.ifPresent(ConnectionHandler::open);
     }
 
     @Override
@@ -106,10 +133,10 @@ public class TCPTransceiver implements Transceiver {
 
     @Override
     public BufferWriter getServerWriter() {
-        if (channel != null) {
+        if (!clientChannel.isPresent()) {
             throw new IllegalStateException("No endpoint to which to write");
         }
-        return new RemoteBufferWriter(() -> active, address, channel);
+        return new RemoteBufferWriter(() -> active, address, clientChannel.get());
     }
 
     @Override
@@ -121,7 +148,12 @@ public class TCPTransceiver implements Transceiver {
         threadGroup.interrupt();
         acceptingThread.ifPresent(Thread::interrupt);
         clientConnectionHandler.ifPresent(ConnectionHandler::close);
-        channel.close();
+        if (clientChannel.isPresent()) {
+            clientChannel.get().close();
+        }
+        if (serverChannel.isPresent()) {
+            serverChannel.get().close();
+        }
     }
 
     private static class AcceptHandler implements Runnable {
@@ -129,10 +161,12 @@ public class TCPTransceiver implements Transceiver {
         private final ServerSocketChannel channel;
         private final ThreadGroup threadGroup;
         private final TCPObservableTransceiverEnd serverEnd;
+        private final SocketAddress address;
 
-        public AcceptHandler(final Supplier<Boolean> isActive, final ServerSocketChannel channel, final ThreadGroup threadGroup, final TCPObservableTransceiverEnd serverEnd)
+        public AcceptHandler(final Supplier<Boolean> isActive, final SocketAddress address, final ServerSocketChannel channel, final ThreadGroup threadGroup, final TCPObservableTransceiverEnd serverEnd)
         {
             this.isActive = isActive;
+            this.address = address;
             this.channel = channel;
             this.threadGroup = threadGroup;
             this.serverEnd = serverEnd;
@@ -140,19 +174,26 @@ public class TCPTransceiver implements Transceiver {
 
         @Override
         public void run() {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Starting accept thread for connections to " + address);
+            }
             while (isActive.get()) {
                 try {
-                    logger.debug("Waiting to accept a connection");
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Waiting to accept a connection");
+                    }
                     final SocketChannel socketChannel = channel.accept();
-                    logger.debug("Connection from " + socketChannel.getRemoteAddress());
-                    final ConnectionHandler connectionHandler = new ConnectionHandler(serverEnd, socketChannel, threadGroup, "server");
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Connection from " + socketChannel.getRemoteAddress());
+                    }
+                    final ConnectionHandler connectionHandler = new ConnectionHandler(isActive, serverEnd, socketChannel.getRemoteAddress(), socketChannel, threadGroup, "server");
                     connectionHandler.open(); // creates thread in group
 
                 } catch (final IOException e) {
                     logger.warn("Accept failure: " + e.getMessage());
                 }
             }
-            logger.debug("Stopping " + channel.socket().getInetAddress());
+            logger.debug("Stopping accepting for " + address);
             try {
                 channel.close();
             } catch (final IOException e) {
@@ -163,62 +204,52 @@ public class TCPTransceiver implements Transceiver {
     }
 
     private static class ConnectionHandler implements Runnable {
-        protected final TCPObservableTransceiverEnd transceiverEnd;
-        protected final SocketChannel channel;
-        protected final ThreadGroup threadGroup;
-        protected final String name;
+        private final Supplier<Boolean> isActive;
+        private final TCPObservableTransceiverEnd transceiverEnd;
+        private final SocketAddress address;
+        private final SocketChannel channel;
+        private final ThreadGroup threadGroup;
+        private final String name;
 
-        protected final ObserverList<TransceiverObservableEvent> observers = new ObserverList<>();
-        protected final ByteBuffer receiveBuffer = ByteBuffer.allocate(Protocol.BUFFER_SIZE * 4);
-        protected volatile boolean active = false;
-        protected final Thread readingThread;
+        private final ObserverList<TransceiverObservableEvent> observers = new ObserverList<>();
+        private final ByteBuffer receiveBuffer = ByteBuffer.allocate(Protocol.BUFFER_SIZE * 4);
+        private final Thread readingThread;
 
-        public ConnectionHandler(final TCPObservableTransceiverEnd transceiverEnd, final SocketChannel channel, final ThreadGroup threadGroup, final String name) {
+        public ConnectionHandler(final Supplier<Boolean> isActive, final TCPObservableTransceiverEnd transceiverEnd, final SocketAddress address, final SocketChannel channel, final ThreadGroup threadGroup, final String name) {
+            this.isActive = isActive;
             this.transceiverEnd = transceiverEnd;
+            this.address = address;
             this.channel = channel;
             this.threadGroup = threadGroup;
             this.name = name;
             // TODO use a threadpool/executor
-            readingThread = new Thread(threadGroup, this);
-            readingThread.setDaemon(true);
-            readingThread.setName("TCPTransceiver " + name + " reading thread");
+            this.readingThread = new Thread(threadGroup, this);
+            this.readingThread.setDaemon(true);
+            this.readingThread.setName("TCPTransceiver " + name + " reading thread [" + address + "]");
         }
 
         public void run() {
-            while (active) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Starting TCP reading thread for " + name);
+            }
+            while (isActive.get()) {
                 if (logger.isDebugEnabled()) {
                     logger.debug("Waiting to receive incoming TCP data");
                 }
                 receiveBuffer.clear();
                 try {
                     final int bytesRead = channel.read(receiveBuffer);
-                    receiveBuffer.flip();
-                    //BufferDumper.dumpBuffer("Received from SocketAddress " + address, receiveBuffer);
-                    final List<ReadableByteBuffer> buffers = new ArrayList<ReadableByteBuffer>();
-                    int length = 0;
-                    do {
-                        //logger.debug("Top of chunk loop, receiveBuffer position " + receiveBuffer.position() + " limit " + receiveBuffer.limit() + " - getting a length int...");
-                        length = receiveBuffer.getInt();
-                        if (length != 0) {
-                            //logger.debug("Received chunk length of " + length);
-                            //BufferDumper.dumpBuffer("after getting length int, receive buffer", receiveBuffer);
-                            // Extract slice of incoming data, of the correct length, add to output list.
-                            final ByteBuffer chunk = receiveBuffer.slice();
-                            chunk.limit(length);
-                            //BufferDumper.dumpBuffer("chunk buffer", chunk);
-                            //logger.debug("chunk limit is " + chunk.limit() + " remaining " + chunk.remaining() + " position " + chunk.position());
-                            //logger.debug("receiveBuffer limit is " + receiveBuffer.limit() + " remaining " + receiveBuffer.remaining() + " position " + receiveBuffer.position());
-                            receiveBuffer.position(receiveBuffer.position() + length);
-                            buffers.add(new DefaultReadableByteBuffer(chunk));
-                        }
-                    } while (length != 0);
-                    // End of receiveBuffer stream..
                     if (logger.isDebugEnabled()) {
-                        logger.debug("Received TCP data:");
-                        BufferDumper.dumpBuffers(buffers);
+                        logger.debug("Read " + bytesRead + " byte(s)");
                     }
-                    final BufferWriter replyWriter = new RemoteBufferWriter(() -> active, channel.getRemoteAddress(), channel);
-                    transceiverEnd.fireEvent(new DataReceived(buffers, replyWriter));
+                    if (bytesRead == -1) {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("End of stream");
+                            break;
+                        }
+                    } else {
+                        processReceivedBuffer();
+                    }
                 } catch (final ClosedByInterruptException cli) {
                     logger.debug("Channel closed");
                 } catch (final IOException ioe) {
@@ -231,11 +262,40 @@ public class TCPTransceiver implements Transceiver {
             }
         }
 
+        private void processReceivedBuffer() throws IOException {
+            receiveBuffer.flip();
+            //BufferDumper.dumpBuffer("Received from SocketAddress " + channel.getRemoteAddress(), receiveBuffer);
+            final List<ReadableByteBuffer> buffers = new ArrayList<ReadableByteBuffer>();
+            int length = 0;
+            do {
+                //logger.debug("Top of chunk loop, receiveBuffer position " + receiveBuffer.position() + " limit " + receiveBuffer.limit() + " - getting a length int...");
+                length = receiveBuffer.getInt();
+                if (length != 0) {
+                    //logger.debug("Received chunk length of " + length);
+                    //BufferDumper.dumpBuffer("after getting length int, receive buffer", receiveBuffer);
+                    // Extract slice of incoming data, of the correct length, add to output list.
+                    final ByteBuffer chunk = receiveBuffer.slice();
+                    chunk.limit(length);
+                    //BufferDumper.dumpBuffer("chunk buffer", chunk);
+                    //logger.debug("chunk limit is " + chunk.limit() + " remaining " + chunk.remaining() + " position " + chunk.position());
+                    //logger.debug("receiveBuffer limit is " + receiveBuffer.limit() + " remaining " + receiveBuffer.remaining() + " position " + receiveBuffer.position());
+                    receiveBuffer.position(receiveBuffer.position() + length);
+                    buffers.add(new DefaultReadableByteBuffer(chunk));
+                }
+            } while (length != 0);
+            // End of receiveBuffer stream..
+            if (logger.isDebugEnabled()) {
+                logger.debug("Received TCP data:");
+                BufferDumper.dumpBuffers(buffers);
+            }
+            final BufferWriter replyWriter = new RemoteBufferWriter(isActive, channel.getRemoteAddress(), channel);
+            transceiverEnd.fireEvent(new DataReceived(buffers, replyWriter));
+        }
+
         public void open() {
             if (logger.isDebugEnabled()) {
                 logger.debug("Opening TCPTransceiver " + name + " end");
             }
-            active = true;
             readingThread.start();
         }
 
@@ -243,7 +303,6 @@ public class TCPTransceiver implements Transceiver {
             if (logger.isDebugEnabled()) {
                 logger.debug("Closing TCPTransceiver " + name + " end");
             }
-            active = false;
             if (readingThread != null && readingThread.isAlive()) {
                 readingThread.interrupt();
             }

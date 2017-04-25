@@ -53,7 +53,7 @@ public class TestTransceivers {
 
     @Parameterized.Parameters
     public static Collection<Class> data() {
-        return asList(NullTransceiver.class, UDPTransceiver.class);
+        return asList(NullTransceiver.class, UDPTransceiver.class, TCPTransceiver.class);
     }
 
     @Rule
@@ -70,33 +70,44 @@ public class TestTransceivers {
 
     @Before
     public void setupTransceiver() throws IOException {
+        logger.debug("start of setupTransceiver");
         if (transceiverClass.equals(NullTransceiver.class)) {
             serverTransceiver = new NullTransceiver();
             clientTransceiver = serverTransceiver;
         } else if (transceiverClass.equals(UDPTransceiver.class)) {
             serverTransceiver = UDPTransceiver.createServer(new InetSocketAddress(9876));
             clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(9876), true);
+        } else if (transceiverClass.equals(TCPTransceiver.class)) {
+            serverTransceiver = TCPTransceiver.createServer(new InetSocketAddress(9876));
+            clientTransceiver = TCPTransceiver.createClient(new InetSocketAddress(9876));
         }
+        logger.debug("end of setupTransceiver");
     }
 
     @After
     public void closeTransceiver() throws IOException {
+        logger.debug("start of closeTransceiver");
         if (serverTransceiver != null) {
             serverTransceiver.close();
         }
         if (clientTransceiver != null) {
             clientTransceiver.close();
         }
+        logger.debug("end of setupTransceiver");
     }
 
     @Test(timeout = 2000)
     public void bufferSentFromClientIsReceivedByServer() throws IOException {
-        clientTransceiver.open();
-
         final EventCollectingTransceiverObserver observer = new EventCollectingTransceiverObserver();
         serverTransceiver.getServerEnd().addTransceiverObserver(observer);
+        logger.debug("opening server");
         serverTransceiver.open();
+        waitForListeningToStart();
 
+        logger.debug("opening client");
+        clientTransceiver.open();
+
+        logger.debug("starting send test");
         final ReadableByteBuffer buf0 = createByteBuffer();
         final ReadableByteBuffer expectedBuffer0 = duplicateOutgoingByteBuffer(buf0);
         final List<ReadableByteBuffer> buf0List = singletonList(buf0);
@@ -129,6 +140,11 @@ public class TestTransceivers {
         assertThat(receivedBuffer1, equalTo(expectedBuffer1.raw()));
     }
 
+    private void waitForListeningToStart() {
+        // wait for listening to be set up...
+        ThreadUtils.waitNoInterruption(200);
+    }
+
     @Test(timeout = 1000)
     public void sentBufferCanBeRepliedTo() throws IOException {
         // the client collects the reply coming from the server
@@ -142,11 +158,13 @@ public class TestTransceivers {
         serverTransceiver.getServerEnd().addTransceiverObserver(replyingObserver);
 
         serverTransceiver.open();
+        waitForListeningToStart();
+
         clientTransceiver.open();
 
         // send the request to the server
         final Transceiver.BufferWriter serverWriter = clientTransceiver.getServerWriter();
-        logger.debug("sending initial uffer to server");
+        logger.debug("sending initial buffer to server");
         serverWriter.writeBuffer(singletonList(createByteBuffer()));
 
         ThreadUtils.waitNoInterruption(500);
@@ -165,12 +183,17 @@ public class TestTransceivers {
     }
 
     @Test
-    public void cannotSendToClosedServerTransceiver() throws IOException {
+    public void cannotWriteToServerWriterOfClosedClientTransceiver() throws IOException {
         expectTransceiverNotOpen();
+
+        serverTransceiver.open();
+        waitForListeningToStart();
+
         clientTransceiver.open();
         ThreadUtils.waitNoInterruption(250);
         clientTransceiver.close();
         ThreadUtils.waitNoInterruption(250);
+
         clientTransceiver.getServerWriter().writeBuffer(singletonList(createByteBuffer()));
     }
 
