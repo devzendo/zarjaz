@@ -72,7 +72,9 @@ public class UDPTransceiver implements Transceiver {
         final DatagramChannel channel = DatagramChannel.open();
         final DatagramSocket socket = channel.socket();
         socket.setBroadcast(broadcast);
-        socket.connect(remote);
+        if (!broadcast) {
+            socket.connect(remote);
+        }
         return new UDPTransceiver(remote, channel);
     }
 

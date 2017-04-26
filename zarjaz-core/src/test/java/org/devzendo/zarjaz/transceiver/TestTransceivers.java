@@ -76,7 +76,7 @@ public class TestTransceivers {
             clientTransceiver = serverTransceiver;
         } else if (transceiverClass.equals(UDPTransceiver.class)) {
             serverTransceiver = UDPTransceiver.createServer(new InetSocketAddress(9876));
-            clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(9876), true);
+            clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(9876), false);
         } else if (transceiverClass.equals(TCPTransceiver.class)) {
             serverTransceiver = TCPTransceiver.createServer(new InetSocketAddress(9876));
             clientTransceiver = TCPTransceiver.createClient(new InetSocketAddress(9876));

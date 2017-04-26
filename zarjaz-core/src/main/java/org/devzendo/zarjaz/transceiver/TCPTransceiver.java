@@ -188,9 +188,10 @@ public class TCPTransceiver implements Transceiver {
                     }
                     final ConnectionHandler connectionHandler = new ConnectionHandler(isActive, serverEnd, socketChannel.getRemoteAddress(), socketChannel, threadGroup, "server");
                     connectionHandler.open(); // creates thread in group
-
+                } catch (final ClosedByInterruptException e) {
+                    // do nothing, we're being closed. exit gracefully.
                 } catch (final IOException e) {
-                    logger.warn("Accept failure: " + e.getMessage());
+                    logger.warn("Accept failure: " + e.getMessage(), e);
                 }
             }
             logger.debug("Stopping accepting for " + address);

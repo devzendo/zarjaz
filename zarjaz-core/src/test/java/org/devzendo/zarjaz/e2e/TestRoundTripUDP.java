@@ -69,7 +69,7 @@ public class TestRoundTripUDP {
 
     @Test
     public void sendIncrementMessages() throws IOException {
-        final UDPTransceiver clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(PORT), true);
+        final UDPTransceiver clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(PORT), false);
         final Transport clientTransport = new TransceiverTransportFactory().create(clientTransceiver);
         final Increment incProxy = clientTransport.createClientProxy(endpointName, Increment.class, 500);
         logger.info("Starting transport");

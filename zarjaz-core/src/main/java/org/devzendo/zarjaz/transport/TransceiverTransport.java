@@ -309,6 +309,8 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             transceiver.getServerEnd().addTransceiverObserver(serverRequestTransceiverObserver);
         }
         try {
+            // TODO this is the only point at which the transceiver is opened. if initial connection fails, it silently stays that way
+            // with all dynamic proxy method calls timing out - these should re-trigger a transceiver open, if it isn't open.
             transceiver.open();
         } catch (final IOException e) {
             logger.error("Could not open transceiver: " + e.getMessage(), e);
