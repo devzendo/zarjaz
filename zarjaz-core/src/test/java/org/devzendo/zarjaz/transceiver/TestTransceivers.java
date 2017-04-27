@@ -1,7 +1,7 @@
 package org.devzendo.zarjaz.transceiver;
 
-import org.apache.log4j.BasicConfigurator;
 import org.devzendo.commoncode.concurrency.ThreadUtils;
+import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.util.BufferDumper;
 import org.junit.After;
@@ -44,15 +44,11 @@ import static org.hamcrest.Matchers.hasSize;
  * limitations under the License.
  */
 @RunWith(Parameterized.class)
-public class TestTransceivers {
+public class TestTransceivers extends ConsoleLoggingUnittestCase {
     private static final Logger logger = LoggerFactory.getLogger(TestTransceivers.class);
 
     private enum ConnectionType {NULL, TCP, UDP, UDP_BROADCAST};
     private final ConnectionType connectionType;
-
-    {
-        BasicConfigurator.configure();
-    }
 
     @Parameterized.Parameters
     public static Collection<ConnectionType> data() {

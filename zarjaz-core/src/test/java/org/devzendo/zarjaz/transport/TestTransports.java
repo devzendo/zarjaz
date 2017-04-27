@@ -1,7 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
-import org.apache.log4j.BasicConfigurator;
 import org.devzendo.commoncode.concurrency.ThreadUtils;
+import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.sample.primes.DefaultPrimeGenerator;
@@ -53,12 +53,8 @@ import static org.junit.Assert.fail;
  * limitations under the License.
  */
 @RunWith(Parameterized.class)
-public class TestTransports {
+public class TestTransports extends ConsoleLoggingUnittestCase {
     private static final Logger logger = LoggerFactory.getLogger(TestTransports.class);
-
-    {
-        BasicConfigurator.configure();
-    }
 
     @Parameters
     public static Collection<Class> data() {

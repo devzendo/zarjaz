@@ -1,7 +1,7 @@
 package org.devzendo.zarjaz.protocol;
 
-import org.apache.log4j.BasicConfigurator;
 import org.devzendo.commoncode.string.HexDump;
+import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.nio.DefaultWritableByteBuffer;
 import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.nio.WritableByteBuffer;
@@ -41,13 +41,9 @@ import static org.hamcrest.Matchers.*;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class TestInvocationCodec {
+public class TestInvocationCodec extends ConsoleLoggingUnittestCase {
     private static final int SEQUENCE = 69;
     private static final Logger logger = LoggerFactory.getLogger(TestInvocationCodec.class);
-
-    {
-        BasicConfigurator.configure();
-    }
 
     private static final byte[] fixedHash = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 
@@ -439,7 +435,7 @@ public class TestInvocationCodec {
             final WritableByteBuffer buffer = DefaultWritableByteBuffer.allocate(truncatedLength);
             buffer.put(Arrays.copyOf(array, truncatedLength));
             final ReadableByteBuffer readableByteBuffer = buffer.flip();
-            logger.debug("length is " + truncatedLength);
+            logger.info("length is " + truncatedLength);
             assertThat(codec.decodeFrame(asList(readableByteBuffer)).isPresent(), equalTo(false));
         }
     }

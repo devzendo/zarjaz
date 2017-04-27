@@ -1,6 +1,6 @@
 package org.devzendo.zarjaz.transport;
 
-import org.apache.log4j.BasicConfigurator;
+import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
@@ -48,14 +48,10 @@ import static org.junit.Assert.fail;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class TestTransceiverTransport {
+public class TestTransceiverTransport extends ConsoleLoggingUnittestCase {
     private static final Logger logger = LoggerFactory.getLogger(TestTransceiverTransport.class);
 
     private static final int METHOD_TIMEOUT_MILLISECONDS = 500;
-
-    {
-        BasicConfigurator.configure();
-    }
 
     @Rule
     public MockitoRule mockitoRule = MockitoJUnit.rule();
