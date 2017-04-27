@@ -47,39 +47,49 @@ import static org.hamcrest.Matchers.hasSize;
 public class TestTransceivers {
     private static final Logger logger = LoggerFactory.getLogger(TestTransceivers.class);
 
+    private enum ConnectionType {NULL, TCP, UDP, UDP_BROADCAST};
+    private final ConnectionType connectionType;
+
     {
         BasicConfigurator.configure();
     }
 
     @Parameterized.Parameters
-    public static Collection<Class> data() {
-        return asList(NullTransceiver.class, UDPTransceiver.class, TCPTransceiver.class);
+    public static Collection<ConnectionType> data() {
+        return asList(ConnectionType.NULL, ConnectionType.UDP, ConnectionType.TCP);
     }
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-    private final Class<? extends Transceiver> transceiverClass;
+
     private Transceiver serverTransceiver;
     private Transceiver clientTransceiver;
 
     // runs before mocks initialised, so do real construction in @Before.
-    public TestTransceivers(final Class<? extends Transceiver> transceiverClass) {
-        this.transceiverClass = transceiverClass;
+    public TestTransceivers(final ConnectionType connectionType) {
+        this.connectionType = connectionType;
     }
 
     @Before
     public void setupTransceiver() throws IOException {
         logger.debug("start of setupTransceiver");
-        if (transceiverClass.equals(NullTransceiver.class)) {
-            serverTransceiver = new NullTransceiver();
-            clientTransceiver = serverTransceiver;
-        } else if (transceiverClass.equals(UDPTransceiver.class)) {
-            serverTransceiver = UDPTransceiver.createServer(new InetSocketAddress(9876));
-            clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(9876), false);
-        } else if (transceiverClass.equals(TCPTransceiver.class)) {
-            serverTransceiver = TCPTransceiver.createServer(new InetSocketAddress(9876));
-            clientTransceiver = TCPTransceiver.createClient(new InetSocketAddress(9876));
+        switch (connectionType) {
+            case NULL:
+                serverTransceiver = new NullTransceiver();
+                clientTransceiver = serverTransceiver;
+                break;
+            case UDP:
+                serverTransceiver = UDPTransceiver.createServer(new InetSocketAddress(9876));
+                clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(9876), false);
+                break;
+            case UDP_BROADCAST:
+                serverTransceiver = UDPTransceiver.createServer(new InetSocketAddress(9876));
+                clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(9876), true);
+                break;
+            case TCP:
+                serverTransceiver = TCPTransceiver.createServer(new InetSocketAddress(9876));
+                clientTransceiver = TCPTransceiver.createClient(new InetSocketAddress(9876));
         }
         logger.debug("end of setupTransceiver");
     }
@@ -126,7 +136,7 @@ public class TestTransceivers {
         logger.info("----------------------------------------------- data received ------------------------------------");
         final List<TransceiverObservableEvent> events = observer.getCollectedEvents();
         assertThat(events, hasSize(2));
-        for (TransceiverObservableEvent event: events) {
+        for (TransceiverObservableEvent event : events) {
             assertThat(event.getData(), hasSize(1));
             BufferDumper.dumpBuffer("test received", event.getData().get(0).raw());
         }
