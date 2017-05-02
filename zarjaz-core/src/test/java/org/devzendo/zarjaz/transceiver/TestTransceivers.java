@@ -26,6 +26,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assume.assumeNotNull;
+import static org.junit.Assume.assumeThat;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -55,8 +56,6 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
         final Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
         while (networkInterfaces.hasMoreElements()) {
             final NetworkInterface networkInterface = networkInterfaces.nextElement();
-            if (networkInterface.isLoopback()) {
-            }
             final List<InterfaceAddress> interfaceAddresses = networkInterface.getInterfaceAddresses();
             for (InterfaceAddress interfaceAddress : interfaceAddresses) {
                 final InetAddress broadcast = interfaceAddress.getBroadcast();
@@ -72,7 +71,7 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
     }
     private static InetAddress broadcastAddress = null;
 
-    private enum ConnectionType {NULL, TCP, UDP, UDP_BROADCAST};
+    private enum ConnectionType {NULL, TCP, UDP, UDP_BROADCAST}
     private final ConnectionType connectionType;
 
     @Rule
@@ -233,10 +232,19 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
         clientTransceiver.getServerWriter().writeBuffer(singletonList(createByteBuffer()));
     }
 
+    @Test
+    public void connectExceptionThrownWhenCannotOpen() throws IOException {
+        assumeThat(connectionType, equalTo(ConnectionType.TCP));
+
+        // open client first, which will fail since server is not open.
+        logger.info(">>>> opening client transceiver");
+        thrown.expect(ConnectException.class);
+        thrown.expectMessage("Connection refused");
+        clientTransceiver.open();
+    }
+
     private void expectTransceiverNotOpen() {
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Transceiver not open");
     }
-
-    // TODO exception if data sent to non open transceiver
 }
