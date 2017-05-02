@@ -22,10 +22,15 @@ import org.junit.Before;
  */
 public abstract class ConsoleLoggingUnittestCase {
 
-    @Before
-    public void setupLogging() {
+    // Intended to be callable from @BeforeClass when logging is needed
+    public static void setupLoggingStatically() {
         BasicConfigurator.resetConfiguration();
         BasicConfigurator.configure();
+    }
+
+    @Before
+    public void setupLogging() {
+        setupLoggingStatically();
     }
 
     @After

@@ -107,7 +107,7 @@ public class TCPTransceiver implements Transceiver {
             serverChannel.get().socket().bind(address);
         }
         if (acceptingThread.isPresent()) {
-            logger.debug("opening present accept thread");
+            logger.debug("starting accept thread");
         }
         acceptingThread.ifPresent(Thread::start);
 

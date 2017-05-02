@@ -1,6 +1,9 @@
 package org.devzendo.zarjaz.transceiver;
 
+import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.InterfaceAddress;
@@ -24,19 +27,21 @@ import java.util.List;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class TestNetworkInterfaceMonitor {
+public class TestNetworkInterfaceMonitor extends ConsoleLoggingUnittestCase {
+    private static final Logger logger = LoggerFactory.getLogger(TestNetworkInterfaceMonitor.class);
+
     @Test
     public void enumerate() throws SocketException {
         final Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
         while (networkInterfaces.hasMoreElements()) {
             final NetworkInterface networkInterface = networkInterfaces.nextElement();
-            System.out.println("network interface " + networkInterface + " loopback? " + networkInterface.isLoopback() +
+            logger.info("network interface " + networkInterface + " loopback? " + networkInterface.isLoopback() +
                     " virtual? " + networkInterface.isVirtual() + " point-to-point? " + networkInterface.isPointToPoint() +
                     " up? " + networkInterface.isUp());
             final List<InterfaceAddress> interfaceAddresses = networkInterface.getInterfaceAddresses();
-            for (InterfaceAddress interfaceAddress: interfaceAddresses) {
+            for (InterfaceAddress interfaceAddress : interfaceAddresses) {
                 final InetAddress broadcast = interfaceAddress.getBroadcast();
-                System.out.println("  interface " + interfaceAddress + " network prefix length " + interfaceAddress.getNetworkPrefixLength() + " broadcast " + broadcast);
+                logger.info("  interface " + interfaceAddress + " network prefix length " + interfaceAddress.getNetworkPrefixLength() + " broadcast " + broadcast);
             }
         }
     }

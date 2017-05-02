@@ -4,10 +4,7 @@ import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.util.BufferDumper;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -15,9 +12,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -27,6 +25,7 @@ import static org.devzendo.zarjaz.transceiver.BufferUtils.duplicateOutgoingByteB
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assume.assumeNotNull;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -47,20 +46,45 @@ import static org.hamcrest.Matchers.hasSize;
 public class TestTransceivers extends ConsoleLoggingUnittestCase {
     private static final Logger logger = LoggerFactory.getLogger(TestTransceivers.class);
 
+    @BeforeClass
+    public static void getBroadcastAddress() throws SocketException {
+
+        setupLoggingStatically();
+
+        // logging in here comes out at the end of the tests when run in intellij.
+        final Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+        while (networkInterfaces.hasMoreElements()) {
+            final NetworkInterface networkInterface = networkInterfaces.nextElement();
+            if (networkInterface.isLoopback()) {
+            }
+            final List<InterfaceAddress> interfaceAddresses = networkInterface.getInterfaceAddresses();
+            for (InterfaceAddress interfaceAddress : interfaceAddresses) {
+                final InetAddress broadcast = interfaceAddress.getBroadcast();
+                if (broadcast != null)
+                {
+                    logger.info("Using broadcast address " + broadcast);
+                    broadcastAddress = broadcast;
+                    return;
+                }
+            }
+        }
+        logger.info("No broadcast address available");
+    }
+    private static InetAddress broadcastAddress = null;
+
     private enum ConnectionType {NULL, TCP, UDP, UDP_BROADCAST};
     private final ConnectionType connectionType;
-
-    @Parameterized.Parameters
-    public static Collection<ConnectionType> data() {
-        return asList(ConnectionType.NULL, ConnectionType.UDP, ConnectionType.TCP);
-    }
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-
     private Transceiver serverTransceiver;
     private Transceiver clientTransceiver;
+
+    @Parameterized.Parameters
+    public static Collection<ConnectionType> data() {
+        return asList(ConnectionType.NULL, ConnectionType.UDP, ConnectionType.TCP, ConnectionType.UDP_BROADCAST);
+    }
 
     // runs before mocks initialised, so do real construction in @Before.
     public TestTransceivers(final ConnectionType connectionType) {
@@ -69,7 +93,7 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
 
     @Before
     public void setupTransceiver() throws IOException {
-        logger.debug("start of setupTransceiver");
+        logger.info("***** BEFORE ***** start of setupTransceiver, connection type " + connectionType + " *****");
         switch (connectionType) {
             case NULL:
                 serverTransceiver = new NullTransceiver();
@@ -79,27 +103,29 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
                 serverTransceiver = UDPTransceiver.createServer(new InetSocketAddress(9876));
                 clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(9876), false);
                 break;
-            case UDP_BROADCAST:
-                serverTransceiver = UDPTransceiver.createServer(new InetSocketAddress(9876));
-                clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(9876), true);
-                break;
             case TCP:
                 serverTransceiver = TCPTransceiver.createServer(new InetSocketAddress(9876));
                 clientTransceiver = TCPTransceiver.createClient(new InetSocketAddress(9876));
+                break;
+            case UDP_BROADCAST:
+                assumeNotNull(broadcastAddress);
+                serverTransceiver = UDPTransceiver.createServer(new InetSocketAddress(9876));
+                clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(broadcastAddress,9876), true);
+                break;
         }
-        logger.debug("end of setupTransceiver");
+        logger.debug("***** BEFORE ***** end of setupTransceiver *****");
     }
 
     @After
     public void closeTransceiver() throws IOException {
-        logger.debug("start of closeTransceiver");
+        logger.debug("***** AFTER ***** start of closeTransceiver *****");
         if (serverTransceiver != null) {
             serverTransceiver.close();
         }
         if (clientTransceiver != null) {
             clientTransceiver.close();
         }
-        logger.debug("end of setupTransceiver");
+        logger.debug("***** AFTER ***** end of setupTransceiver ******");
     }
 
     @Test(timeout = 2000)
@@ -191,15 +217,19 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
     @Test
     public void cannotWriteToServerWriterOfClosedClientTransceiver() throws IOException {
         expectTransceiverNotOpen();
-
+        logger.info(">>>> opening server transceiver");
         serverTransceiver.open();
+        logger.info(">>>> waiting for listening to start");
         waitForListeningToStart();
 
+        logger.info(">>>> opening client transceiver");
         clientTransceiver.open();
         ThreadUtils.waitNoInterruption(250);
+        logger.info(">>>> closing client transceiver");
         clientTransceiver.close();
         ThreadUtils.waitNoInterruption(250);
 
+        logger.info(">>>> trying to write to closed client transceiver");
         clientTransceiver.getServerWriter().writeBuffer(singletonList(createByteBuffer()));
     }
 
