@@ -1,5 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.zarjaz.reflect.MethodCallTimeoutHandler;
+
 import java.lang.reflect.Method;
 import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
@@ -21,5 +23,5 @@ import java.util.concurrent.CompletableFuture;
  */
 
 public interface TransportInvocationHandler {
-    void invoke(Method method, Object[] args, CompletableFuture<Object> future, LinkedList<Runnable> timeoutRunnables);
+    void invoke(Method method, Object[] args, CompletableFuture<Object> future, LinkedList<MethodCallTimeoutHandler> timeoutHandlers);
 }

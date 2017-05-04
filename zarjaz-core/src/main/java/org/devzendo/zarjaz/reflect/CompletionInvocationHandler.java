@@ -87,18 +87,18 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         //
         // This list is passed to the transport invocation handler so it can provide its own timeout behaviour for the
         // method invocation.
-        final LinkedList<Runnable> timeoutRunnables = new LinkedList<>();
-        final Runnable timeoutHandler = () -> {
-            final String message = "Method call [" + endpointName + "] '" + method.getName() + "' timed out after " + methodTimeoutMs + "ms";
+        final LinkedList<MethodCallTimeoutHandler> timeoutHandlers = new LinkedList<>();
+        final MethodCallTimeoutHandler timeoutHandler = (f, en, m) -> {
+            final String message = "Method call [" + en + "] '" + m.getName() + "' timed out after " + methodTimeoutMs + "ms";
             if (logger.isDebugEnabled()) {
                 logger.debug(message);
             }
-            future.completeExceptionally(new MethodInvocationTimeoutException(message));
+            f.completeExceptionally(new MethodInvocationTimeoutException(message));
         };
-        timeoutRunnables.addFirst(timeoutHandler);
-        timeoutScheduler.schedule(methodTimeoutMs, () -> timeoutRunnables.forEach((Runnable run) -> {
+        timeoutHandlers.addFirst(timeoutHandler);
+        timeoutScheduler.schedule(methodTimeoutMs, () -> timeoutHandlers.forEach((handler) -> {
             try {
-                run.run();
+                handler.timeoutOccurred(future, endpointName, method);
             } catch (final Exception e) {
                 logger.warn("Method call timeout handler threw exception: " + e.getMessage());
             }
@@ -106,11 +106,11 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
 
         // Note that the NullTransport could block indefinitely here, so runs the invocation and remote code on a separate thread.
         try {
-            transportHandler.invoke(method, args, future, timeoutRunnables);
+            transportHandler.invoke(method, args, future, timeoutHandlers);
         } catch (final Exception e) {
             final String message = "Method call [" + endpointName + "] '" + method.getName() + "' invocation failed: " + e.getMessage();
             logger.warn(message, e);
-            timeoutRunnables.remove(timeoutHandler);
+            timeoutHandlers.remove(timeoutHandler);
             future.completeExceptionally(e);
         }
 
@@ -129,7 +129,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
                 if (logger.isDebugEnabled()) {
                     logger.debug("Wait over; removing timeout handler; returning value");
                 }
-                timeoutRunnables.remove(timeoutHandler);
+                timeoutHandlers.remove(timeoutHandler);
                 return o;
             } catch (final InterruptedException e) {
                 final String msg = "Invocation of " + method.getDeclaringClass().getName() + "." + method.getName() + " interrupted";

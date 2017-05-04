@@ -6,6 +6,7 @@ import org.devzendo.zarjaz.protocol.ByteBufferDecoder;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
 import org.devzendo.zarjaz.protocol.Protocol;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
+import org.devzendo.zarjaz.reflect.MethodCallTimeoutHandler;
 import org.devzendo.zarjaz.reflect.MethodReturnTypeResolver;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.Transceiver;
@@ -267,7 +268,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         }
 
         @Override
-        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<Runnable> timeoutRunnables) {
+        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<MethodCallTimeoutHandler> timeoutHandlers) {
             // An invocation from the client is to be encoded, and sent to the server.
             final byte[] hash = methodsToHashMap.get(method);
             // Allocate a sequence number for this call and register as an outstanding call.
@@ -278,7 +279,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
 
             outstandingMethodCalls.put(thisSequence, new OutstandingMethodCall(hash, method, future));
             // TODO METRIC increment number of outstanding method calls
-            timeoutRunnables.addFirst(() -> {
+            timeoutHandlers.addFirst((f, en, m) -> {
                 outstandingMethodCalls.remove(thisSequence);
                 // TODO METRIC decrement number of outstanding method calls
             });

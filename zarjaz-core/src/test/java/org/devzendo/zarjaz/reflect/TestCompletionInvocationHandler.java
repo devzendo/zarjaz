@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 
@@ -135,7 +134,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
     }
 
     @Test(timeout = 4000L)
-    public void canRunCustomRunnableOnTimeout() throws NoSuchMethodException {
+    public void canRunCustomHandlerOnTimeout() throws NoSuchMethodException {
         BasicConfigurator.configure();
 
         final boolean[] wasRun = new boolean[] { false };
@@ -143,9 +142,9 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
 
         logger.info("creating test objects");
         // given
-        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
-            logger.info("transport invocation handler, adding timeout runnable");
-            timeoutRunnables.add(() -> {
+        transportInvocationHandler = (method, args, future, timeoutHandlers) -> {
+            logger.info("transport invocation handler, adding timeout handler");
+            timeoutHandlers.add((f, en, m) -> {
                 logger.info("running timeout handler");
                 wasRun[0] = true;
             });
@@ -227,13 +226,13 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         final boolean[] wasRun = new boolean[] { false, false, false };
 
         // given
-        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
-            timeoutRunnables.add(() -> wasRun[0] = true);
-            timeoutRunnables.add(() -> {
+        transportInvocationHandler = (method, args, future, timeoutHandlers) -> {
+            timeoutHandlers.add((f, en, m) -> wasRun[0] = true);
+            timeoutHandlers.add((f, en, m) -> {
                 wasRun[1] = true;
                 throw new IllegalStateException("boom");
             });
-            timeoutRunnables.add(() -> wasRun[2] = true);
+            timeoutHandlers.add((f, en, m) -> wasRun[2] = true);
             waitNoInterruption(2000L);
         };
         final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =

@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.zarjaz.reflect.MethodCallTimeoutHandler;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
@@ -53,7 +54,7 @@ class NullTransport extends AbstractTransport implements Transport {
         }
 
         @Override
-        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<Runnable> timeoutRunnables) {
+        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<MethodCallTimeoutHandler> timeoutHandlers) {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
