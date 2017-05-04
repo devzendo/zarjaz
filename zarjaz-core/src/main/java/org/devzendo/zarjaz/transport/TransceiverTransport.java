@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -126,24 +125,49 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             }
         }
 
+        // Normal single-return method result processing:
+        // Remove outstanding method call if it exists.
+        // Decode the return type from the decoder
+        // Set the future, unblocking.
+        //
+        // Custom multiple-return method result processing:
+        // Do not remove outstanding method call if it exists.
+        // Decode the return type from the decoder - must not be a future
+        // Call the supplied multiple-invocation return processor.
+        // Set the future in the timeout handler with a non-exceptional value (null?). Clients won't use this.
+        //
+        // This multiple-invocation method result processing will customise both Timeout and Transport timeout handlers.
         private void processMethodReturnResult(final ByteBufferDecoder decoder) throws IOException {
             final int sequence = decoder.readInt();
+            // TODO how do we know if this is a multiple-return method? We don't, before getting the OutstandingMethodCall
+            // to look up the hash/method.
+            // Going to have to lock on the outstandingMethodCalls.
+            // How do we indicate a method in a client interface is multiple-return? How to set the return handling
+            // function (and switch the processing, as in the header comment above?)
+            // Seems like a job for switchable strategies.
+            // Need to provide a multiple return handler to the client proxy generator that refers to the method.
+            // TODO only remove if it's not a multiple-return method
             final OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.remove(sequence);
             if (outstandingMethodCall == null) {
                 // TODO test for this
                 throw new IOException("Incoming method return with sequence " + sequence + " is not outstanding");
             }
+
+            final Object returnValue = decodeReturnValue(decoder, outstandingMethodCall);
+
+            outstandingMethodCall.future.complete(returnValue);
+            // TODO METRIC increment successful method decode
+            // TODO REQUEST/RESPONSE LOGGING log method return
+        }
+
+        private Object decodeReturnValue(final ByteBufferDecoder decoder, final OutstandingMethodCall outstandingMethodCall) throws IOException {
             final Class<?> returnType = outstandingMethodCall.method.getReturnType();
             if (returnType.isAssignableFrom(Future.class)) {
                 final Class<?> genericReturnType = typeResolver.getReturnType(outstandingMethodCall.method);
-                final Object returnValue = decoder.readObject(genericReturnType);
-                outstandingMethodCall.future.complete(returnValue);
+                return decoder.readObject(genericReturnType);
             } else {
-                final Object returnValue = decoder.readObject(returnType);
-                outstandingMethodCall.future.complete(returnValue);
+                return decoder.readObject(returnType);
             }
-            // TODO METRIC increment successful method decode
-            // TODO REQUEST/RESPONSE LOGGING log method return
         }
     }
 

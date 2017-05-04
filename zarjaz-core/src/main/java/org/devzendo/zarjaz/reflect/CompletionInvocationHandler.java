@@ -73,6 +73,18 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         // And every response needs to reuse this logic. Synchronous calls can get.
 
         final CompletableFuture<Object> future = new CompletableFuture<Object>();
+
+
+        // Possible behaviours on timeout:
+        // Complete the future exceptionally
+        // Process some transport-specific detail (clearing outstanding method call count?)
+        // These timeout handlers need access to (from this layer):
+        // Future
+        // Endpoint name, method
+        // So there are two timeout handlers, both of which can be replaced:
+        // The actual timeout exceptional future setter
+        // The transport-specific handler
+        //
         // This list is passed to the transport invocation handler so it can provide its own timeout behaviour for the
         // method invocation.
         final LinkedList<Runnable> timeoutRunnables = new LinkedList<>();
