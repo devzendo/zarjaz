@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -47,24 +46,22 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         this.methodTimeoutMs = methodTimeoutMs;
     }
 
+    @Override
     public Object invoke(final Object proxy, final Method method, final Object[] args) {
         if (logger.isDebugEnabled()) {
             logger.debug("Invoking [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName());
         }
 
-        String name = method.getName();
+        final String name = method.getName();
         if (name.equals("hashCode")) {
             return hashCode();
-        }
-        else if (name.equals("equals")) {
+        } else if (name.equals("equals")) {
             final Object other = args[0];
             return (proxy == other) ||
-                   (other != null && Proxy.isProxyClass(other.getClass()) && this.equals(Proxy.getInvocationHandler(other)));
-        }
-        else if (name.equals("toString")) {
+                    (other != null && Proxy.isProxyClass(other.getClass()) && this.equals(Proxy.getInvocationHandler(other)));
+        } else if (name.equals("toString")) {
             return "Client for endpoint '" + name + "', interface class '" + interfaceClass + "'";
-        }
-        else {
+        } else {
             return invokeRemote(method, args);
         }
     }
@@ -87,7 +84,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         //
         // This list is passed to the transport invocation handler so it can provide its own timeout behaviour for the
         // method invocation.
-        final LinkedList<MethodCallTimeoutHandler> timeoutHandlers = new LinkedList<>();
+        final MethodCallTimeoutHandlers timeoutHandlers = new MethodCallTimeoutHandlers();
         final MethodCallTimeoutHandler timeoutHandler = (f, en, m) -> {
             final String message = "Method call [" + en + "] '" + m.getName() + "' timed out after " + methodTimeoutMs + "ms";
             if (logger.isDebugEnabled()) {
@@ -95,14 +92,20 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
             }
             f.completeExceptionally(new MethodInvocationTimeoutException(message));
         };
-        timeoutHandlers.addFirst(timeoutHandler);
-        timeoutScheduler.schedule(methodTimeoutMs, () -> timeoutHandlers.forEach((handler) -> {
+        timeoutHandlers.setTimeoutOccurredHandler(timeoutHandler);
+        timeoutScheduler.schedule(methodTimeoutMs, () -> {
+            // TODO create list of handlers, flatMap over?
             try {
-                handler.timeoutOccurred(future, endpointName, method);
+                timeoutHandlers.getTimeoutTransportHandler().ifPresent(handler -> handler.timeoutOccurred(future, endpointName, method));
             } catch (final Exception e) {
                 logger.warn("Method call timeout handler threw exception: " + e.getMessage());
             }
-        }));
+            try {
+                timeoutHandlers.getTimeoutOccurredHandler().ifPresent(handler -> handler.timeoutOccurred(future, endpointName, method));
+            } catch (final Exception e) {
+                logger.warn("Method call timeout handler threw exception: " + e.getMessage());
+            }
+        });
 
         // Note that the NullTransport could block indefinitely here, so runs the invocation and remote code on a separate thread.
         try {
@@ -110,7 +113,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         } catch (final Exception e) {
             final String message = "Method call [" + endpointName + "] '" + method.getName() + "' invocation failed: " + e.getMessage();
             logger.warn(message, e);
-            timeoutHandlers.remove(timeoutHandler);
+            timeoutHandlers.removeTimeoutOccurredHandler();
             future.completeExceptionally(e);
         }
 
@@ -129,7 +132,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
                 if (logger.isDebugEnabled()) {
                     logger.debug("Wait over; removing timeout handler; returning value");
                 }
-                timeoutHandlers.remove(timeoutHandler);
+                timeoutHandlers.removeTimeoutOccurredHandler();
                 return o;
             } catch (final InterruptedException e) {
                 final String msg = "Invocation of " + method.getDeclaringClass().getName() + "." + method.getName() + " interrupted";

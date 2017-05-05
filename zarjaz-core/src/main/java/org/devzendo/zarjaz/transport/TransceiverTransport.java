@@ -6,7 +6,7 @@ import org.devzendo.zarjaz.protocol.ByteBufferDecoder;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
 import org.devzendo.zarjaz.protocol.Protocol;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
-import org.devzendo.zarjaz.reflect.MethodCallTimeoutHandler;
+import org.devzendo.zarjaz.reflect.MethodCallTimeoutHandlers;
 import org.devzendo.zarjaz.reflect.MethodReturnTypeResolver;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.Transceiver;
@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -268,7 +267,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         }
 
         @Override
-        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<MethodCallTimeoutHandler> timeoutHandlers) {
+        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final MethodCallTimeoutHandlers timeoutHandlers) {
             // An invocation from the client is to be encoded, and sent to the server.
             final byte[] hash = methodsToHashMap.get(method);
             // Allocate a sequence number for this call and register as an outstanding call.
@@ -279,7 +278,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
 
             outstandingMethodCalls.put(thisSequence, new OutstandingMethodCall(hash, method, future));
             // TODO METRIC increment number of outstanding method calls
-            timeoutHandlers.addFirst((f, en, m) -> {
+            timeoutHandlers.setTimeoutTransportHandler((f, en, m) -> {
                 outstandingMethodCalls.remove(thisSequence);
                 // TODO METRIC decrement number of outstanding method calls
             });
@@ -291,7 +290,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             }
             try {
                 transceiver.getServerWriter().writeBuffer(bytes);
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 logger.warn("Could not write buffer to server transceiver: " + e.getMessage());
             }
         }
@@ -309,7 +308,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         return new TransceiverTransportInvocationHandler(endpointName, interfaceClass);
     }
 
-    private <T> void registerHashes(EndpointName endpointName, Class<T> interfaceClass) {
+    private <T> void registerHashes(final EndpointName endpointName, final Class<T> interfaceClass) {
         final Map<Method, byte[]> methodMap = invocationHashGenerator.generate(endpointName, interfaceClass);
 
         // Register hashes...

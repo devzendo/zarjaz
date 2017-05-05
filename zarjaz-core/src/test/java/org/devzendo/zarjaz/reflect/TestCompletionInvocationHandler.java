@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.devzendo.commoncode.concurrency.ThreadUtils.waitNoInterruption;
 import static org.devzendo.zarjaz.logging.IsLoggingEvent.loggingEvent;
@@ -144,7 +145,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         // given
         transportInvocationHandler = (method, args, future, timeoutHandlers) -> {
             logger.info("transport invocation handler, adding timeout handler");
-            timeoutHandlers.add((f, en, m) -> {
+            timeoutHandlers.setTimeoutTransportHandler((f, en, m) -> {
                 logger.info("running timeout handler");
                 wasRun[0] = true;
             });
@@ -178,23 +179,20 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
     @Test(timeout = 4000L)
     public void timeoutIsCancelledOnSuccessfulCompletion() throws NoSuchMethodException, InterruptedException {
         BasicConfigurator.configure();
-
-        final boolean[] wasRun = new boolean[] { false };
-        assertThat(wasRun[0], equalTo(false));
-
+        
         logger.info("creating test objects");
-        List[] cachedTimeoutRunnables = new List[1];
-        cachedTimeoutRunnables[0] = null;
+        final AtomicReference<MethodCallTimeoutHandlers> handlers = new AtomicReference<>();
         final CountDownLatch stored = new CountDownLatch(1);
         // given
-        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
-            logger.info("transport invocation handler, caching timeout runnables " + timeoutRunnables);
-            synchronized (cachedTimeoutRunnables) {
-                cachedTimeoutRunnables[0] = timeoutRunnables;
-            }
+        transportInvocationHandler = (method, args, future, timeoutHandlers) -> {
+            logger.info("transport invocation handler, caching timeout handlers " + timeoutHandlers);
+            handlers.set(timeoutHandlers);
+
             logger.info("storing result in future, simulating completion");
             future.complete("hello world");
+
             ThreadUtils.waitNoInterruption(250); // give completion invocation handler some time to unblock
+
             logger.info("letting test complete and check timeout handler");
             stored.countDown();
             logger.info("finished transport invocation handler");
@@ -208,31 +206,31 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         completionInvocationHandler.invoke(irrelevantProxy, getNameMethod, noArgs);
 
         stored.await();
-        // then
-        synchronized (cachedTimeoutRunnables) {
-            assertThat(cachedTimeoutRunnables[0], not(nullValue()));
-            final List<Runnable> timeoutRunnables = cachedTimeoutRunnables[0];
-            assertThat(timeoutRunnables, hasSize(0));
-        }
+        // then the timeout occurred handler has been removed from the handlers
+        assertThat(handlers.get().getTimeoutOccurredHandler().isPresent(), equalTo(false));
 
         logger.info("end of test wait");
-        waitNoInterruption(1000L);
+        waitNoInterruption(250L);
 
         logger.info("end of test");
     }
 
     @Test(timeout = 4000L)
-    public void explodingTimeoutHandlerDoesNotPreventExecutionOfOthers() throws NoSuchMethodException {
-        final boolean[] wasRun = new boolean[] { false, false, false };
+    public void explodingTimeoutTransportHandlerDoesNotPreventExecutionOfTimeoutOccurredHandler() throws NoSuchMethodException {
+        final boolean[] wasRun = new boolean[]{false, false};
 
         // given
         transportInvocationHandler = (method, args, future, timeoutHandlers) -> {
-            timeoutHandlers.add((f, en, m) -> wasRun[0] = true);
-            timeoutHandlers.add((f, en, m) -> {
+            timeoutHandlers.setTimeoutTransportHandler((f, en, m) -> {
                 wasRun[1] = true;
                 throw new IllegalStateException("boom");
             });
-            timeoutHandlers.add((f, en, m) -> wasRun[2] = true);
+            // need to chain the original timeout occurred handler
+            final MethodCallTimeoutHandler timeoutOccurredHandler = timeoutHandlers.getTimeoutOccurredHandler().get();
+            timeoutHandlers.setTimeoutOccurredHandler((f, en, m) -> {
+                wasRun[0] = true;
+                timeoutOccurredHandler.timeoutOccurred(f, en, m);
+            });
             waitNoInterruption(2000L);
         };
         final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =
@@ -253,10 +251,45 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         // then
         assertThat(wasRun[0], equalTo(true));
         assertThat(wasRun[1], equalTo(true));
-        assertThat(wasRun[2], equalTo(true));
         assertTrue(new ArrayList<>(capturingAppender.getEvents()).stream().anyMatch(
                 e -> e.getMessage().equals("Method call timeout handler threw exception: boom") && e.getLevel().equals(Level.WARN)
         ));
+    }
+
+    @Test(timeout = 4000L)
+    public void orderOfTimeoutHandlers() throws NoSuchMethodException {
+        final List<String> wasRun = new ArrayList<>();
+
+        // given
+        transportInvocationHandler = (method, args, future, timeoutHandlers) -> {
+            timeoutHandlers.setTimeoutTransportHandler((f, en, m) -> wasRun.add("transport"));
+            // need to chain the original timeout occurred handler
+            final MethodCallTimeoutHandler timeoutOccurredHandler = timeoutHandlers.getTimeoutOccurredHandler().get();
+            timeoutHandlers.setTimeoutOccurredHandler((f, en, m) -> {
+                wasRun.add("occurred");
+                timeoutOccurredHandler.timeoutOccurred(f, en, m);
+            });
+            waitNoInterruption(2000L);
+        };
+        final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =
+                new CompletionInvocationHandler<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 500L);
+        final Object irrelevantProxy = null;
+
+        // when
+        try {
+            completionInvocationHandler.invoke(irrelevantProxy, getNameMethod, noArgs);
+            fail("A timeout exception should have been thrown");
+        } catch (final Exception e) {
+            assertThat(e, instanceOf(MethodInvocationTimeoutException.class));
+            assertThat(e.getMessage(), equalTo("Method call [Sample] 'getName' timed out after 500ms"));
+        }
+
+        waitNoInterruption(200L);
+
+        // then
+        assertThat(wasRun, hasSize(2));
+        assertThat(wasRun.get(0), equalTo("transport"));
+        assertThat(wasRun.get(1), equalTo("occurred"));
     }
 
     @Test(timeout = 4000L)
@@ -291,9 +324,9 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         try {
             completionInvocationHandler.invoke(irrelevantProxy, getNameMethod, noArgs);
             fail("Expected an exception");
-        } catch (InvocationException ie) {
+        } catch (final InvocationException ie) {
             assertThat(ie.getMessage(), Matchers.containsString("boom"));
-        } catch (Exception e) {
+        } catch (final Exception e) {
             fail("Caught the wrong exception: " + e);
         }
 

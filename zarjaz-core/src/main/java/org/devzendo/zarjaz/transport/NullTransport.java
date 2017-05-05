@@ -1,6 +1,6 @@
 package org.devzendo.zarjaz.transport;
 
-import org.devzendo.zarjaz.reflect.MethodCallTimeoutHandler;
+import org.devzendo.zarjaz.reflect.MethodCallTimeoutHandlers;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -34,11 +33,11 @@ class NullTransport extends AbstractTransport implements Transport {
     private static final Logger logger = LoggerFactory.getLogger(NullTransport.class);
 
     // TODO not sure this ctor is needed - need one with everything supplied, and with nothing supplied?
-    public NullTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator) {
+    public NullTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator) {
         this(serverImplementationValidator, clientInterfaceValidator, new TimeoutScheduler());
     }
 
-    public NullTransport(ServerImplementationValidator serverImplementationValidator, ClientInterfaceValidator clientInterfaceValidator, TimeoutScheduler timeoutScheduler) {
+    public NullTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler) {
         super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, "null");
     }
 
@@ -54,11 +53,11 @@ class NullTransport extends AbstractTransport implements Transport {
         }
 
         @Override
-        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final LinkedList<MethodCallTimeoutHandler> timeoutHandlers) {
+        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final MethodCallTimeoutHandlers timeoutHandlers) {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    String methodName = method.getName();
+                    final String methodName = method.getName();
                     final Class[] argClasses = objectsToClasses(args);
                     if (logger.isDebugEnabled()) {
                         // TODO would be useful to log the endpoint name here
@@ -124,6 +123,7 @@ class NullTransport extends AbstractTransport implements Transport {
     }
 
     // The TransportInvocationHandler is the client-side part that varies between transports.
+    @Override
     protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
         // TODO generally, how does a remote client know that a named interface exists?
         synchronized (implementations) {
