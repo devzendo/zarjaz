@@ -47,7 +47,7 @@ public class TestRoundTripUDP {
 
     private class IncrementServer implements Increment {
         @Override
-        public int increment(int input) {
+        public int increment(final int input) {
             return input + 1;
         }
     }
@@ -71,15 +71,16 @@ public class TestRoundTripUDP {
     public void sendIncrementMessages() throws IOException {
         final UDPTransceiver clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(PORT), false);
         final Transport clientTransport = new TransceiverTransportFactory().create(clientTransceiver);
-        final Increment incProxy = clientTransport.createClientProxy(endpointName, Increment.class, 500);
-        logger.info("Starting transport");
-        clientTransport.start();
         try {
+            final Increment incProxy = clientTransport.createClientProxy(endpointName, Increment.class, 500);
+            logger.info("Starting client transport");
+            clientTransport.start();
             for (int i = 0; i < 1000; i++) {
-                int incremented = incProxy.increment(i);
+                final int incremented = incProxy.increment(i);
                 assertThat(incremented, equalTo(i + 1));
             }
         } finally {
+            logger.info("Stopping client transport");
             clientTransport.stop();
         }
     }

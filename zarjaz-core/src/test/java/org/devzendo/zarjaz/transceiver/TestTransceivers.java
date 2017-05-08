@@ -57,7 +57,7 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
         while (networkInterfaces.hasMoreElements()) {
             final NetworkInterface networkInterface = networkInterfaces.nextElement();
             final List<InterfaceAddress> interfaceAddresses = networkInterface.getInterfaceAddresses();
-            for (InterfaceAddress interfaceAddress : interfaceAddresses) {
+            for (final InterfaceAddress interfaceAddress : interfaceAddresses) {
                 final InetAddress broadcast = interfaceAddress.getBroadcast();
                 if (broadcast != null)
                 {
@@ -92,7 +92,7 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
 
     @Before
     public void setupTransceiver() throws IOException {
-        logger.info("***** BEFORE ***** start of setupTransceiver, connection type " + connectionType + " *****");
+        logger.info(">>>>> BEFORE ***** start of setupTransceiver, connection type " + connectionType + " *****");
         switch (connectionType) {
             case NULL:
                 serverTransceiver = new NullTransceiver();
@@ -112,19 +112,28 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
                 clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(broadcastAddress,9876), true);
                 break;
         }
-        logger.debug("***** BEFORE ***** end of setupTransceiver *****");
+        logger.debug("<<<<< BEFORE ***** end of setupTransceiver *****");
     }
 
     @After
     public void closeTransceiver() throws IOException {
-        logger.debug("***** AFTER ***** start of closeTransceiver *****");
+        logger.debug(">>>>> AFTER ***** start of closeTransceiver *****");
         if (serverTransceiver != null) {
             serverTransceiver.close();
         }
         if (clientTransceiver != null) {
             clientTransceiver.close();
         }
-        logger.debug("***** AFTER ***** end of setupTransceiver ******");
+        logger.debug("<<<<< AFTER ***** end of setupTransceiver ******");
+    }
+
+    @Test
+    public void canRebindServerTransceiversQuickly() throws IOException {
+        serverTransceiver.open();
+        serverTransceiver.close();
+
+        setupTransceiver(); // binds server again.
+        serverTransceiver.open();
     }
 
     @Test(timeout = 2000)
@@ -157,7 +166,7 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
         logger.info("----------------------------------------------- data received ------------------------------------");
         final List<TransceiverObservableEvent> events = observer.getCollectedEvents();
         assertThat(events, hasSize(2));
-        for (TransceiverObservableEvent event : events) {
+        for (final TransceiverObservableEvent event : events) {
             assertThat(event.getData(), hasSize(1));
             BufferDumper.dumpBuffer("test received", event.getData().get(0).raw());
         }

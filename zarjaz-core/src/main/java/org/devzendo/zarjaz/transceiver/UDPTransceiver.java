@@ -85,11 +85,6 @@ public class UDPTransceiver implements Transceiver {
 
     @Override
     public void open() throws IOException {
-//        if (remote.isPresent()) {
-//            final SocketAddress socketAddress = remote.get();
-//            logger.info("Binding to address " + socketAddress);
-//            channel.bind(socketAddress);
-//        }
         if (serverEnd != null) {
             serverEnd.open();
         }
@@ -139,6 +134,9 @@ public class UDPTransceiver implements Transceiver {
             channel.disconnect();
         }
         channel.close();
+        if (logger.isDebugEnabled()) {
+            logger.debug("Closed UDPTransceiver");
+        }
     }
 
     private static class ClientObservableTransceiverEnd extends UDPObservableTransceiverEnd {
@@ -169,6 +167,7 @@ public class UDPTransceiver implements Transceiver {
             listeningThread.setName("UDPTransceiver " + name + " listening thread");
         }
 
+        @Override
         public void run() {
             while (active) {
                 if (logger.isDebugEnabled()) {
@@ -208,7 +207,7 @@ public class UDPTransceiver implements Transceiver {
                     final BufferWriter replyWriter = new RemoteBufferWriter(() -> active, remote, channel);
                     fireEvent(new DataReceived(buffers, replyWriter));
                 } catch (final ClosedByInterruptException cli) {
-                    logger.debug("Channel closed");
+                    logger.debug("UDP listening thread interrupted");
                 } catch (final IOException ioe) {
                     logger.warn("Receive failure: " + ioe.getMessage(), ioe);
                     fireEvent(new TransceiverFailure(ioe));
@@ -247,7 +246,7 @@ public class UDPTransceiver implements Transceiver {
         }
 
         @Override
-        public void removeTransceiverObserver(TransceiverObserver observer) {
+        public void removeTransceiverObserver(final TransceiverObserver observer) {
             // TODO rename removeListener in common code to removeObserver
             observers.removeListener(observer);
         }
@@ -276,7 +275,7 @@ public class UDPTransceiver implements Transceiver {
             }
             // Need to write all the data buffers in one write, no way though?
             writeBuffer.clear();
-            for (ReadableByteBuffer readable: data) {
+            for (final ReadableByteBuffer readable : data) {
                 // TODO test for this
                 if (readable.remaining() == 0) {
                     throw new IOException("RemoteBufferWriter has been given pre-flipped ByteBuffers");

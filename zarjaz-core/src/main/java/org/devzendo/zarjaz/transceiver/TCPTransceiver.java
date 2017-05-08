@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -229,6 +228,7 @@ public class TCPTransceiver implements Transceiver {
             this.readingThread.setName("TCPTransceiver " + name + " reading thread [" + address + "]");
         }
 
+        @Override
         public void run() {
             if (logger.isDebugEnabled()) {
                 logger.debug("Starting TCP reading thread for " + name);
@@ -323,7 +323,7 @@ public class TCPTransceiver implements Transceiver {
         }
 
         @Override
-        public void removeTransceiverObserver(TransceiverObserver observer) {
+        public void removeTransceiverObserver(final TransceiverObserver observer) {
             // TODO rename removeListener in common code to removeObserver
             observers.removeListener(observer);
         }
@@ -352,7 +352,7 @@ public class TCPTransceiver implements Transceiver {
             }
             // Need to write all the data buffers in one write, no way though?
             writeBuffer.clear();
-            for (ReadableByteBuffer readable: data) {
+            for (final ReadableByteBuffer readable : data) {
                 // TODO test for this
                 if (readable.remaining() == 0) {
                     throw new IOException("RemoteBufferWriter has been given pre-flipped ByteBuffers");
