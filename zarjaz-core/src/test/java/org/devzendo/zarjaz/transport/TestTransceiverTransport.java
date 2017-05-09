@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
@@ -7,6 +8,7 @@ import org.devzendo.zarjaz.protocol.InvocationCodec;
 import org.devzendo.zarjaz.protocol.Protocol;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.reflect.InvocationHashGenerator;
+import org.devzendo.zarjaz.sample.primes.PrimeGenerator;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.NullTransceiver;
 import org.devzendo.zarjaz.transceiver.Transceiver;
@@ -25,6 +27,8 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.devzendo.commoncode.concurrency.ThreadUtils.waitNoInterruption;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -78,11 +82,11 @@ public class TestTransceiverTransport extends ConsoleLoggingUnittestCase {
     }
 
     private class IntentionallyCollidingInvocationHashGenerator implements InvocationHashGenerator {
-        private byte[] fixedHash = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+        private final byte[] fixedHash = new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
         @Override
         public Map<Method, byte[]> generate(final EndpointName endpointName, final Class<?> interfaceClass) {
             final Map<Method, byte[]> map = new HashMap<>();
-            for (Method method: interfaceClass.getMethods()) {
+            for (final Method method : interfaceClass.getMethods()) {
                 map.put(method, fixedHash);
             }
             return map;
@@ -222,7 +226,7 @@ public class TestTransceiverTransport extends ConsoleLoggingUnittestCase {
         public boolean called = false;
 
         @Override
-        public int addOne(int input) {
+        public int addOne(final int input) {
             called = true;
             return input + 1;
         }
@@ -249,4 +253,61 @@ public class TestTransceiverTransport extends ConsoleLoggingUnittestCase {
              transport.stop();
         }
     }
+
+    // -----------------------------------------------------------------------------------------------------------------
+
+    private static class PrimeCallDetector implements PrimeGenerator {
+        final AtomicBoolean called = new AtomicBoolean(false);
+
+        @Override
+        public String generateNextPrimeMessage(final String userName) {
+            called.set(true);
+            return "called";
+        }
+
+        @Override
+        public Future<String> generateNextPrimeMessageAsynchronously(final String userName) {
+            return null;
+        }
+    }
+
+    @Test(timeout = 2000)
+    public void receivedBuffersAreRewoundForOtherObservers() {
+        final PrimeCallDetector serverOneImpl = new PrimeCallDetector();
+        final Transport serverOneTransport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
+                timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
+        serverOneTransport.registerServerImplementation(endpointName, PrimeGenerator.class, serverOneImpl);
+
+        final Transport serverTwoTransport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
+                timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
+        final PrimeCallDetector serverTwoImpl = new PrimeCallDetector();
+        serverTwoTransport.registerServerImplementation(endpointName, PrimeGenerator.class, serverTwoImpl);
+
+        final Transport clientTransport = new TransceiverTransport(serverImplementationValidator, clientInterfaceValidator,
+                timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
+        final PrimeGenerator clientProxy = clientTransport.createClientProxy(endpointName, PrimeGenerator.class, 500L);
+
+        serverOneTransport.start();
+        serverTwoTransport.start();
+        clientTransport.start();
+
+        try {
+            clientProxy.generateNextPrimeMessage("Irrelevant");
+
+            // It's difficult to test that the buffers are actually rewound, so this is a bit indirect.
+            // That should send a buffer which will be passed onto the transceiver's observers - serverTransport and
+            // serverTwoTransport. If the buffer isn't rewound, it won't be decodable by serverTwoTransport, and so
+            // serverTwoTransport won't receive it.
+            ThreadUtils.waitNoInterruption(250);
+
+            assertThat(serverOneImpl.called.get(), equalTo(true));
+            // if not rewound, this'll be false...
+            assertThat(serverTwoImpl.called.get(), equalTo(true));
+        } finally {
+            clientTransport.stop();
+            serverOneTransport.stop();
+            serverTwoTransport.stop();
+        }
+    }
+
 }

@@ -1,5 +1,8 @@
 package org.devzendo.zarjaz.transport;
 
+import java.lang.reflect.Method;
+import java.util.concurrent.Callable;
+
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
  *
@@ -21,6 +24,8 @@ public interface Transport {
 
     <T> T createClientProxy(EndpointName name, Class<T> interfaceClass, long methodTimeoutMilliseconds);
     // TODO need a mechanism for setting/overriding timeouts for specific methods.
+
+    <R> void callClientMethodWithMultipleReturn(EndpointName name, Method method, Callable<R> callable);
 
     /**
      * Start allowing calls to server implementations.

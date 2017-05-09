@@ -9,10 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.*;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -39,6 +36,11 @@ class NullTransport extends AbstractTransport implements Transport {
 
     public NullTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler) {
         super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, "null");
+    }
+
+    @Override
+    public <R> void callClientMethodWithMultipleReturn(final EndpointName name, final Method method, final Callable<R> callable) {
+        throw new UnsupportedOperationException("haven't finished this yet");
     }
 
     // TODO this should be useful for all server-side transports, surely?

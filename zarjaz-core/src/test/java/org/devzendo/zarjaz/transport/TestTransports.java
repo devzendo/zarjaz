@@ -63,6 +63,9 @@ public class TestTransports extends ConsoleLoggingUnittestCase {
 
     private final String userName = "Matt";
     private final Class<? extends Transport> transportClass;
+    private final NullTransceiver nullTransceiver = new NullTransceiver();
+    private final DefaultInvocationCodec invocationCodec = new DefaultInvocationCodec();
+    private final DefaultInvocationHashGenerator invocationHashGenerator = new DefaultInvocationHashGenerator();
     private TimeoutScheduler timeoutScheduler;
     private Transport clientTransport;
     private Transport serverTransport;
@@ -87,13 +90,17 @@ public class TestTransports extends ConsoleLoggingUnittestCase {
     @Before
     public void setUp() throws IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException {
         timeoutScheduler = new TimeoutScheduler();
+        clientTransport = createTransport();
+        serverTransport = clientTransport;
+    }
+
+    private Transport createTransport() {
         if (transportClass.equals(NullTransport.class)) {
-            clientTransport = new NullTransport(serverValidator, clientValidator, timeoutScheduler);
-            serverTransport = clientTransport;
+            return new NullTransport(serverValidator, clientValidator, timeoutScheduler);
         } else if (transportClass.equals((TransceiverTransport.class))) {
-            clientTransport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, new NullTransceiver(), new DefaultInvocationHashGenerator(), new DefaultInvocationCodec());
-            serverTransport = clientTransport;
+            return new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
         }
+        throw new UnsupportedOperationException("Need to consider new transport");
     }
 
     @After
@@ -121,7 +128,7 @@ public class TestTransports extends ConsoleLoggingUnittestCase {
     public void registerServerImplementationValidates() {
         final DefaultTimeoutGenerator serverImplementation = new DefaultTimeoutGenerator();
 
-        EndpointName timeoutEndpointName = new EndpointName("timeout");
+        final EndpointName timeoutEndpointName = new EndpointName("timeout");
         serverTransport.registerServerImplementation(timeoutEndpointName, TimeoutGenerator.class, serverImplementation);
         Mockito.verify(clientValidator).validateClientInterface(TimeoutGenerator.class);
         Mockito.verify(serverValidator).validateServerImplementation(TimeoutGenerator.class, serverImplementation);
@@ -131,7 +138,7 @@ public class TestTransports extends ConsoleLoggingUnittestCase {
     public void clientProxyValidates() {
         final DefaultTimeoutGenerator serverImplementation = new DefaultTimeoutGenerator();
 
-        EndpointName timeoutEndpointName = new EndpointName("timeout");
+        final EndpointName timeoutEndpointName = new EndpointName("timeout");
         // for the null clientTransport, the impl has to be registered even tho only interested in the 'client' side.
         int invocationTimes = 1;
         if (clientTransport instanceof NullTransport) {
@@ -208,7 +215,7 @@ public class TestTransports extends ConsoleLoggingUnittestCase {
     public void roundTripWithoutTimeout() {
         final DefaultPrimeGenerator serverImplementation = new DefaultPrimeGenerator();
 
-        EndpointName primesEndpointName = new EndpointName("primes");
+        final EndpointName primesEndpointName = new EndpointName("primes");
         serverTransport.registerServerImplementation(primesEndpointName, PrimeGenerator.class, serverImplementation);
         Mockito.verify(clientValidator).validateClientInterface(PrimeGenerator.class);
         Mockito.verify(serverValidator).validateServerImplementation(PrimeGenerator.class, serverImplementation);
@@ -225,7 +232,7 @@ public class TestTransports extends ConsoleLoggingUnittestCase {
     public void roundTripWithoutTimeoutAsynchronously() throws ExecutionException, InterruptedException {
         final DefaultPrimeGenerator serverImplementation = new DefaultPrimeGenerator();
 
-        EndpointName primesEndpointName = new EndpointName("primes");
+        final EndpointName primesEndpointName = new EndpointName("primes");
         serverTransport.registerServerImplementation(primesEndpointName, PrimeGenerator.class, serverImplementation);
         Mockito.verify(clientValidator).validateClientInterface(PrimeGenerator.class);
         Mockito.verify(serverValidator).validateServerImplementation(PrimeGenerator.class, serverImplementation);
@@ -273,7 +280,7 @@ public class TestTransports extends ConsoleLoggingUnittestCase {
             // expecting an exception here!
         } catch (final MethodInvocationTimeoutException e) {
             final long stop = System.currentTimeMillis();
-            long duration = stop - start;
+            final long duration = stop - start;
 
             logger.info("Call with timeout round-trip was " + duration + " ms");
             assertThat(duration, greaterThanOrEqualTo(500L));

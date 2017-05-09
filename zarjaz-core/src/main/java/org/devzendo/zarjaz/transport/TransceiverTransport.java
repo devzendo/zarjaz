@@ -24,6 +24,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -144,7 +145,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             // Going to have to lock on the outstandingMethodCalls.
             // How do we indicate a method in a client interface is multiple-return? How to set the return handling
             // function (and switch the processing, as in the header comment above?)
-            // Seems like a job for switchable strategies.
+            // TODO Seems like a job for switchable strategies.
             // Need to provide a multiple return handler to the client proxy generator that refers to the method.
             // TODO only remove if it's not a multiple-return method
             final OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.remove(sequence);
@@ -219,6 +220,10 @@ public class TransceiverTransport extends AbstractTransport implements Transport
 //                    final List<ByteBuffer> failure = invocationCodec.generateMethodFailureResponse();
 //                    observableEvent.getServerTransceiver().writeBuffer(failure);
                     logger.warn("Invocation failure: " + e.getMessage(), e);
+                }
+                // Allow other observers of this to process it.
+                for (final ReadableByteBuffer readableByteBuffer : buffers) {
+                    readableByteBuffer.raw().rewind();
                 }
             }
         }
@@ -317,6 +322,11 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             throw new RegistrationException("Method hash collision when registering (Endpoint '" + endpointName +
                     "', Client interface '" + interfaceClass.getSimpleName() + "') conflicts with (" + collidingEndpointInterfaceMethod.get().toString() + ")");
         }
+    }
+
+    @Override
+    public <R> void callClientMethodWithMultipleReturn(final EndpointName name, final Method method, final Callable<R> callable) {
+
     }
 
     @Override

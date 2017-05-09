@@ -71,19 +71,21 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
 
         final CompletableFuture<Object> future = new CompletableFuture<Object>();
 
-
         // Possible behaviours on timeout:
         // Complete the future exceptionally
         // Process some transport-specific detail (clearing outstanding method call count?)
+        //
         // These timeout handlers need access to (from this layer):
-        // Future
-        // Endpoint name, method
+        // * Future
+        // * Endpoint name
+        // * Method
+        //
         // So there are two timeout handlers, both of which can be replaced:
         // The actual timeout exceptional future setter
         // The transport-specific handler
         //
-        // This list is passed to the transport invocation handler so it can provide its own timeout behaviour for the
-        // method invocation.
+        // Pass the context object for the timeout handlers to the transport invocation handler so it can provide its
+        // own timeout behaviour for the method invocation.
         final MethodCallTimeoutHandlers timeoutHandlers = new MethodCallTimeoutHandlers();
         final MethodCallTimeoutHandler timeoutHandler = (f, en, m) -> {
             final String message = "Method call [" + en + "] '" + m.getName() + "' timed out after " + methodTimeoutMs + "ms";
