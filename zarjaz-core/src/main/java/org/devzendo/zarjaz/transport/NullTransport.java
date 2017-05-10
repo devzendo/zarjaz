@@ -9,7 +9,11 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.function.Consumer;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -39,7 +43,7 @@ class NullTransport extends AbstractTransport implements Transport {
     }
 
     @Override
-    public <R> void callClientMethodWithMultipleReturn(final EndpointName name, final Method method, final Callable<R> callable) {
+    public <T, R> void callClientMethodWithMultipleReturn(final EndpointName name, final Class<T> interfaceClass, final Method method, final Consumer<R> consumer, final long methodTimeoutMilliSeconds, final Object... args) {
         throw new UnsupportedOperationException("haven't finished this yet");
     }
 

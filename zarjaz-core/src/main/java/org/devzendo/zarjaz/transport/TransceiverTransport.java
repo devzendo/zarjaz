@@ -24,11 +24,11 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -325,7 +325,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     }
 
     @Override
-    public <R> void callClientMethodWithMultipleReturn(final EndpointName name, final Method method, final Callable<R> callable) {
+    public <T, R> void callClientMethodWithMultipleReturn(final EndpointName name, final Class<T> interfaceClass, final Method method, final Consumer<R> consumer, final long methodTimeoutMilliSeconds, final Object... arps) {
 
     }
 
