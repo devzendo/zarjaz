@@ -4,7 +4,6 @@ import org.devzendo.zarjaz.protocol.ByteBufferEncoder;
 import org.devzendo.zarjaz.protocol.Protocol;
 import org.devzendo.zarjaz.reflect.MethodReturnTypeResolver;
 import org.devzendo.zarjaz.transceiver.DataReceived;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Map;
@@ -43,14 +42,12 @@ public class TestServerResponseTransceiverObserver {
         String someMethod();
     }
 
-    @Before
-    public void setupFuture() { // future? There's no future in England's dreaming...
-        outstandingMethodCalls.put(SEQUENCE, new TransceiverTransport.OutstandingMethodCall(new byte[16], SampleInterface.class.getDeclaredMethods()[0], future));
-    }
-
     @Test
     public void decodeValidResponse() throws ExecutionException, InterruptedException {
-        observeStringResponseDataReceived();
+        givenOutstandingMethodCallAndFuture();
+
+        whenStringResponseDataReceived();
+
         // outstanding method call is no longer outstanding
         assertThat(outstandingMethodCalls, not(hasKey(SEQUENCE)));
         assertThat(future.isDone(), is(true));
@@ -66,7 +63,11 @@ public class TestServerResponseTransceiverObserver {
     // we could still have bad data in the response
     // TODO failures - TransceiverFailure observed
 
-    private void observeStringResponseDataReceived() {
+    private void givenOutstandingMethodCallAndFuture() { // future? There's no future in England's dreaming...
+        outstandingMethodCalls.put(SEQUENCE, new TransceiverTransport.OutstandingMethodCall(new byte[16], SampleInterface.class.getDeclaredMethods()[0], future));
+    }
+
+    private void whenStringResponseDataReceived() {
         encoder.writeByte(Protocol.InitialFrameType.METHOD_RETURN_RESULT.getInitialFrameType());
         encoder.writeInt(SEQUENCE);
         encoder.writeString("ReplyString");
