@@ -1,11 +1,14 @@
 package org.devzendo.zarjaz.transport;
 
+import org.apache.log4j.spi.LoggingEvent;
+import org.devzendo.zarjaz.logging.LoggingUnittestCase;
 import org.devzendo.zarjaz.protocol.ByteBufferEncoder;
 import org.devzendo.zarjaz.protocol.Protocol;
 import org.devzendo.zarjaz.reflect.MethodReturnTypeResolver;
 import org.devzendo.zarjaz.transceiver.DataReceived;
 import org.junit.Test;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +32,7 @@ import static org.hamcrest.Matchers.*;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class TestServerResponseTransceiverObserver {
+public class TestServerResponseTransceiverObserver extends LoggingUnittestCase {
     private static final int SEQUENCE = 69;
 
     private final ByteBufferEncoder encoder = new ByteBufferEncoder();
@@ -57,6 +60,15 @@ public class TestServerResponseTransceiverObserver {
         // TODO METRIC increment successful method response decode
     }
 
+    @Test
+    public void noOutstandingMethodCall() {
+        whenStringResponseDataReceived();
+
+        final List<LoggingEvent> loggingEvents = getLoggingEvents();
+        assertThat(loggingEvents, hasSize(1));
+        assertThat(loggingEvents.get(0).getMessage().toString(), containsString("Incoming method return with sequence " + SEQUENCE + " is not outstanding"));
+    }
+
     // TODO no sequence in outstanding method calls
     // TODO wrong data in response?
     // TODO shall we send the outgoing hash in the response, match this up?
@@ -71,6 +83,7 @@ public class TestServerResponseTransceiverObserver {
         encoder.writeByte(Protocol.InitialFrameType.METHOD_RETURN_RESULT.getInitialFrameType());
         encoder.writeInt(SEQUENCE);
         encoder.writeString("ReplyString");
+
         observer.eventOccurred(new DataReceived(encoder.getBuffers(), null));
     }
 }

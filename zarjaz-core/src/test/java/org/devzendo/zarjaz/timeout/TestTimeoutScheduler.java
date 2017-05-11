@@ -12,7 +12,7 @@ import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import static java.lang.System.currentTimeMillis;
 import static java.lang.Thread.currentThread;
@@ -54,15 +54,15 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
     public void timeoutCanBeScheduled() {
         ts.start();
 
-        long[] when = new long[] { 0 };
+        final long[] when = new long[]{0};
 
-        long start = currentTimeMillis();
+        final long start = currentTimeMillis();
         ts.schedule(500, () -> when[0] = currentTimeMillis());
 
         waitNoInterruption(750L);
 
         assertThat(when[0], not(equalTo(0L)));
-        long delay = when[0] - start;
+        final long delay = when[0] - start;
         assertThat(delay, greaterThanOrEqualTo(500L)); // timeout happened no sooner than it was scheduled
         assertThat(delay, Matchers.lessThan(750L)); // but happened no greater than 250ms after it should have
     }
@@ -71,7 +71,7 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
     public void timeoutIsTriggeredOnSchedulerThreadAndThatsALivingDaemon() {
         ts.start();
 
-        Thread[] thread = new Thread[] { null };
+        final Thread[] thread = new Thread[]{null};
 
         ts.schedule(500, () -> thread[0] = currentThread());
 
@@ -86,7 +86,7 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
     public void exceptionsInTimeoutsAreLoggedAndDontCauseTheSchedulerToTerminate() {
         ts.start();
 
-        boolean[] subsequentHandlersRun = new boolean[] { false };
+        final boolean[] subsequentHandlersRun = new boolean[]{false};
 
         ts.schedule(250, () -> {
             throw new IllegalStateException("Boom");
@@ -96,10 +96,10 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
 
         waitNoInterruption(1000L);
 
-        // Copy to arraylist to prevent concurrent modification exceptions
-        assertThat(new ArrayList<>(capturingAppender.getEvents()), hasSize(1));
+        final List<LoggingEvent> loggingEvents = getLoggingEvents();
+        assertThat(loggingEvents, hasSize(1));
         // TODO use the IsLoggingEvent matcher in the zarjaz.logging package here...?
-        final LoggingEvent loggingEvent = capturingAppender.getEvents().get(0);
+        final LoggingEvent loggingEvent = loggingEvents.get(0);
         assertThat(loggingEvent.getLevel(), equalTo(Level.WARN));
         assertThat(loggingEvent.getMessage().toString(), Matchers.containsString("Timeout handler threw IllegalStateException: Boom"));
 
@@ -110,9 +110,9 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
     public void longDelayInTimeoutHandlerDoesNotStarveHandlingOfOtherRequests() {
         ts.start();
 
-        long[] when = new long[] { 0 };
+        final long[] when = new long[]{0};
 
-        long start = currentTimeMillis();
+        final long start = currentTimeMillis();
         // Handler A waits for a long while....
         ts.schedule(100, () -> ThreadUtils.waitNoInterruption(500L));
         // But shortly after A starts, handler B should be triggered. A shouldn't hold up B's triggering.
@@ -121,7 +121,7 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
         waitNoInterruption(1000L);
 
         assertThat(when[0], not(equalTo(0L)));
-        long delay = when[0] - start;
+        final long delay = when[0] - start;
         assertThat(delay, greaterThanOrEqualTo(150L)); // timeout happened no sooner than it was scheduled
         assertThat(delay, Matchers.lessThan(300L)); // but happened no greater than 250ms after it should have
         // and certainly, not delayed by 500ms - which would be the case if handlers were called sequentially on a
@@ -132,7 +132,7 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
     public void timeoutCanBeCancelled() {
         ts.start();
 
-        long[] when = new long[] { 0 };
+        final long[] when = new long[]{0};
 
         final TimeoutId timeoutId = ts.schedule(500, () -> when[0] = currentTimeMillis());
 
@@ -150,7 +150,7 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
     public void timeoutCanBeCancelledTwice() {
         ts.start();
 
-        long[] when = new long[] { 0 };
+        final long[] when = new long[]{0};
 
         final TimeoutId timeoutId = ts.schedule(500, () -> when[0] = currentTimeMillis());
 
@@ -170,7 +170,7 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
     public void timeoutCannotBeCancelledAfterScheduled() {
         ts.start();
 
-        long[] when = new long[] { 0 };
+        final long[] when = new long[]{0};
 
         final TimeoutId timeoutId = ts.schedule(500, () -> when[0] = currentTimeMillis());
 
@@ -220,7 +220,7 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
         ts.stop();
         waitNoInterruption(100);
 
-        boolean[] handled = new boolean[] { false };
+        final boolean[] handled = new boolean[]{false};
 
         ts.schedule(300, () -> handled[0] = true);
 
@@ -300,9 +300,9 @@ public class TestTimeoutScheduler extends LoggingUnittestCase {
     public void scheduledTaskIsNotRunAfterStop() {
         ts.start();
 
-        long[] when = new long[] { 0 };
+        final long[] when = new long[]{0};
 
-        long start = currentTimeMillis();
+        final long start = currentTimeMillis();
         ts.schedule(500, () -> when[0] = currentTimeMillis());
 
         ts.stop();

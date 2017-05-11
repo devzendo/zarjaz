@@ -1,9 +1,13 @@
 package org.devzendo.zarjaz.logging;
 
 import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.spi.LoggingEvent;
 import org.devzendo.commoncode.logging.CapturingAppender;
 import org.junit.After;
 import org.junit.Before;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org <http://devzendo.org>
@@ -21,7 +25,7 @@ import org.junit.Before;
  * limitations under the License.
  */
 public abstract class LoggingUnittestCase {
-    protected CapturingAppender capturingAppender;
+    private CapturingAppender capturingAppender;
 
     @Before
     public void setupLogging() {
@@ -33,5 +37,10 @@ public abstract class LoggingUnittestCase {
     @After
     public void teardownLogging() {
         BasicConfigurator.resetConfiguration();
+    }
+
+    protected List<LoggingEvent> getLoggingEvents() {
+        // Copy to arraylist to prevent concurrent modification exceptions
+        return new ArrayList<>(capturingAppender.getEvents());
     }
 }

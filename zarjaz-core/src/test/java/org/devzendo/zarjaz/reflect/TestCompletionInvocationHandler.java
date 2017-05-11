@@ -101,8 +101,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         final Object returnValue = handler.invoke(irrelevantProxy, getNameMethod, noArgs);
 
         // then
-        // Copy to arraylist to prevent concurrent modification exceptions
-        final ArrayList<LoggingEvent> copiedEvents = new ArrayList<>(capturingAppender.getEvents());
+        final List<LoggingEvent> copiedEvents = getLoggingEvents();
         assertThat(copiedEvents, Matchers.hasSize(3));
         assertThat(copiedEvents.get(0), loggingEvent(Level.DEBUG, "Invoking [Sample] org.devzendo.zarjaz.reflect.TestCompletionInvocationHandler$SampleInterface.getName"));
         assertThat(copiedEvents.get(1), loggingEvent(Level.DEBUG, "Waiting on Future"));
@@ -251,7 +250,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         // then
         assertThat(wasRun[0], equalTo(true));
         assertThat(wasRun[1], equalTo(true));
-        assertTrue(new ArrayList<>(capturingAppender.getEvents()).stream().anyMatch(
+        assertTrue(getLoggingEvents().stream().anyMatch(
                 e -> e.getMessage().equals("Method call timeout handler threw exception: boom") && e.getLevel().equals(Level.WARN)
         ));
     }
@@ -333,7 +332,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         ThreadUtils.waitNoInterruption(1000); // if the timeout handler has not been removed, give it time to run
 
         // now sense its log output. not an ideal way of testing this, but it'll do
-        assertTrue(new ArrayList<>(capturingAppender.getEvents()).stream().noneMatch(
+        assertTrue(getLoggingEvents().stream().noneMatch(
                 e -> e.getMessage().toString().contains("method call [Sample] 'getName' timed out")));
     }
 }

@@ -150,7 +150,6 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             // TODO only remove if it's not a multiple-return method
             final OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.remove(sequence);
             if (outstandingMethodCall == null) {
-                // TODO test for this
                 throw new IOException("Incoming method return with sequence " + sequence + " is not outstanding");
             }
 
