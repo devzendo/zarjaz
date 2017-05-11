@@ -25,9 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -51,20 +49,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     private final Transceiver transceiver;
     private final InvocationHashGenerator invocationHashGenerator;
     private final InvocationCodec invocationCodec;
-    private final AtomicInteger sequence = new AtomicInteger(0);
-
-    static class OutstandingMethodCall {
-        public final byte[] hash;
-        public final Method method;
-        public final CompletableFuture<Object> future;
-
-        public OutstandingMethodCall(final byte[] hash, final Method method, final CompletableFuture<Object> future) {
-            this.hash = hash;
-            this.method = method;
-            this.future = future;
-        }
-    }
-    private final Map<Integer, OutstandingMethodCall> outstandingMethodCalls = new ConcurrentHashMap<>();
+    private final OutstandingMethodCalls outstandingMethodCalls;
     private final TransceiverObserver serverResponseTransceiverObserver;
     private final TransceiverObserver serverRequestTransceiverObserver;
 
@@ -78,6 +63,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         this.invocationHashGenerator = invocationHashGenerator;
         this.invocationCodec = invocationCodec;
         final MethodReturnTypeResolver typeResolver = new MethodReturnTypeResolver();
+        this.outstandingMethodCalls = new OutstandingMethodCalls();
         this.serverResponseTransceiverObserver = new ServerResponseTransceiverObserver(outstandingMethodCalls, typeResolver);
         this.serverRequestTransceiverObserver = new ServerRequestTransceiverObserver(invocationCodec, this::getImplementation, typeResolver);
     }
@@ -86,10 +72,10 @@ public class TransceiverTransport extends AbstractTransport implements Transport
      * Client side. Handle responses from servers; decodes and sets in the outstanding method calls map.
      */
     static class ServerResponseTransceiverObserver implements TransceiverObserver {
-        private final Map<Integer, OutstandingMethodCall> outstandingMethodCalls;
+        private final OutstandingMethodCalls outstandingMethodCalls;
         private final MethodReturnTypeResolver typeResolver;
 
-        public ServerResponseTransceiverObserver(final Map<Integer, OutstandingMethodCall> outstandingMethodCalls,
+        public ServerResponseTransceiverObserver(final OutstandingMethodCalls outstandingMethodCalls,
                                                  final MethodReturnTypeResolver typeResolver) {
             this.outstandingMethodCalls = outstandingMethodCalls;
             this.typeResolver = typeResolver;
@@ -140,6 +126,8 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         // This multiple-invocation method result processing will customise both Timeout and Transport timeout handlers.
         private void processMethodReturnResult(final ByteBufferDecoder decoder) throws IOException {
             final int sequence = decoder.readInt();
+            // This may be a single- or multiple-return method.
+
             // TODO how do we know if this is a multiple-return method? We don't, before getting the OutstandingMethodCall
             // to look up the hash/method.
             // Going to have to lock on the outstandingMethodCalls.
@@ -148,7 +136,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             // TODO Seems like a job for switchable strategies.
             // Need to provide a multiple return handler to the client proxy generator that refers to the method.
             // TODO only remove if it's not a multiple-return method
-            final OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.remove(sequence);
+            final OutstandingMethodCalls.OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.remove(sequence);
             if (outstandingMethodCall == null) {
                 throw new IOException("Incoming method return with sequence " + sequence + " is not outstanding");
             }
@@ -160,7 +148,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             // TODO REQUEST/RESPONSE LOGGING log method return
         }
 
-        private Object decodeReturnValue(final ByteBufferDecoder decoder, final OutstandingMethodCall outstandingMethodCall) throws IOException {
+        private Object decodeReturnValue(final ByteBufferDecoder decoder, final OutstandingMethodCalls.OutstandingMethodCall outstandingMethodCall) throws IOException {
             final Class<?> returnType = outstandingMethodCall.method.getReturnType();
             if (returnType.isAssignableFrom(Future.class)) {
                 final Class<?> genericReturnType = typeResolver.getReturnType(outstandingMethodCall.method);
@@ -274,13 +262,13 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final MethodCallTimeoutHandlers timeoutHandlers) {
             // An invocation from the client is to be encoded, and sent to the server.
             final byte[] hash = methodsToHashMap.get(method);
+
             // Allocate a sequence number for this call and register as an outstanding call.
-            final int thisSequence = sequence.incrementAndGet();
+            final int thisSequence = outstandingMethodCalls.put(new OutstandingMethodCalls.OutstandingMethodCall(hash, method, future));
             if (logger.isDebugEnabled()) {
                 logger.debug("Invoking [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName() + " hash " + HexDump.bytes2hex(hash) + " sequence " + thisSequence);
             }
 
-            outstandingMethodCalls.put(thisSequence, new OutstandingMethodCall(hash, method, future));
             // TODO METRIC increment number of outstanding method calls
             timeoutHandlers.setTimeoutTransportHandler((f, en, m) -> {
                 outstandingMethodCalls.remove(thisSequence);

@@ -9,9 +9,7 @@ import org.devzendo.zarjaz.transceiver.DataReceived;
 import org.junit.Test;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -36,7 +34,7 @@ public class TestServerResponseTransceiverObserver extends LoggingUnittestCase {
     private static final int SEQUENCE = 69;
 
     private final ByteBufferEncoder encoder = new ByteBufferEncoder();
-    private final Map<Integer, TransceiverTransport.OutstandingMethodCall> outstandingMethodCalls = new ConcurrentHashMap<>();
+    private final OutstandingMethodCalls outstandingMethodCalls = new OutstandingMethodCalls();
     private final CompletableFuture<Object> future = new CompletableFuture<>();
     private final MethodReturnTypeResolver typeResolver = new MethodReturnTypeResolver();
     private final TransceiverTransport.ServerResponseTransceiverObserver observer = new TransceiverTransport.ServerResponseTransceiverObserver(outstandingMethodCalls, typeResolver);
@@ -47,12 +45,12 @@ public class TestServerResponseTransceiverObserver extends LoggingUnittestCase {
 
     @Test
     public void decodeValidResponse() throws ExecutionException, InterruptedException {
-        givenOutstandingMethodCallAndFuture();
+        final int sequence = givenOutstandingMethodCallAndFuture();
 
-        whenStringResponseDataReceived();
+        whenStringResponseDataReceived(sequence);
 
         // outstanding method call is no longer outstanding
-        assertThat(outstandingMethodCalls, not(hasKey(SEQUENCE)));
+        assertThat(outstandingMethodCalls.containsSequence(sequence), equalTo(false));
         assertThat(future.isDone(), is(true));
         assertThat(future.isCancelled(), is(false));
         assertThat(future.isCompletedExceptionally(), is(false));
@@ -62,7 +60,7 @@ public class TestServerResponseTransceiverObserver extends LoggingUnittestCase {
 
     @Test
     public void noOutstandingMethodCall() {
-        whenStringResponseDataReceived();
+        whenStringResponseDataReceived(SEQUENCE);
 
         final List<LoggingEvent> loggingEvents = getLoggingEvents();
         assertThat(loggingEvents, hasSize(1));
@@ -75,13 +73,13 @@ public class TestServerResponseTransceiverObserver extends LoggingUnittestCase {
     // we could still have bad data in the response
     // TODO failures - TransceiverFailure observed
 
-    private void givenOutstandingMethodCallAndFuture() { // future? There's no future in England's dreaming...
-        outstandingMethodCalls.put(SEQUENCE, new TransceiverTransport.OutstandingMethodCall(new byte[16], SampleInterface.class.getDeclaredMethods()[0], future));
+    private int givenOutstandingMethodCallAndFuture() { // future? There's no future in England's dreaming...
+        return outstandingMethodCalls.put(new OutstandingMethodCalls.OutstandingMethodCall(new byte[16], SampleInterface.class.getDeclaredMethods()[0], future));
     }
 
-    private void whenStringResponseDataReceived() {
+    private void whenStringResponseDataReceived(final int sequence) {
         encoder.writeByte(Protocol.InitialFrameType.METHOD_RETURN_RESULT.getInitialFrameType());
-        encoder.writeInt(SEQUENCE);
+        encoder.writeInt(sequence);
         encoder.writeString("ReplyString");
 
         observer.eventOccurred(new DataReceived(encoder.getBuffers(), null));
