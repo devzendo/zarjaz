@@ -8,7 +8,6 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
@@ -238,6 +237,77 @@ public class TestByteBufferDecoder {
         assertThat(decoder.readObject(parameterType(SampleInterfaces.ByteWrapperInterface.class)), is((byte) 0xc9));
     }
 
+    @Test
+    public void decodeObjectShortPrimitive() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeShort((short) 0x1234);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.ShortPrimitiveInterface.class)), is((short) 0x1234));
+    }
+
+    @Test
+    public void decodeObjectShortWrapper() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeShort((short) 0x1234);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.ShortWrapperInterface.class)), is((short) 0x1234));
+    }
+
+    @Test
+    public void decodeObjectCharPrimitive() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeChar((char) 'a');
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.CharPrimitiveInterface.class)), is((char) 'a'));
+    }
+
+    @Test
+    public void decodeObjectCharWrapper() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeChar((char) 'a');
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.CharWrapperInterface.class)), is((char) 'a'));
+    }
+
+    @Test
+    public void decodeObjectFloatPrimitive() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeFloat((float) 3.1415f);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.FloatPrimitiveInterface.class)), is((float) 3.1415f));
+    }
+
+    @Test
+    public void decodeObjectFloatWrapper() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeFloat((float) 3.1415f);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.FloatWrapperInterface.class)), is((float) 3.1415f));
+    }
+
+    @Test
+    public void decodeObjectDoublePrimitive() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeDouble((double) 3.1415d);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.DoublePrimitiveInterface.class)), is((double) 3.1415d));
+    }
+
+    @Test
+    public void decodeObjectDoubleWrapper() throws IOException {
+        final ByteBufferEncoder encoder = new ByteBufferEncoder();
+        encoder.writeDouble((double) 3.1415d);
+
+        final ByteBufferDecoder decoder = decoder(encoder.getBuffers());
+        assertThat(decoder.readObject(parameterType(SampleInterfaces.DoubleWrapperInterface.class)), is((Double) 3.1415d));
+    }
     @Test
     public void decodeObjectIntPrimitive() throws IOException {
         final ByteBufferEncoder encoder = new ByteBufferEncoder();

@@ -18,7 +18,7 @@ import java.lang.reflect.Method;
  * limitations under the License.
  */
 public class SampleInterfaces {
-    public static Class<?> parameterType(Class<?> interfaceClass) {
+    public static Class<?> parameterType(final Class<?> interfaceClass) {
         final Method method = interfaceClass.getDeclaredMethods()[0];
         return method.getParameterTypes()[0];
     }
@@ -29,6 +29,22 @@ public class SampleInterfaces {
 
     public interface ByteWrapperInterface {
         void method(Byte x);
+    }
+
+    public interface ShortPrimitiveInterface {
+        void method(short x);
+    }
+
+    public interface ShortWrapperInterface {
+        void method(Short x);
+    }
+
+    public interface CharPrimitiveInterface {
+        void method(char x);
+    }
+
+    public interface CharWrapperInterface {
+        void method(Character x);
     }
 
     public interface IntPrimitiveInterface {
@@ -45,6 +61,22 @@ public class SampleInterfaces {
 
     public interface LongWrapperInterface {
         void method(Long x);
+    }
+
+    public interface FloatPrimitiveInterface {
+        void method(float x);
+    }
+
+    public interface FloatWrapperInterface {
+        void method(Float x);
+    }
+
+    public interface DoublePrimitiveInterface {
+        void method(double x);
+    }
+
+    public interface DoubleWrapperInterface {
+        void method(Double x);
     }
 
     public interface StringInterface {

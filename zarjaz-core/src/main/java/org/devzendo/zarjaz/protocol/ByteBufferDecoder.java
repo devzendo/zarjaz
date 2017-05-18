@@ -1,10 +1,8 @@
 package org.devzendo.zarjaz.protocol;
 
-import org.devzendo.commoncode.string.HexDump;
 import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -37,7 +35,7 @@ public class ByteBufferDecoder {
 
     public int size() {
         int size = 0;
-        for (ReadableByteBuffer buffer : buffers) {
+        for (final ReadableByteBuffer buffer : buffers) {
             size += buffer.remaining();
         }
         return size;
@@ -45,7 +43,7 @@ public class ByteBufferDecoder {
 
     private ReadableByteBuffer getBuffer() {
         while (currentBuffer < buffers.size()) {
-            ReadableByteBuffer buffer = buffers.get(currentBuffer);
+            final ReadableByteBuffer buffer = buffers.get(currentBuffer);
             if (buffer.hasRemaining())
                 return buffer;
             currentBuffer++;
@@ -69,7 +67,7 @@ public class ByteBufferDecoder {
             if (buffer == null || buffer.remaining() == 0) {
                 exhausted(remaining);
             }
-            int copyLength = Math.min(remaining, buffer.remaining());
+            final int copyLength = Math.min(remaining, buffer.remaining());
             buffer.get(dest, copyOffset, copyLength);
             copyOffset += copyLength;
             remaining -= copyLength;
@@ -112,7 +110,7 @@ public class ByteBufferDecoder {
     public long readLong() throws IOException {
         final byte[] buf = new byte[8];
         readBytes(buf, 8);
-        long out = (((long) buf[0] << 56) & 0xff00000000000000L) |
+        final long out = (((long) buf[0] << 56) & 0xff00000000000000L) |
                    (((long) buf[1] << 48) & 0x00ff000000000000L) |
                    (((long) buf[2] << 40) & 0x0000ff0000000000L) |
                    (((long) buf[3] << 32) & 0x000000ff00000000L) |
@@ -138,12 +136,20 @@ public class ByteBufferDecoder {
         // TODO would a lookup/dispatch map be faster?
         if (parameterType.equals(Byte.class) || parameterType.equals(Byte.TYPE)) {
             return readByte();
+        } else if (parameterType.equals(Short.class) || parameterType.equals(Short.TYPE)) {
+            return readShort();
+        } else if (parameterType.equals(Character.class) || parameterType.equals(Character.TYPE)) {
+            return readChar();
         } else if (parameterType.equals(Integer.class) || parameterType.equals(Integer.TYPE)) {
             return readInt();
         } else if (parameterType.equals(Long.class) || parameterType.equals(Long.TYPE)) {
             return readLong();
         } else if (parameterType.equals(Boolean.class) || parameterType.equals(Boolean.TYPE)) {
             return readBoolean();
+        } else if (parameterType.equals(Float.class) || parameterType.equals(Float.TYPE)) {
+            return readFloat();
+        } else if (parameterType.equals(Double.class) || parameterType.equals(Double.TYPE)) {
+            return readDouble();
         } else if (parameterType.equals(String.class)) {
             return readString();
             // TODO write the other dispatcher calls for the other primitive types
