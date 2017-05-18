@@ -14,6 +14,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import static org.devzendo.zarjaz.util.ClassUtils.joinedClassNames;
+
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
  *
@@ -49,7 +51,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
     @Override
     public Object invoke(final Object proxy, final Method method, final Object[] args) {
         if (logger.isDebugEnabled()) {
-            logger.debug("Invoking [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName());
+            logger.debug("Invoking [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName() + joinedClassNames(method.getParameterTypes()));
         }
 
         final String name = method.getName();

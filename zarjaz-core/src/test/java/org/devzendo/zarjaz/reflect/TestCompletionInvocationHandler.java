@@ -103,7 +103,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         // then
         final List<LoggingEvent> copiedEvents = getLoggingEvents();
         assertThat(copiedEvents, Matchers.hasSize(3));
-        assertThat(copiedEvents.get(0), loggingEvent(Level.DEBUG, "Invoking [Sample] org.devzendo.zarjaz.reflect.TestCompletionInvocationHandler$SampleInterface.getName"));
+        assertThat(copiedEvents.get(0), loggingEvent(Level.DEBUG, "Invoking [Sample] org.devzendo.zarjaz.reflect.TestCompletionInvocationHandler$SampleInterface.getName()"));
         assertThat(copiedEvents.get(1), loggingEvent(Level.DEBUG, "Waiting on Future"));
         assertThat(copiedEvents.get(2), loggingEvent(Level.DEBUG, "Wait over; removing timeout handler; returning value"));
         assertThat(returnValue, instanceOf(String.class));
