@@ -13,7 +13,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.function.Consumer;
+
+import static org.devzendo.zarjaz.util.ClassUtils.joinedClassNames;
+import static org.devzendo.zarjaz.util.ClassUtils.objectsToClasses;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -42,11 +44,6 @@ class NullTransport extends AbstractTransport implements Transport {
         super(serverImplementationValidator, clientInterfaceValidator, timeoutScheduler, "null");
     }
 
-    @Override
-    public <T, R> void callClientMethodWithMultipleReturn(final EndpointName name, final Class<T> interfaceClass, final Method method, final Consumer<R> consumer, final long methodTimeoutMilliSeconds, final Object... args) {
-        throw new UnsupportedOperationException("haven't finished this yet");
-    }
-
     // TODO this should be useful for all server-side transports, surely?
     private static class NullTransportInvocationHandler implements TransportInvocationHandler {
 
@@ -64,11 +61,7 @@ class NullTransport extends AbstractTransport implements Transport {
                 @Override
                 public void run() {
                     final String methodName = method.getName();
-                    final Class[] argClasses = objectsToClasses(args);
-                    if (logger.isDebugEnabled()) {
-                        // TODO would be useful to log the endpoint name here
-                        logger.debug("Invoking method: " + method.getReturnType().getSimpleName() + " " + methodName + joinedClassNames(argClasses));
-                    }
+                    final Class[] argClasses = method.getParameterTypes();
                     try {
                         // Serialisation, transfer, setting a completion handler would happen here.
                         final Method implMethod = impl.getClass().getMethod(methodName, argClasses);
@@ -93,27 +86,27 @@ class NullTransport extends AbstractTransport implements Transport {
                         }
                     } catch (final NoSuchMethodException e) {
                         // TODO not sure how to test this
-                        final String msg = "No such method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                        final String msg = "No such method '" + methodName + "' with arg classes " + joinedClassNames(objectsToClasses(args)) + ": " + e.getMessage();
                         logger.error(msg, e);
                         future.completeExceptionally(e);
                     } catch (final IllegalAccessException e) {
                         // TODO not sure how to test this
-                        final String msg = "Illegal access exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                        final String msg = "Illegal access exception when calling method '" + methodName + "' with arg classes " + joinedClassNames(objectsToClasses(args)) + ": " + e.getMessage();
                         logger.error(msg, e);
                         future.completeExceptionally(e);
                     } catch (final InvocationTargetException e) {
                         // TODO not sure how to test this
-                        final String msg = "Invocation target exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                        final String msg = "Invocation target exception when calling method '" + methodName + "' with arg classes " + joinedClassNames(objectsToClasses(args)) + ": " + e.getMessage();
                         logger.error(msg, e);
                         future.completeExceptionally(e);
                     } catch (final InterruptedException e) {
                         // TODO not sure how to test this
-                        final String msg = "Interrupted exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                        final String msg = "Interrupted exception when calling method '" + methodName + "' with arg classes " + joinedClassNames(objectsToClasses(args)) + ": " + e.getMessage();
                         logger.error(msg, e);
                         future.completeExceptionally(e);
                     } catch (final ExecutionException e) {
                         // TODO not sure how to test this
-                        final String msg = "Execution exception when calling method '" + methodName + "' with arg classes " + objectsToClasses(args) + ": " + e.getMessage();
+                        final String msg = "Execution exception when calling method '" + methodName + "' with arg classes " + joinedClassNames(objectsToClasses(args)) + ": " + e.getMessage();
                         logger.error(msg, e);
                         future.completeExceptionally(e);
                     }

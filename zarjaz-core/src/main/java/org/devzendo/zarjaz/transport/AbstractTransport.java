@@ -8,6 +8,7 @@ import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -34,44 +36,6 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class AbstractTransport {
     private static final Logger logger = LoggerFactory.getLogger(AbstractTransport.class);
-
-    static protected Class[] objectsToClasses(final Object[] args) {
-        if (args == null) {
-            return null;
-        }
-        final Class[] out = new Class[args.length];
-        for (int i=0; i<args.length; i++) {
-            out[i] = args[i].getClass();
-        }
-        return out;
-    }
-
-    static protected String joinedClassNames(final Class[] argClasses) {
-        final StringBuilder sb = new StringBuilder();
-        sb.append('(');
-        if (argClasses != null) {
-            for (int i=0; i<argClasses.length; i++) {
-                sb.append(argClasses[i].getSimpleName());
-                if (i != (argClasses.length - 1)) {
-                    sb.append(", ");
-                }
-            }
-
-        }
-        sb.append(')');
-        return sb.toString();
-    }
-
-    static protected String[] classesToClassNames(final Class[] argClasses) {
-        if (argClasses == null) {
-            return null;
-        }
-        final String[] out = new String[argClasses.length];
-        for (int i=0; i<argClasses.length; i++) {
-            out[i] = argClasses[i].getSimpleName();
-        }
-        return out;
-    }
 
     protected final ServerImplementationValidator serverImplementationValidator;
     protected final ClientInterfaceValidator clientInterfaceValidator;
@@ -117,8 +81,7 @@ public abstract class AbstractTransport {
     private final <T> void registerClientEndpointInterface(final EndpointName endpointName, final Class<T> interfaceClass) {
         final NamedInterface reg = new NamedInterface(endpointName, interfaceClass);
         if (registeredEndpointInterfaces.contains(reg)) {
-            // TODO change to RegistrationException
-            throw new IllegalArgumentException("Cannot register the same EndpointName/Client interface more than once");
+            return;
         }
         registeredEndpointInterfaces.add(reg);
     }
@@ -135,6 +98,12 @@ public abstract class AbstractTransport {
                 new Class<?>[]{interfaceClass},
                 cih);
     }
+
+    // TODO can have client proxy or multiple return, but not both at the moment. because of the exception in registerClientEndpointInterface
+    public <T, R> void callClientMethodWithMultipleReturn(final EndpointName name, final Class<T> interfaceClass, final Method method, final Consumer<R> consumer, final long methodTimeoutMilliSeconds, final Object... arps) {
+
+    }
+
 
     protected abstract <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds);
 

@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -219,7 +218,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             // TODO server request logging
             final NamedInterface namedInterface = new NamedInterface(endpointName, clientInterface);
             final Object implementation = lookupImplementation.apply(namedInterface);
-            logger.debug("invoking implementation " + implementation.getClass().getName() + " method " + method);
+            logger.debug("Invoking [" + endpointName + "] implementation " + implementation.getClass().getName() + " method " + method + " sequence " + sequence);
             final Object result = method.invoke(implementation, args);
             // TODO server response generation logging
             // TODO METRIC method duration timing
@@ -309,11 +308,6 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             throw new RegistrationException("Method hash collision when registering (Endpoint '" + endpointName +
                     "', Client interface '" + interfaceClass.getSimpleName() + "') conflicts with (" + collidingEndpointInterfaceMethod.get().toString() + ")");
         }
-    }
-
-    @Override
-    public <T, R> void callClientMethodWithMultipleReturn(final EndpointName name, final Class<T> interfaceClass, final Method method, final Consumer<R> consumer, final long methodTimeoutMilliSeconds, final Object... arps) {
-
     }
 
     @Override
