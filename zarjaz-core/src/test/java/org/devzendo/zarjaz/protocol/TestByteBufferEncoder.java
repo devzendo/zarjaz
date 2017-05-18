@@ -5,15 +5,11 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.devzendo.zarjaz.protocol.SampleInterfaces.parameterType;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.*;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -283,6 +279,58 @@ public class TestByteBufferEncoder {
     }
 
     @Test
+    public void encodeObjectFloatPrimitive() {
+        encoder.writeObject(Float.TYPE, 3.1415f);
+        final ReadableByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
+        assertThat(buffer.get(0), equalTo((byte) 64));
+        assertThat(buffer.get(1), equalTo((byte) 73));
+        assertThat(buffer.get(2), equalTo((byte) 14));
+        assertThat(buffer.get(3), equalTo((byte) 86));
+    }
+
+    @Test
+    public void encodeObjectFloatWrapper() {
+        encoder.writeObject(Float.class, 3.1415f);
+        final ReadableByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
+        assertThat(buffer.get(0), equalTo((byte) 64));
+        assertThat(buffer.get(1), equalTo((byte) 73));
+        assertThat(buffer.get(2), equalTo((byte) 14));
+        assertThat(buffer.get(3), equalTo((byte) 86));
+    }
+
+    @Test
+    public void encodeObjectShortPrimitive() {
+        encoder.writeObject(Short.TYPE, (short) 201);
+        final ReadableByteBuffer buffer = getSingleByteBufferWithExpectedBytes(2);
+        assertThat(buffer.get(0), equalTo((byte) 0));
+        assertThat(buffer.get(1), equalTo((byte) 201));
+    }
+
+    @Test
+    public void encodeObjectShortWrapper() {
+        encoder.writeObject(Short.class, Short.valueOf((short) 201));
+        final ReadableByteBuffer buffer = getSingleByteBufferWithExpectedBytes(2);
+        assertThat(buffer.get(0), equalTo((byte) 0));
+        assertThat(buffer.get(1), equalTo((byte) 201));
+    }
+
+    @Test
+    public void encodeObjectCharacterPrimitive() {
+        encoder.writeObject(Character.TYPE, (char) 'a');
+        final ReadableByteBuffer buffer = getSingleByteBufferWithExpectedBytes(2);
+        assertThat(buffer.get(0), equalTo((byte) 0));
+        assertThat(buffer.get(1), equalTo((byte) 97));
+    }
+
+    @Test
+    public void encodeObjectCharacterWrapper() {
+        encoder.writeObject(Character.class, Character.valueOf('a'));
+        final ReadableByteBuffer buffer = getSingleByteBufferWithExpectedBytes(2);
+        assertThat(buffer.get(0), equalTo((byte) 0));
+        assertThat(buffer.get(1), equalTo((byte) 97));
+    }
+
+    @Test
     public void encodeObjectIntPrimitiveWidenedByte() {
         encoder.writeObject(Integer.TYPE, (byte) 201);
         final ReadableByteBuffer buffer = getSingleByteBufferWithExpectedBytes(4);
@@ -328,6 +376,34 @@ public class TestByteBufferEncoder {
         assertThat(buffer.get(5), equalTo((byte) 0x06));
         assertThat(buffer.get(6), equalTo((byte) 0x07));
         assertThat(buffer.get(7), equalTo((byte) 0x08));
+    }
+
+    @Test
+    public void encodeObjectDoublePrimitive() {
+        encoder.writeObject(Double.TYPE, 3.1415d);
+        final ReadableByteBuffer buffer = getSingleByteBufferWithExpectedBytes(8);
+        assertThat(buffer.get(0), equalTo((byte) 64));
+        assertThat(buffer.get(1), equalTo((byte) 9));
+        assertThat(buffer.get(2), equalTo((byte) 33));
+        assertThat(buffer.get(3), equalTo((byte) -54));
+        assertThat(buffer.get(4), equalTo((byte) -64));
+        assertThat(buffer.get(5), equalTo((byte) -125));
+        assertThat(buffer.get(6), equalTo((byte) 18));
+        assertThat(buffer.get(7), equalTo((byte) 111));
+    }
+
+    @Test
+    public void encodeObjectDoubleWrapper() {
+        encoder.writeObject(Double.class, Double.valueOf(3.1415d));
+        final ReadableByteBuffer buffer = getSingleByteBufferWithExpectedBytes(8);
+        assertThat(buffer.get(0), equalTo((byte) 64));
+        assertThat(buffer.get(1), equalTo((byte) 9));
+        assertThat(buffer.get(2), equalTo((byte) 33));
+        assertThat(buffer.get(3), equalTo((byte) -54));
+        assertThat(buffer.get(4), equalTo((byte) -64));
+        assertThat(buffer.get(5), equalTo((byte) -125));
+        assertThat(buffer.get(6), equalTo((byte) 18));
+        assertThat(buffer.get(7), equalTo((byte) 111));
     }
 
     @Test

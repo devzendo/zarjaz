@@ -169,6 +169,34 @@ public class ByteBufferEncoder {
                 fail = true;
             }
 
+        } else if (parameterType.equals(Short.class) || parameterType.equals(Short.TYPE)) {
+            if (parameterValueType.equals(Short.class) || parameterValueType.equals(Short.TYPE)) {
+                writeShort((short) parameterValue);
+            } else {
+                fail = true;
+            }
+
+        } else if (parameterType.equals(Character.class) || parameterType.equals(Character.TYPE)) {
+            if (parameterValueType.equals(Character.class) || parameterValueType.equals(Character.TYPE)) {
+                writeChar((char) parameterValue);
+            } else {
+                fail = true;
+            }
+
+        } else if (parameterType.equals(Float.class) || parameterType.equals(Float.TYPE)) {
+            if (parameterValueType.equals(Float.class) || parameterValueType.equals(Float.TYPE)) {
+                writeFloat((float) parameterValue);
+            } else {
+                fail = true;
+            }
+
+        } else if (parameterType.equals(Double.class) || parameterType.equals(Double.TYPE)) {
+            if (parameterValueType.equals(Double.class) || parameterValueType.equals(Double.TYPE)) {
+                writeDouble((double) parameterValue);
+            } else {
+                fail = true;
+            }
+
         } else if (parameterType.equals(Integer.class) || parameterType.equals(Integer.TYPE)) {
             if (parameterValueType.equals(Integer.class) || parameterValueType.equals(Integer.TYPE)) {
                 writeInt((int) parameterValue);
