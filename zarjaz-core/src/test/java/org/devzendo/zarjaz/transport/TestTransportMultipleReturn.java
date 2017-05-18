@@ -4,6 +4,7 @@ import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.sample.primes.PrimeGenerator;
+import org.devzendo.zarjaz.sample.timeout.DefaultTimeoutGenerator;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.NullTransceiver;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
@@ -12,6 +13,7 @@ import org.hamcrest.Matchers;
 import org.junit.*;
 import org.junit.rules.ExpectedException;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.slf4j.Logger;
@@ -61,18 +63,22 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-
     @Before
     public void setUp() {
         final TimeoutScheduler timeoutScheduler = new TimeoutScheduler();
-        final NullTransceiver nullTransceiver = new NullTransceiver();
         final DefaultInvocationCodec invocationCodec = new DefaultInvocationCodec();
         final DefaultInvocationHashGenerator invocationHashGenerator = new DefaultInvocationHashGenerator();
-        clientTransport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
+
+        // The key to this test is that it uses the null transceiver, which will dispatch incoming data to all
+        // registered listeners...
+        final NullTransceiver nullTransceiver = new NullTransceiver();
+
+        // ... of which we have two:
         serverTransport1 = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
         serverTransport2 = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
+        // ... and a single client:
+        clientTransport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
     }
-
 
     @After
     public void tearDown() {
@@ -144,4 +150,22 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
                 "Response from Jenny: Hello Matt, the next prime is 2"
         ));
     }
+
+    @Test
+    public void multipleReturnCallValidatesClientInterface() {
+        final DefaultTimeoutGenerator serverImplementation = new DefaultTimeoutGenerator();
+
+        final EndpointName timeoutEndpointName = new EndpointName("timeout");
+//        int invocationTimes = 1;
+//        // for the null clientTransport, the impl has to be registered even tho only interested in the 'client' side.
+//        if (clientTransport instanceof NullTransport) {
+//            clientTransport.registerServerImplementation(timeoutEndpointName, TimeoutGenerator.class, serverImplementation);
+//            invocationTimes++;
+//        }
+//        final Method method = PrimeGenerator.class.getDeclaredMethods()[0];
+
+        clientTransport.<PrimeGenerator, String>callClientMethodWithMultipleReturn(primesEndpointName, PrimeGenerator.class, null, null, 500L, null);
+        Mockito.verify(clientValidator, Mockito.times(1)).validateClientInterface(PrimeGenerator.class);
+    }
+
 }

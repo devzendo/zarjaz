@@ -100,8 +100,10 @@ public abstract class AbstractTransport {
     }
 
     // TODO can have client proxy or multiple return, but not both at the moment. because of the exception in registerClientEndpointInterface
-    public <T, R> void callClientMethodWithMultipleReturn(final EndpointName name, final Class<T> interfaceClass, final Method method, final Consumer<R> consumer, final long methodTimeoutMilliSeconds, final Object... arps) {
-
+    public <T, R> void callClientMethodWithMultipleReturn(final EndpointName endpointName, final Class<T> interfaceClass, final Method method, final Consumer<R> consumer, final long methodTimeoutMilliseconds, final Object... arps) {
+        // TODO validate for nulls
+        logger.info("Creating client proxy of " + endpointName + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
+        clientInterfaceValidator.validateClientInterface(interfaceClass);
     }
 
 
