@@ -4,7 +4,6 @@ import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.sample.primes.PrimeGenerator;
-import org.devzendo.zarjaz.sample.timeout.DefaultTimeoutGenerator;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.NullTransceiver;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
@@ -118,9 +117,9 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
         }
     }
 
-    // TODO cannot call callClientMethodWithMultipleReturn before calling start
+    // TODO cannot call createClientMultipleReturnInvoker before calling start
 
-    // TODO cannot call callClientMethodWithMultipleReturn with a method not part of the supplied interface
+    // TODO cannot call createClientMultipleReturnInvoker with a method not part of the supplied interface
 
     @Ignore
     @Test(timeout = 2000)
@@ -138,7 +137,7 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
         final Method method = PrimeGenerator.class.getDeclaredMethods()[0];
         final List<String> returns = synchronizedList(new ArrayList<>());
         final long startTime = System.currentTimeMillis();
-        clientTransport.<PrimeGenerator, String>callClientMethodWithMultipleReturn(primesEndpointName, PrimeGenerator.class, method, returns::add, 500L, "Matt");
+        clientTransport.<PrimeGenerator, String>createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, method, returns::add, 500L, "Matt");
         final long stopTime = System.currentTimeMillis();
 
         assertThat(stopTime - startTime, allOf(greaterThanOrEqualTo(500L), lessThan(1000L)));
@@ -153,18 +152,7 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
 
     @Test
     public void multipleReturnCallValidatesClientInterface() {
-        final DefaultTimeoutGenerator serverImplementation = new DefaultTimeoutGenerator();
-
-        final EndpointName timeoutEndpointName = new EndpointName("timeout");
-//        int invocationTimes = 1;
-//        // for the null clientTransport, the impl has to be registered even tho only interested in the 'client' side.
-//        if (clientTransport instanceof NullTransport) {
-//            clientTransport.registerServerImplementation(timeoutEndpointName, TimeoutGenerator.class, serverImplementation);
-//            invocationTimes++;
-//        }
-//        final Method method = PrimeGenerator.class.getDeclaredMethods()[0];
-
-        clientTransport.<PrimeGenerator, String>callClientMethodWithMultipleReturn(primesEndpointName, PrimeGenerator.class, null, null, 500L, null);
+        clientTransport.<PrimeGenerator, String>createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, null, null, 500L, null);
         Mockito.verify(clientValidator, Mockito.times(1)).validateClientInterface(PrimeGenerator.class);
     }
 
