@@ -2,6 +2,7 @@ package org.devzendo.zarjaz.transport;
 
 import org.devzendo.zarjaz.concurrency.DaemonThreadFactory;
 import org.devzendo.zarjaz.reflect.CompletionInvocationHandler;
+import org.devzendo.zarjaz.reflect.CompletionMultipleReturnInvoker;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
@@ -100,12 +101,13 @@ public abstract class AbstractTransport {
     }
 
     // TODO can have client proxy or multiple return, but not both at the moment. because of the exception in registerClientEndpointInterface
-    public <T, R> void createClientMultipleReturnInvoker(final EndpointName endpointName, final Class<T> interfaceClass, final Method method, final Consumer<R> consumer, final long methodTimeoutMilliseconds, final Object... arps) {
+    public <T, R> MultipleReturnInvoker createClientMultipleReturnInvoker(final EndpointName endpointName, final Class<T> interfaceClass, final Method method, final Consumer<R> consumer, final long methodTimeoutMilliseconds, final Object... arps) {
         // TODO validate for nulls
-        logger.info("Creating client proxy of " + endpointName + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
+        logger.info("Creating client multiple return invoker for " + endpointName + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
         clientInterfaceValidator.validateClientInterface(interfaceClass);
 
         final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(endpointName, interfaceClass, methodTimeoutMilliseconds);
+        return new CompletionMultipleReturnInvoker(timeoutScheduler, endpointName, interfaceClass, transportInvocationHandler, methodTimeoutMilliseconds);
     }
 
 
