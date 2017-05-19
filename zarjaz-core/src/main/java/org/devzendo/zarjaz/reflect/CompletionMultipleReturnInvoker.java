@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Method;
 import java.util.function.Consumer;
 
+import static org.devzendo.zarjaz.util.ClassUtils.joinedClassNames;
+
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
  * <p>
@@ -34,6 +36,9 @@ public class CompletionMultipleReturnInvoker<T> extends AbstractCompletionHandle
 
     @Override
     public <R> void invoke(final Method method, final Consumer<R> consumer, final long methodTimeoutMilliSeconds, final Object... args) {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Invoking (multiple return) [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName() + joinedClassNames(method.getParameterTypes()));
+        }
 
     }
 }
