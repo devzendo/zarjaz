@@ -31,21 +31,11 @@ import static org.devzendo.zarjaz.util.ClassUtils.joinedClassNames;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class CompletionInvocationHandler<T> implements InvocationHandler {
+public class CompletionInvocationHandler<T> extends AbstractCompletionHandler implements InvocationHandler {
     private static final Logger logger = LoggerFactory.getLogger(CompletionInvocationHandler.class);
 
-    private final TimeoutScheduler timeoutScheduler;
-    private final EndpointName endpointName;
-    private final Class<T> interfaceClass;
-    private final TransportInvocationHandler transportHandler;
-    private final long methodTimeoutMs;
-
     public CompletionInvocationHandler(final TimeoutScheduler timeoutScheduler, final EndpointName endpointName, final Class<T> interfaceClass, final TransportInvocationHandler transportHandler, final long methodTimeoutMs) {
-        this.timeoutScheduler = timeoutScheduler;
-        this.endpointName = endpointName;
-        this.interfaceClass = interfaceClass;
-        this.transportHandler = transportHandler;
-        this.methodTimeoutMs = methodTimeoutMs;
+        super(timeoutScheduler, endpointName, interfaceClass, transportHandler, methodTimeoutMs);
     }
 
     @Override
@@ -55,23 +45,24 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         }
 
         final String name = method.getName();
-        if (name.equals("hashCode")) {
-            return hashCode();
-        } else if (name.equals("equals")) {
-            final Object other = args[0];
-            return (proxy == other) ||
-                    (other != null && Proxy.isProxyClass(other.getClass()) && this.equals(Proxy.getInvocationHandler(other)));
-        } else if (name.equals("toString")) {
-            return "Client for endpoint '" + name + "', interface class '" + interfaceClass + "'";
-        } else {
-            return invokeRemote(method, args);
+        switch (name) {
+            case "hashCode":
+                return hashCode();
+            case "equals":
+                final Object other = args[0];
+                return (proxy == other) ||
+                        (other != null && Proxy.isProxyClass(other.getClass()) && this.equals(Proxy.getInvocationHandler(other)));
+            case "toString":
+                return "Client for endpoint '" + name + "', interface class '" + interfaceClass + "'";
+            default:
+                return invokeRemote(method, args);
         }
     }
 
     private Object invokeRemote(final Method method, final Object[] args) {
         // And every response needs to reuse this logic. Synchronous calls can get.
 
-        final CompletableFuture<Object> future = new CompletableFuture<Object>();
+        final CompletableFuture<Object> future = new CompletableFuture<>();
 
         // Possible behaviours on timeout:
         // Complete the future exceptionally
@@ -90,14 +81,14 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
         // own timeout behaviour for the method invocation.
         final MethodCallTimeoutHandlers timeoutHandlers = new MethodCallTimeoutHandlers();
         final MethodCallTimeoutHandler timeoutHandler = (f, en, m) -> {
-            final String message = "Method call [" + en + "] '" + m.getName() + "' timed out after " + methodTimeoutMs + "ms";
+            final String message = "Method call [" + en + "] '" + m.getName() + "' timed out after " + methodTimeoutMilliseconds + "ms";
             if (logger.isDebugEnabled()) {
                 logger.debug(message);
             }
             f.completeExceptionally(new MethodInvocationTimeoutException(message));
         };
         timeoutHandlers.setTimeoutOccurredHandler(timeoutHandler);
-        timeoutScheduler.schedule(methodTimeoutMs, () -> {
+        timeoutScheduler.schedule(methodTimeoutMilliseconds, () -> {
             // TODO create list of handlers, flatMap over?
             try {
                 timeoutHandlers.getTimeoutTransportHandler().ifPresent(handler -> handler.timeoutOccurred(future, endpointName, method));
@@ -113,7 +104,7 @@ public class CompletionInvocationHandler<T> implements InvocationHandler {
 
         // Note that the NullTransport could block indefinitely here, so runs the invocation and remote code on a separate thread.
         try {
-            transportHandler.invoke(method, args, future, timeoutHandlers);
+            transportInvocationHandler.invoke(method, args, future, timeoutHandlers);
         } catch (final Exception e) {
             final String message = "Method call [" + endpointName + "] '" + method.getName() + "' invocation failed: " + e.getMessage();
             logger.warn(message, e);
