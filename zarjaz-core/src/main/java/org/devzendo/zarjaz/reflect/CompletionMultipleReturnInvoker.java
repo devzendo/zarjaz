@@ -23,7 +23,7 @@ import java.util.function.Consumer;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class CompletionMultipleReturnInvoker<T> implements MultipleReturnInvoker {
+public class CompletionMultipleReturnInvoker<T> implements MultipleReturnInvoker<T> {
     private final TimeoutScheduler timeoutScheduler;
     private final EndpointName endpointName;
     private final Class<T> interfaceClass;

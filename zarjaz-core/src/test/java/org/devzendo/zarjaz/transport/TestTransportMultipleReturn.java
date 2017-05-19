@@ -134,7 +134,7 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
         final Method method = PrimeGenerator.class.getDeclaredMethods()[0];
         final List<String> returns = synchronizedList(new ArrayList<>());
         final long startTime = System.currentTimeMillis();
-        final MultipleReturnInvoker multipleReturnInvoker = clientTransport.<PrimeGenerator>createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
+        final MultipleReturnInvoker<PrimeGenerator> multipleReturnInvoker = clientTransport.createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
         multipleReturnInvoker.<String>invoke(method, returns::add, 500L, "Matt");
         final long stopTime = System.currentTimeMillis();
 
@@ -150,7 +150,7 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
 
     @Test
     public void multipleReturnCallValidatesClientInterface() {
-        clientTransport.<PrimeGenerator>createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
+        clientTransport.createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
         Mockito.verify(clientValidator, Mockito.times(1)).validateClientInterface(PrimeGenerator.class);
     }
 }

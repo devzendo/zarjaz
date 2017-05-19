@@ -99,7 +99,7 @@ public abstract class AbstractTransport {
     }
 
     // TODO can have client proxy or multiple return, but not both at the moment. because of the exception in registerClientEndpointInterface
-    public <T> MultipleReturnInvoker createClientMultipleReturnInvoker(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
+    public <T> MultipleReturnInvoker<T> createClientMultipleReturnInvoker(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
         // TODO validate for nulls
         logger.info("Creating client multiple return invoker for " + endpointName + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
         clientInterfaceValidator.validateClientInterface(interfaceClass);
