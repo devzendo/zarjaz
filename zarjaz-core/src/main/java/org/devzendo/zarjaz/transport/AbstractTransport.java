@@ -9,7 +9,6 @@ import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,7 +17,6 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -101,7 +99,7 @@ public abstract class AbstractTransport {
     }
 
     // TODO can have client proxy or multiple return, but not both at the moment. because of the exception in registerClientEndpointInterface
-    public <T, R> MultipleReturnInvoker createClientMultipleReturnInvoker(final EndpointName endpointName, final Class<T> interfaceClass, final Method method, final Consumer<R> consumer, final long methodTimeoutMilliseconds, final Object... arps) {
+    public <T> MultipleReturnInvoker createClientMultipleReturnInvoker(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
         // TODO validate for nulls
         logger.info("Creating client multiple return invoker for " + endpointName + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
         clientInterfaceValidator.validateClientInterface(interfaceClass);

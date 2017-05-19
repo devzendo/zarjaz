@@ -129,15 +129,13 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
         serverTransport2.registerServerImplementation(primesEndpointName, PrimeGenerator.class, new NamedPrimeGenerator("Jenny"));
         serverTransport2.start();
 
-        // TODO is this needed?? we're not using a proxy
-        final PrimeGenerator clientProxy = clientTransport.createClientProxy(primesEndpointName, PrimeGenerator.class, 500L);
-
         clientTransport.start();
 
         final Method method = PrimeGenerator.class.getDeclaredMethods()[0];
         final List<String> returns = synchronizedList(new ArrayList<>());
         final long startTime = System.currentTimeMillis();
-        clientTransport.<PrimeGenerator, String>createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, method, returns::add, 500L, "Matt");
+        final MultipleReturnInvoker multipleReturnInvoker = clientTransport.<PrimeGenerator>createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
+        multipleReturnInvoker.<String>invoke(method, returns::add, 500L, "Matt");
         final long stopTime = System.currentTimeMillis();
 
         assertThat(stopTime - startTime, allOf(greaterThanOrEqualTo(500L), lessThan(1000L)));
@@ -152,8 +150,7 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
 
     @Test
     public void multipleReturnCallValidatesClientInterface() {
-        clientTransport.<PrimeGenerator, String>createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, null, null, 500L, null);
+        clientTransport.<PrimeGenerator>createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
         Mockito.verify(clientValidator, Mockito.times(1)).validateClientInterface(PrimeGenerator.class);
     }
-
 }
