@@ -9,7 +9,10 @@ import org.devzendo.zarjaz.transceiver.NullTransceiver;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.hamcrest.Matchers;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -121,15 +124,16 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
 
     // TODO cannot call createClientMultipleReturnInvoker with a method not part of the supplied interface
 
-    @Ignore
     @Test(timeout = 2000)
-    public void multipleReturn() {
+    public void multipleReturn() throws NoSuchMethodException {
         serverTransport1.registerServerImplementation(primesEndpointName, PrimeGenerator.class, new NamedPrimeGenerator("Dave"));
         serverTransport1.start();
         serverTransport2.registerServerImplementation(primesEndpointName, PrimeGenerator.class, new NamedPrimeGenerator("Jenny"));
         serverTransport2.start();
 
-        final Method method = PrimeGenerator.class.getDeclaredMethods()[0];
+        final Method method = PrimeGenerator.class.getMethod("generateNextPrimeMessage", String.class);
+        logger.debug("The method we're doing a test of is " + method);
+
         final List<String> returns = synchronizedList(new ArrayList<>());
         final MultipleReturnInvoker<PrimeGenerator> multipleReturnInvoker = clientTransport.createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
 

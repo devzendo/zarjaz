@@ -127,18 +127,11 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         private void processMethodReturnResult(final ByteBufferDecoder decoder) throws IOException {
             final int sequence = decoder.readInt();
             // This may be a single- or multiple-return method.
-
-            // TODO how do we know if this is a multiple-return method? We don't, before getting the OutstandingMethodCall
-            // to look up the hash/method.
-            // Going to have to lock on the outstandingMethodCalls.
-            // How do we indicate a method in a client interface is multiple-return? How to set the return handling
-            // function (and switch the processing, as in the header comment above?)
-            // TODO Seems like a job for switchable strategies.
-            // Need to provide a multiple return handler to the client proxy generator that refers to the method.
-            // TODO only remove if it's not a multiple-return method
-            // WOZERE pass the sequence and decoded return value on to the outstandingmethodcalls, and let it throw
-            // if there's no outstanding sequence. Then, allow that strategy to remove if found, but not it if is a
-            // multiple return - as that class is where the knowledge of multiple return-ness is known.
+            // Pass the return value on to the OutstandingMethodCalls, as this knows whether the call is single- or
+            // multiple return.
+            // The difference is that single return calls are removed from the outstanding calls when the return arrives
+            // but multiple return calls are not removed then, but are removed on timeout.
+            // TODO PERFORMANCE - this locks on the outstandingmethodcalls twice, for the two calls...
             try {
                 final OutstandingMethodCalls.OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.get(sequence);
                 final Object returnValue = decodeReturnValue(decoder, outstandingMethodCall);
