@@ -85,4 +85,15 @@ public class OutstandingMethodCalls {
         outstandingMethodCallsLock.unlock();
         return size;
     }
+
+    public void resultReceived(final int sequence, final Object returnValue) {
+        outstandingMethodCallsLock.lock();
+        final OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.remove(sequence);
+        if (outstandingMethodCall == null) {
+            throw new SequenceNotFoundException("Completed method return with sequence " + sequence + " is not outstanding");
+        }
+        outstandingMethodCallsLock.unlock();
+        
+        outstandingMethodCall.resultReceived(returnValue);
+    }
 }

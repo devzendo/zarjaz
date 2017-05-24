@@ -1,6 +1,8 @@
 package org.devzendo.zarjaz.transport;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.lang.reflect.Method;
 import java.util.Optional;
@@ -32,6 +34,9 @@ public class TestOutstandingMethodCalls {
     private final Method irrelevantMethod = null;
     private final CompletableFuture<Object> irrelevantFuture = null;
     private final byte[] irrelevantHash = null;
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void emptiness() {
@@ -68,6 +73,35 @@ public class TestOutstandingMethodCalls {
         assertThat(calls.remove(sequence), equalTo(call));
 
         assertEmptiness(sequence);
+    }
+
+    @Test
+    public void methodFinishedThrowsIfNoSequencedMethodStored() {
+        thrown.expect(SequenceNotFoundException.class);
+        thrown.expectMessage("Completed method return with sequence 7 is not outstanding");
+        calls.resultReceived(7, "boo");
+    }
+
+    @Test
+    public void futuresCanBeCompletedByIncomingSequenceReturn() throws ExecutionException, InterruptedException {
+        final CompletableFuture<Object> future = new CompletableFuture<>();
+        final OutstandingMethodCalls.OutstandingMethodCall call = new OutstandingMethodCalls.OutstandingMethodCall(irrelevantHash, irrelevantMethod, future, Optional.empty());
+        final int sequence = calls.put(call);
+        calls.resultReceived(sequence, "Hello");
+        assertThat(future.isDone(), equalTo(true));
+        assertThat(future.get(), equalTo("Hello"));
+    }
+
+    @Test
+    public void consumersAreSuppliedIfTheyAreSomeInsteadOfFuturesCompletedByIncomingSequenceReturn() throws ExecutionException, InterruptedException {
+        final CompletableFuture<Object> future = new CompletableFuture<>();
+        final Object[] consumed = new Object[]{null};
+        final Consumer<Object> consumer = o -> consumed[0] = o;
+        final OutstandingMethodCalls.OutstandingMethodCall call = new OutstandingMethodCalls.OutstandingMethodCall(irrelevantHash, irrelevantMethod, future, Optional.of(consumer));
+        final int sequence = calls.put(call);
+        calls.resultReceived(sequence, "Hello");
+        assertThat(future.isDone(), equalTo(false));
+        assertThat(consumed[0], equalTo("Hello"));
     }
 
     private void assertEmptiness(final int sequence) {

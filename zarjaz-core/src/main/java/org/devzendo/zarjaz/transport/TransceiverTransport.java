@@ -146,7 +146,7 @@ public class TransceiverTransport extends AbstractTransport implements Transport
 
             final Object returnValue = decodeReturnValue(decoder, outstandingMethodCall);
 
-            outstandingMethodCall.resultReceived(returnValue);
+            outstandingMethodCalls.resultReceived(sequence, returnValue);
             // TODO METRIC increment successful method decode
             // TODO REQUEST/RESPONSE LOGGING log method return
         }
