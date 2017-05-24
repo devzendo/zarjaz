@@ -23,8 +23,7 @@ import java.util.function.Consumer;
 
 import static org.devzendo.zarjaz.logging.IsLoggingEvent.loggingEvent;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.arrayWithSize;
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.*;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -84,7 +83,7 @@ public class TestCompletionMultipleReturnInvoker extends LoggingUnittestCase {
     @Test
     public void loggingOfMethodCallInvocations() {
         // given
-        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+        transportInvocationHandler = (method, args, future, consumer, timeoutRunnables) -> {
             assertThat(method.getName(), equalTo("getName"));
             assertThat(args, arrayWithSize(0));
             future.complete("Bob");
@@ -98,9 +97,30 @@ public class TestCompletionMultipleReturnInvoker extends LoggingUnittestCase {
 
         // then
         final List<LoggingEvent> copiedEvents = getLoggingEvents();
-        assertThat(copiedEvents, Matchers.hasSize(1));
+        assertThat(copiedEvents, Matchers.hasSize(3));
         assertThat(copiedEvents.get(0), loggingEvent(Level.DEBUG, "Invoking (multiple return) [Sample] org.devzendo.zarjaz.reflect.TestCompletionMultipleReturnInvoker$SampleInterface.getName()"));
-//        assertThat(copiedEvents.get(1), loggingEvent(Level.DEBUG, "Waiting for timeout"));
-//        assertThat(copiedEvents.get(2), loggingEvent(Level.DEBUG, "Wait over; removing timeout handler"));
+        assertThat(copiedEvents.get(1), loggingEvent(Level.DEBUG, "Waiting on Future"));
+        assertThat(copiedEvents.get(2), loggingEvent(Level.DEBUG, "Wait over; removing timeout handler; returning value"));
+    }
+
+    @Test
+    public void multipleReturnCallsTimeOutAfterTheRightDuration() {
+        // given
+        transportInvocationHandler = (method, args, future, consumer, timeoutRunnables) -> {
+            // do nothing
+        };
+
+        final CompletionMultipleReturnInvoker<SampleInterface> invoker =
+                new CompletionMultipleReturnInvoker<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 500L);
+
+        // when
+        final long start = System.currentTimeMillis();
+        invoker.invoke(getNameMethod, irrelevantConsumer, 500L);
+        final long stop = System.currentTimeMillis();
+        final long duration = stop - start;
+
+        // then
+        // really shouldn't take more than 100ms to do nothing!
+        assertThat(duration, allOf(greaterThanOrEqualTo(500L), lessThan(600L)));
     }
 }

@@ -3,7 +3,9 @@ package org.devzendo.zarjaz.transport;
 import org.devzendo.zarjaz.reflect.MethodCallTimeoutHandlers;
 
 import java.lang.reflect.Method;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
  * Copyright (C) 2008-2015 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -22,5 +24,5 @@ import java.util.concurrent.CompletableFuture;
  */
 
 public interface TransportInvocationHandler {
-    void invoke(Method method, Object[] args, CompletableFuture<Object> future, MethodCallTimeoutHandlers timeoutHandlers);
+    void invoke(Method method, Object[] args, CompletableFuture<Object> future, Optional<Consumer<Object>> consumer, MethodCallTimeoutHandlers timeoutHandlers);
 }

@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -135,6 +136,9 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             // TODO Seems like a job for switchable strategies.
             // Need to provide a multiple return handler to the client proxy generator that refers to the method.
             // TODO only remove if it's not a multiple-return method
+            // WOZERE pass the sequence and decoded return value on to the outstandingmethodcalls, and let it throw
+            // if there's no outstanding sequence. Then, allow that strategy to remove if found, but not it if is a
+            // multiple return - as that class is where the knowledge of multiple return-ness is known.
             final OutstandingMethodCalls.OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.remove(sequence);
             if (outstandingMethodCall == null) {
                 throw new IOException("Incoming method return with sequence " + sequence + " is not outstanding");
@@ -142,15 +146,16 @@ public class TransceiverTransport extends AbstractTransport implements Transport
 
             final Object returnValue = decodeReturnValue(decoder, outstandingMethodCall);
 
-            outstandingMethodCall.future.complete(returnValue);
+            outstandingMethodCall.resultReceived(returnValue);
             // TODO METRIC increment successful method decode
             // TODO REQUEST/RESPONSE LOGGING log method return
         }
 
         private Object decodeReturnValue(final ByteBufferDecoder decoder, final OutstandingMethodCalls.OutstandingMethodCall outstandingMethodCall) throws IOException {
-            final Class<?> returnType = outstandingMethodCall.method.getReturnType();
+            final Method method = outstandingMethodCall.getMethod();
+            final Class<?> returnType = method.getReturnType();
             if (returnType.isAssignableFrom(Future.class)) {
-                final Class<?> genericReturnType = typeResolver.getReturnType(outstandingMethodCall.method);
+                final Class<?> genericReturnType = typeResolver.getReturnType(method);
                 return decoder.readObject(genericReturnType);
             } else {
                 return decoder.readObject(returnType);
@@ -258,12 +263,12 @@ public class TransceiverTransport extends AbstractTransport implements Transport
         }
 
         @Override
-        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final MethodCallTimeoutHandlers timeoutHandlers) {
+        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final Optional<Consumer<Object>> consumer, final MethodCallTimeoutHandlers timeoutHandlers) {
             // An invocation from the client is to be encoded, and sent to the server.
             final byte[] hash = methodsToHashMap.get(method);
 
             // Allocate a sequence number for this call and register as an outstanding call.
-            final int thisSequence = outstandingMethodCalls.put(new OutstandingMethodCalls.OutstandingMethodCall(hash, method, future));
+            final int thisSequence = outstandingMethodCalls.put(new OutstandingMethodCalls.OutstandingMethodCall(hash, method, future, consumer));
             if (logger.isDebugEnabled()) {
                 logger.debug("Invoking [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName() + " hash " + HexDump.bytes2hex(hash) + " sequence " + thisSequence);
             }

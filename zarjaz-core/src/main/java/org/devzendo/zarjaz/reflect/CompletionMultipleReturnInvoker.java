@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.devzendo.zarjaz.util.ClassUtils.joinedClassNames;
@@ -39,6 +40,17 @@ public class CompletionMultipleReturnInvoker<T> extends AbstractCompletionHandle
         if (logger.isDebugEnabled()) {
             logger.debug("Invoking (multiple return) [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName() + joinedClassNames(method.getParameterTypes()));
         }
+        invokeRemote(method, args, Optional.of(consumer));
+    }
 
+    @Override
+    protected MethodCallTimeoutHandler createTimeoutHandler() {
+        return (f, en, m) -> {
+            final String message = "Multiple return method call [" + en + "] '" + m.getName() + "' ended after " + methodTimeoutMilliseconds + "ms";
+            if (logger.isDebugEnabled()) {
+                logger.debug(message);
+            }
+            f.complete(null); // the result of the method call is not needed, the future is used to unblock the client
+        };
     }
 }

@@ -87,7 +87,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
     @Test
     public void loggingOfNonFutureMethodInvocations() throws NoSuchMethodException {
         // given
-        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+        transportInvocationHandler = (method, args, future, consumer, timeoutRunnables) -> {
             assertThat(method.getName(), equalTo("getName"));
             assertThat(args, arrayWithSize(0));
             future.complete("Bob");
@@ -115,7 +115,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
     @Test(timeout = 4000L)
     public void methodsCanTimeOut() throws NoSuchMethodException {
         // given
-        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+        transportInvocationHandler = (method, args, future, consumer, timeoutRunnables) -> {
             waitNoInterruption(2000L);
             future.complete("Bob");
         };
@@ -142,7 +142,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
 
         logger.info("creating test objects");
         // given
-        transportInvocationHandler = (method, args, future, timeoutHandlers) -> {
+        transportInvocationHandler = (method, args, future, consumer, timeoutHandlers) -> {
             logger.info("transport invocation handler, adding timeout handler");
             timeoutHandlers.setTimeoutTransportHandler((f, en, m) -> {
                 logger.info("running timeout handler");
@@ -183,7 +183,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         final AtomicReference<MethodCallTimeoutHandlers> handlers = new AtomicReference<>();
         final CountDownLatch stored = new CountDownLatch(1);
         // given
-        transportInvocationHandler = (method, args, future, timeoutHandlers) -> {
+        transportInvocationHandler = (method, args, future, consumer, timeoutHandlers) -> {
             logger.info("transport invocation handler, caching timeout handlers " + timeoutHandlers);
             handlers.set(timeoutHandlers);
 
@@ -219,7 +219,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         final boolean[] wasRun = new boolean[]{false, false};
 
         // given
-        transportInvocationHandler = (method, args, future, timeoutHandlers) -> {
+        transportInvocationHandler = (method, args, future, consumer, timeoutHandlers) -> {
             timeoutHandlers.setTimeoutTransportHandler((f, en, m) -> {
                 wasRun[1] = true;
                 throw new IllegalStateException("boom");
@@ -260,7 +260,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
         final List<String> wasRun = new ArrayList<>();
 
         // given
-        transportInvocationHandler = (method, args, future, timeoutHandlers) -> {
+        transportInvocationHandler = (method, args, future, consumer, timeoutHandlers) -> {
             timeoutHandlers.setTimeoutTransportHandler((f, en, m) -> wasRun.add("transport"));
             // need to chain the original timeout occurred handler
             final MethodCallTimeoutHandler timeoutOccurredHandler = timeoutHandlers.getTimeoutOccurredHandler().get();
@@ -295,7 +295,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
     public void transportHandlerExceptionIsStoredInTheFutureAsAFailure() throws NoSuchMethodException {
 
         // given
-        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+        transportInvocationHandler = (method, args, future, consumer, timeoutRunnables) -> {
             throw new IllegalStateException("boom");
         };
         final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =
@@ -312,7 +312,7 @@ public class TestCompletionInvocationHandler extends LoggingUnittestCase {
     @Test(timeout = 4000L)
     public void transportHandlerExceptionRemovesTimeoutHandler() throws NoSuchMethodException {
         // given
-        transportInvocationHandler = (method, args, future, timeoutRunnables) -> {
+        transportInvocationHandler = (method, args, future, consumer, timeoutRunnables) -> {
             throw new IllegalStateException("boom");
         };
         final CompletionInvocationHandler<SampleInterface> completionInvocationHandler =

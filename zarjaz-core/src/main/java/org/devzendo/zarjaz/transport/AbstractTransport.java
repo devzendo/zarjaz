@@ -103,6 +103,7 @@ public abstract class AbstractTransport {
         // TODO validate for nulls
         logger.info("Creating client multiple return invoker for " + endpointName + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
         clientInterfaceValidator.validateClientInterface(interfaceClass);
+        registerClientEndpointInterface(endpointName, interfaceClass);
 
         final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(endpointName, interfaceClass, methodTimeoutMilliseconds);
         return new CompletionMultipleReturnInvoker(timeoutScheduler, endpointName, interfaceClass, transportInvocationHandler, methodTimeoutMilliseconds);

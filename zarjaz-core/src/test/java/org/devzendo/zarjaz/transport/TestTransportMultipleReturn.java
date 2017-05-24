@@ -129,12 +129,13 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
         serverTransport2.registerServerImplementation(primesEndpointName, PrimeGenerator.class, new NamedPrimeGenerator("Jenny"));
         serverTransport2.start();
 
-        clientTransport.start();
-
         final Method method = PrimeGenerator.class.getDeclaredMethods()[0];
         final List<String> returns = synchronizedList(new ArrayList<>());
-        final long startTime = System.currentTimeMillis();
         final MultipleReturnInvoker<PrimeGenerator> multipleReturnInvoker = clientTransport.createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
+
+        clientTransport.start();
+
+        final long startTime = System.currentTimeMillis();
         multipleReturnInvoker.<String>invoke(method, returns::add, 500L, "Matt");
         final long stopTime = System.currentTimeMillis();
 
@@ -152,5 +153,25 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
     public void multipleReturnCallValidatesClientInterface() {
         clientTransport.createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
         Mockito.verify(clientValidator, Mockito.times(1)).validateClientInterface(PrimeGenerator.class);
+    }
+
+    @Test
+    public void multipleReturnThrowsOnStartIfNoMultipleReturnInvokerCreated() {
+        // register a server, so that the test checks for client interfaces
+        serverTransport1.registerServerImplementation(primesEndpointName, PrimeGenerator.class, new NamedPrimeGenerator("Dave"));
+
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("No clients or server implementations bound");
+        clientTransport.start();
+    }
+
+    @Test
+    public void multipleReturnRegistersClientInterfaceWhenMultipleReturnInvokerCreated() {
+        // register a server, so that the test checks for client interfaces
+        serverTransport1.registerServerImplementation(primesEndpointName, PrimeGenerator.class, new NamedPrimeGenerator("Dave"));
+
+        clientTransport.createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
+        clientTransport.start();
+        // all ok, no exception
     }
 }

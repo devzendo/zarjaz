@@ -9,6 +9,7 @@ import org.devzendo.zarjaz.transceiver.DataReceived;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -74,7 +75,7 @@ public class TestServerResponseTransceiverObserver extends LoggingUnittestCase {
     // TODO failures - TransceiverFailure observed
 
     private int givenOutstandingMethodCallAndFuture() { // future? There's no future in England's dreaming...
-        return outstandingMethodCalls.put(new OutstandingMethodCalls.OutstandingMethodCall(new byte[16], SampleInterface.class.getDeclaredMethods()[0], future));
+        return outstandingMethodCalls.put(new OutstandingMethodCalls.OutstandingMethodCall(new byte[16], SampleInterface.class.getDeclaredMethods()[0], future, Optional.empty()));
     }
 
     private void whenStringResponseDataReceived(final int sequence) {

@@ -10,9 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.Optional;
 
 import static org.devzendo.zarjaz.util.ClassUtils.joinedClassNames;
 
@@ -55,96 +53,18 @@ public class CompletionInvocationHandler<T> extends AbstractCompletionHandler im
             case "toString":
                 return "Client for endpoint '" + name + "', interface class '" + interfaceClass + "'";
             default:
-                return invokeRemote(method, args);
+                return invokeRemote(method, args, Optional.empty());
         }
     }
 
-    private Object invokeRemote(final Method method, final Object[] args) {
-        // And every response needs to reuse this logic. Synchronous calls can get.
-
-        final CompletableFuture<Object> future = new CompletableFuture<>();
-
-        // Possible behaviours on timeout:
-        // Complete the future exceptionally
-        // Process some transport-specific detail (clearing outstanding method call count?)
-        //
-        // These timeout handlers need access to (from this layer):
-        // * Future
-        // * Endpoint name
-        // * Method
-        //
-        // So there are two timeout handlers, both of which can be replaced:
-        // The actual timeout exceptional future setter
-        // The transport-specific handler
-        //
-        // Pass the context object for the timeout handlers to the transport invocation handler so it can provide its
-        // own timeout behaviour for the method invocation.
-        final MethodCallTimeoutHandlers timeoutHandlers = new MethodCallTimeoutHandlers();
-        final MethodCallTimeoutHandler timeoutHandler = (f, en, m) -> {
+    @Override
+    protected MethodCallTimeoutHandler createTimeoutHandler() {
+        return (f, en, m) -> {
             final String message = "Method call [" + en + "] '" + m.getName() + "' timed out after " + methodTimeoutMilliseconds + "ms";
             if (logger.isDebugEnabled()) {
                 logger.debug(message);
             }
             f.completeExceptionally(new MethodInvocationTimeoutException(message));
         };
-        timeoutHandlers.setTimeoutOccurredHandler(timeoutHandler);
-        timeoutScheduler.schedule(methodTimeoutMilliseconds, () -> {
-            // TODO create list of handlers, flatMap over?
-            try {
-                timeoutHandlers.getTimeoutTransportHandler().ifPresent(handler -> handler.timeoutOccurred(future, endpointName, method));
-            } catch (final Exception e) {
-                logger.warn("Method call timeout handler threw exception: " + e.getMessage());
-            }
-            try {
-                timeoutHandlers.getTimeoutOccurredHandler().ifPresent(handler -> handler.timeoutOccurred(future, endpointName, method));
-            } catch (final Exception e) {
-                logger.warn("Method call timeout handler threw exception: " + e.getMessage());
-            }
-        });
-
-        // Note that the NullTransport could block indefinitely here, so runs the invocation and remote code on a separate thread.
-        try {
-            transportInvocationHandler.invoke(method, args, future, timeoutHandlers);
-        } catch (final Exception e) {
-            final String message = "Method call [" + endpointName + "] '" + method.getName() + "' invocation failed: " + e.getMessage();
-            logger.warn(message, e);
-            timeoutHandlers.removeTimeoutOccurredHandler();
-            future.completeExceptionally(e);
-        }
-
-        if (method.getReturnType().isAssignableFrom(Future.class)) {
-            if (logger.isDebugEnabled()) {
-                logger.debug("Returning Future");
-            }
-            return future;
-            // TODO how to cancel the timeout handler on a correct method invocation return? nested future?
-        } else {
-            try {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Waiting on Future");
-                }
-                final Object o = future.get();
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Wait over; removing timeout handler; returning value");
-                }
-                timeoutHandlers.removeTimeoutOccurredHandler();
-                return o;
-            } catch (final InterruptedException e) {
-                final String msg = "Invocation of " + method.getDeclaringClass().getName() + "." + method.getName() + " interrupted";
-                logger.warn(msg);
-                throw new InvocationException(msg, e);
-            } catch (final ExecutionException e) {
-                // If the cause is one of our timeouts, rethrow rather than embedding it in a thicket of stuff.
-                final Throwable cause = e.getCause();
-                if (cause instanceof MethodInvocationTimeoutException) {
-                    throw (MethodInvocationTimeoutException) cause;
-                }
-                // Timeouts are already logged by the timeout handler; log other faults now.
-                final String msg = "Invocation of " + method.getDeclaringClass().getName() + "." + method.getName() + " threw an " +
-                        e.getCause().getClass().getName() + ": " + e.getCause().getMessage();
-                logger.warn(msg);
-                throw new InvocationException(msg, e);
-            }
-        }
     }
 }

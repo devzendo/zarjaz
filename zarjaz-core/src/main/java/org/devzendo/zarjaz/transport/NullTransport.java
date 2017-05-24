@@ -9,10 +9,12 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.function.Consumer;
 
 import static org.devzendo.zarjaz.util.ClassUtils.joinedClassNames;
 import static org.devzendo.zarjaz.util.ClassUtils.objectsToClasses;
@@ -56,7 +58,7 @@ class NullTransport extends AbstractTransport implements Transport {
         }
 
         @Override
-        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final MethodCallTimeoutHandlers timeoutHandlers) {
+        public void invoke(final Method method, final Object[] args, final CompletableFuture<Object> future, final Optional<Consumer<Object>> consumer, final MethodCallTimeoutHandlers timeoutHandlers) {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {

@@ -3,9 +3,11 @@ package org.devzendo.zarjaz.transport;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
@@ -25,14 +27,28 @@ import java.util.concurrent.locks.ReentrantLock;
 public class OutstandingMethodCalls {
 
     static class OutstandingMethodCall {
-        public final byte[] hash;
-        public final Method method;
-        public final CompletableFuture<Object> future;
+        private final byte[] hash;
+        private final Method method;
+        private final CompletableFuture<Object> future;
+        private final Optional<Consumer<Object>> consumer;
 
-        public OutstandingMethodCall(final byte[] hash, final Method method, final CompletableFuture<Object> future) {
+        public OutstandingMethodCall(final byte[] hash, final Method method, final CompletableFuture<Object> future, final Optional<Consumer<Object>> consumer) {
             this.hash = hash;
             this.method = method;
             this.future = future;
+            this.consumer = consumer;
+        }
+
+        public void resultReceived(final Object result) {
+            if (consumer.isPresent()) {
+                consumer.get().accept(result);
+            } else {
+                future.complete(result);
+            }
+        }
+
+        public Method getMethod() {
+            return method;
         }
     }
 
