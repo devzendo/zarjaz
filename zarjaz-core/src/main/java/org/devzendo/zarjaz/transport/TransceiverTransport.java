@@ -139,14 +139,13 @@ public class TransceiverTransport extends AbstractTransport implements Transport
             // WOZERE pass the sequence and decoded return value on to the outstandingmethodcalls, and let it throw
             // if there's no outstanding sequence. Then, allow that strategy to remove if found, but not it if is a
             // multiple return - as that class is where the knowledge of multiple return-ness is known.
-            final OutstandingMethodCalls.OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.remove(sequence);
-            if (outstandingMethodCall == null) {
-                throw new IOException("Incoming method return with sequence " + sequence + " is not outstanding");
+            try {
+                final OutstandingMethodCalls.OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.get(sequence);
+                final Object returnValue = decodeReturnValue(decoder, outstandingMethodCall);
+                outstandingMethodCalls.resultReceived(sequence, returnValue);
+            } catch (final SequenceNotFoundException se) {
+                throw new IOException(se.getMessage(), se);
             }
-
-            final Object returnValue = decodeReturnValue(decoder, outstandingMethodCall);
-
-            outstandingMethodCalls.resultReceived(sequence, returnValue);
             // TODO METRIC increment successful method decode
             // TODO REQUEST/RESPONSE LOGGING log method return
         }

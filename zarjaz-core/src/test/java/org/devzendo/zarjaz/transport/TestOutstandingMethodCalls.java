@@ -83,17 +83,39 @@ public class TestOutstandingMethodCalls {
     }
 
     @Test
-    public void futuresCanBeCompletedByIncomingSequenceReturn() throws ExecutionException, InterruptedException {
+    public void getThrowsIfNoSequencedMethodStored() {
+        thrown.expect(SequenceNotFoundException.class);
+        thrown.expectMessage("Completed method return with sequence 7 is not outstanding");
+        calls.get(7);
+    }
+
+    @Test
+    public void getReturnsIfSequencedMethodStored() {
+        final OutstandingMethodCalls.OutstandingMethodCall call = new OutstandingMethodCalls.OutstandingMethodCall(irrelevantHash, irrelevantMethod, irrelevantFuture, Optional.empty());
+        final int sequence = calls.put(call);
+        final OutstandingMethodCalls.OutstandingMethodCall outstandingMethodCall = calls.get(sequence);
+        assertThat(call, equalTo(outstandingMethodCall));
+
+        // and it doesn't remove...
+        assertThat(calls.size(), equalTo(1));
+        assertThat(calls.containsSequence(sequence), equalTo(true));
+    }
+
+    @Test
+    public void futuresAreCompletedByIncomingSequenceReturn() throws ExecutionException, InterruptedException {
         final CompletableFuture<Object> future = new CompletableFuture<>();
         final OutstandingMethodCalls.OutstandingMethodCall call = new OutstandingMethodCalls.OutstandingMethodCall(irrelevantHash, irrelevantMethod, future, Optional.empty());
         final int sequence = calls.put(call);
         calls.resultReceived(sequence, "Hello");
         assertThat(future.isDone(), equalTo(true));
         assertThat(future.get(), equalTo("Hello"));
+
+        assertThat(calls.size(), equalTo(0));
+        assertThat(calls.containsSequence(sequence), equalTo(false));
     }
 
     @Test
-    public void consumersAreSuppliedIfTheyAreSomeInsteadOfFuturesCompletedByIncomingSequenceReturn() throws ExecutionException, InterruptedException {
+    public void consumersAreSuppliedByIncomingSequenceReturnButThisDoesNotRemove() throws ExecutionException, InterruptedException {
         final CompletableFuture<Object> future = new CompletableFuture<>();
         final Object[] consumed = new Object[]{null};
         final Consumer<Object> consumer = o -> consumed[0] = o;
@@ -102,6 +124,14 @@ public class TestOutstandingMethodCalls {
         calls.resultReceived(sequence, "Hello");
         assertThat(future.isDone(), equalTo(false));
         assertThat(consumed[0], equalTo("Hello"));
+
+        assertThat(calls.size(), equalTo(1));
+        assertThat(calls.containsSequence(sequence), equalTo(true));
+
+        // an explicit remove, actually removes
+        calls.remove(sequence);
+        assertThat(calls.size(), equalTo(0));
+        assertThat(calls.containsSequence(sequence), equalTo(false));
     }
 
     private void assertEmptiness(final int sequence) {

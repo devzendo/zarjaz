@@ -50,6 +50,10 @@ public class OutstandingMethodCalls {
         public Method getMethod() {
             return method;
         }
+
+        public boolean isMultipleReturn() {
+            return consumer.isPresent();
+        }
     }
 
     private final AtomicInteger sequence = new AtomicInteger(0);
@@ -72,9 +76,9 @@ public class OutstandingMethodCalls {
         return seq;
     }
 
-    public boolean containsSequence(final int seq) {
+    public boolean containsSequence(final int sequence) {
         outstandingMethodCallsLock.lock();
-        final boolean contains = outstandingMethodCalls.containsKey(seq);
+        final boolean contains = outstandingMethodCalls.containsKey(sequence);
         outstandingMethodCallsLock.unlock();
         return contains;
     }
@@ -86,14 +90,33 @@ public class OutstandingMethodCalls {
         return size;
     }
 
-    public void resultReceived(final int sequence, final Object returnValue) {
+    public OutstandingMethodCall get(final int sequence) {
         outstandingMethodCallsLock.lock();
-        final OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.remove(sequence);
+        final OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.get(sequence);
         if (outstandingMethodCall == null) {
-            throw new SequenceNotFoundException("Completed method return with sequence " + sequence + " is not outstanding");
+            throw noSequenceFound(sequence);
         }
         outstandingMethodCallsLock.unlock();
-        
+        return outstandingMethodCall;
+    }
+
+    public void resultReceived(final int sequence, final Object returnValue) {
+        outstandingMethodCallsLock.lock();
+        final OutstandingMethodCall outstandingMethodCall = outstandingMethodCalls.get(sequence);
+        if (outstandingMethodCall == null) {
+            throw noSequenceFound(sequence);
+        }
+        // Multiple return method calls stay in the outstanding list until timeout, when they are explicitly removed.
+        if (!outstandingMethodCall.isMultipleReturn()) {
+            remove(sequence);
+        }
+        outstandingMethodCallsLock.unlock();
+
         outstandingMethodCall.resultReceived(returnValue);
+    }
+
+    private SequenceNotFoundException noSequenceFound(final int sequence) {
+        outstandingMethodCallsLock.unlock();
+        return new SequenceNotFoundException("Completed method return with sequence " + sequence + " is not outstanding");
     }
 }

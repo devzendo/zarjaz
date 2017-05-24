@@ -65,7 +65,7 @@ public class TestServerResponseTransceiverObserver extends LoggingUnittestCase {
 
         final List<LoggingEvent> loggingEvents = getLoggingEvents();
         assertThat(loggingEvents, hasSize(1));
-        assertThat(loggingEvents.get(0).getMessage().toString(), containsString("Incoming method return with sequence " + SEQUENCE + " is not outstanding"));
+        assertThat(loggingEvents.get(0).getMessage().toString(), containsString("Completed method return with sequence " + SEQUENCE + " is not outstanding"));
     }
 
     // TODO no sequence in outstanding method calls
