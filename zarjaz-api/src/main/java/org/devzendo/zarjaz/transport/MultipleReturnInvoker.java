@@ -19,5 +19,7 @@ import java.util.function.Consumer;
  * limitations under the License.
  */
 public interface MultipleReturnInvoker<T> {
-    <R> void invoke(Method method, Consumer<R> consumer, long methodTimeoutMilliSeconds, Object... args);
+    <R> void invokeWithCustomTimeout(Method method, Consumer<R> consumer, long methodTimeoutMilliSeconds, Object... args);
+
+    <R> void invoke(Method method, Consumer<R> consumer, Object... args);
 }

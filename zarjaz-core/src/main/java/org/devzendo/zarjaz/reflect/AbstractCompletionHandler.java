@@ -46,6 +46,10 @@ public abstract class AbstractCompletionHandler<T> {
     }
 
     Object invokeRemote(final Method method, final Object[] args, final Optional<Consumer<Object>> consumer) {
+        return invokeRemote(method, args, consumer, methodTimeoutMilliseconds);
+    }
+
+    Object invokeRemote(final Method method, final Object[] args, final Optional<Consumer<Object>> consumer, final long methodTimeoutMilliseconds) {
         final CompletableFuture<Object> future = new CompletableFuture<>();
 
         // Possible behaviours on timeout:

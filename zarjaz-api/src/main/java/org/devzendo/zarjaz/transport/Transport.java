@@ -22,7 +22,7 @@ public interface Transport {
     <T> T createClientProxy(EndpointName name, Class<T> interfaceClass, long methodTimeoutMilliseconds);
     // TODO need a mechanism for setting/overriding timeouts for specific methods.
 
-    <T> MultipleReturnInvoker<T> createClientMultipleReturnInvoker(EndpointName name, Class<T> interfaceClass, long methodTimeoutMilliSeconds);
+    <T> MultipleReturnInvoker<T> createClientMultipleReturnInvoker(EndpointName name, Class<T> interfaceClass, long defaultMethodTimeoutMilliSeconds);
 
     /**
      * Start allowing calls to server implementations.

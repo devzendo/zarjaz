@@ -81,26 +81,49 @@ public class TestCompletionMultipleReturnInvoker extends LoggingUnittestCase {
     }
 
     @Test
-    public void loggingOfMethodCallInvocations() {
+    public void loggingOfMethodCallInvocationsWithDefaultTimeout() {
         // given
-        transportInvocationHandler = (method, args, future, consumer, timeoutRunnables) -> {
-            assertThat(method.getName(), equalTo("getName"));
-            assertThat(args, arrayWithSize(0));
-            future.complete("Bob");
-        };
+        transportInvocationHandler = createSimpleTransportInvocationHandler();
 
         final CompletionMultipleReturnInvoker<SampleInterface> invoker =
                 new CompletionMultipleReturnInvoker<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 500L);
 
         // when
-        invoker.invoke(getNameMethod, irrelevantConsumer, 500L);
+        invoker.invoke(getNameMethod, irrelevantConsumer);
 
         // then
         final List<LoggingEvent> copiedEvents = getLoggingEvents();
         assertThat(copiedEvents, Matchers.hasSize(3));
-        assertThat(copiedEvents.get(0), loggingEvent(Level.DEBUG, "Invoking (multiple return) [Sample] org.devzendo.zarjaz.reflect.TestCompletionMultipleReturnInvoker$SampleInterface.getName()"));
+        assertThat(copiedEvents.get(0), loggingEvent(Level.DEBUG, "Invoking (multiple return; default timeout 500ms) [Sample] org.devzendo.zarjaz.reflect.TestCompletionMultipleReturnInvoker$SampleInterface.getName()"));
         assertThat(copiedEvents.get(1), loggingEvent(Level.DEBUG, "Waiting on Future"));
         assertThat(copiedEvents.get(2), loggingEvent(Level.DEBUG, "Wait over; removing timeout handler; returning value"));
+    }
+
+    @Test
+    public void loggingOfMethodCallInvocationsWithSpecificTimeout() {
+        // given
+        transportInvocationHandler = createSimpleTransportInvocationHandler();
+
+        final CompletionMultipleReturnInvoker<SampleInterface> invoker =
+                new CompletionMultipleReturnInvoker<>(timeoutScheduler, new EndpointName("Sample"), SampleInterface.class, transportInvocationHandler, 1000L);
+
+        // when
+        invoker.invokeWithCustomTimeout(getNameMethod, irrelevantConsumer, 500L);
+
+        // then
+        final List<LoggingEvent> copiedEvents = getLoggingEvents();
+        assertThat(copiedEvents, Matchers.hasSize(3));
+        assertThat(copiedEvents.get(0), loggingEvent(Level.DEBUG, "Invoking (multiple return; custom timeout 500ms) [Sample] org.devzendo.zarjaz.reflect.TestCompletionMultipleReturnInvoker$SampleInterface.getName()"));
+        assertThat(copiedEvents.get(1), loggingEvent(Level.DEBUG, "Waiting on Future"));
+        assertThat(copiedEvents.get(2), loggingEvent(Level.DEBUG, "Wait over; removing timeout handler; returning value"));
+    }
+
+    private TransportInvocationHandler createSimpleTransportInvocationHandler() {
+        return (method, args, future, consumer, timeoutRunnables) -> {
+            assertThat(method.getName(), equalTo("getName"));
+            assertThat(args, arrayWithSize(0));
+            future.complete("Bob");
+        };
     }
 
     @Test

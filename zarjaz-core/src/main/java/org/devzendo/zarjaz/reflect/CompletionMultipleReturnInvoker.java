@@ -36,9 +36,17 @@ public class CompletionMultipleReturnInvoker<T> extends AbstractCompletionHandle
     }
 
     @Override
-    public <R> void invoke(final Method method, final Consumer<R> consumer, final long methodTimeoutMilliSeconds, final Object... args) {
+    public <R> void invokeWithCustomTimeout(final Method method, final Consumer<R> consumer, final long methodTimeoutMilliSeconds, final Object... args) {
         if (logger.isDebugEnabled()) {
-            logger.debug("Invoking (multiple return) [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName() + joinedClassNames(method.getParameterTypes()));
+            logger.debug("Invoking (multiple return; custom timeout " + methodTimeoutMilliSeconds + "ms) [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName() + joinedClassNames(method.getParameterTypes()));
+        }
+        invokeRemote(method, args, Optional.of(consumer), methodTimeoutMilliSeconds);
+    }
+
+    @Override
+    public <R> void invoke(final Method method, final Consumer<R> consumer, final Object... args) {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Invoking (multiple return; default timeout " + methodTimeoutMilliseconds + "ms) [" + endpointName + "] " + method.getDeclaringClass().getName() + "." + method.getName() + joinedClassNames(method.getParameterTypes()));
         }
         invokeRemote(method, args, Optional.of(consumer));
     }

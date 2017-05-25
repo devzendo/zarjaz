@@ -52,6 +52,8 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
     private Transport clientTransport;
     private Transport serverTransport1;
     private Transport serverTransport2;
+    private Method method;
+    private final List<String> returns = synchronizedList(new ArrayList<>());
 
     @Mock
     ClientInterfaceValidator clientValidator;
@@ -66,7 +68,7 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
     public ExpectedException thrown = ExpectedException.none();
 
     @Before
-    public void setUp() {
+    public void setUp() throws NoSuchMethodException {
         final TimeoutScheduler timeoutScheduler = new TimeoutScheduler();
         final DefaultInvocationCodec invocationCodec = new DefaultInvocationCodec();
         final DefaultInvocationHashGenerator invocationHashGenerator = new DefaultInvocationHashGenerator();
@@ -80,6 +82,10 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
         serverTransport2 = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
         // ... and a single client:
         clientTransport = new TransceiverTransport(serverValidator, clientValidator, timeoutScheduler, nullTransceiver, invocationHashGenerator, invocationCodec);
+
+        method = PrimeGenerator.class.getMethod("generateNextPrimeMessage", String.class);
+        // get a specific method, as getting the declared methods then taking the first has been observed to be
+        // nondeterministic.
     }
 
     @After
@@ -125,32 +131,59 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
     // TODO cannot call createClientMultipleReturnInvoker with a method not part of the supplied interface
 
     @Test(timeout = 2000)
-    public void multipleReturn() throws NoSuchMethodException {
-        serverTransport1.registerServerImplementation(primesEndpointName, PrimeGenerator.class, new NamedPrimeGenerator("Dave"));
-        serverTransport1.start();
-        serverTransport2.registerServerImplementation(primesEndpointName, PrimeGenerator.class, new NamedPrimeGenerator("Jenny"));
-        serverTransport2.start();
+    public void multipleReturnReceivesMultipleReturns() throws NoSuchMethodException {
+        registerTwoServerInstances();
 
-        final Method method = PrimeGenerator.class.getMethod("generateNextPrimeMessage", String.class);
-        logger.debug("The method we're doing a test of is " + method);
-
-        final List<String> returns = synchronizedList(new ArrayList<>());
         final MultipleReturnInvoker<PrimeGenerator> multipleReturnInvoker = clientTransport.createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
 
         clientTransport.start();
 
-        final long startTime = System.currentTimeMillis();
-        multipleReturnInvoker.<String>invoke(method, returns::add, 500L, "Matt");
-        final long stopTime = System.currentTimeMillis();
-
-        assertThat(stopTime - startTime, allOf(greaterThanOrEqualTo(500L), lessThan(1000L)));
-        // 1000L is a reasonable upper limit, 500L is hard limit - mustn't take less than the method timeout.
+        multipleReturnInvoker.<String>invoke(method, returns::add, "Matt");
 
         assertThat(returns, hasSize(2));
         assertThat(returns, Matchers.containsInAnyOrder(
                 "Response from Dave: Hello Matt, the next prime is 2",
                 "Response from Jenny: Hello Matt, the next prime is 2"
         ));
+    }
+
+    @Test(timeout = 2000)
+    public void multipleReturnCanHaveCustomInvocationTimeout() throws NoSuchMethodException {
+        // create invoker with default timeout of 7000 ms, override on per-method invocation.
+        final MultipleReturnInvoker<PrimeGenerator> multipleReturnInvoker = clientTransport.createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 7000L);
+
+        clientTransport.start();
+
+        final long startTime = System.currentTimeMillis();
+        multipleReturnInvoker.<String>invokeWithCustomTimeout(method, returns::add, 500L, "Matt");
+        final long stopTime = System.currentTimeMillis();
+
+        assertThat(stopTime - startTime, allOf(greaterThanOrEqualTo(500L), lessThan(1000L)));
+        // 1000 ms is a reasonable upper limit, 500 ms is hard limit - mustn't take less than the method timeout,
+        // and certainly shouldn't be the default of 7000 ms.
+    }
+
+    @Test(timeout = 2000)
+    public void multipleReturnHasADefaultInvocationTimeout() throws NoSuchMethodException {
+        // create invoker with default timeout of 500 ms, do not override per-method invocation.
+        final MultipleReturnInvoker<PrimeGenerator> multipleReturnInvoker = clientTransport.createClientMultipleReturnInvoker(primesEndpointName, PrimeGenerator.class, 500L);
+
+        clientTransport.start();
+
+        final long startTime = System.currentTimeMillis();
+        multipleReturnInvoker.<String>invoke(method, returns::add, "Matt");
+        final long stopTime = System.currentTimeMillis();
+
+        assertThat(stopTime - startTime, allOf(greaterThanOrEqualTo(500L), lessThan(1000L)));
+        // 1000 ms is a reasonable upper limit, 500 ms is hard limit - mustn't take less than the method timeout,
+        // and certainly shouldn't be the default of 7000 ms.
+    }
+
+    private void registerTwoServerInstances() {
+        serverTransport1.registerServerImplementation(primesEndpointName, PrimeGenerator.class, new NamedPrimeGenerator("Dave"));
+        serverTransport1.start();
+        serverTransport2.registerServerImplementation(primesEndpointName, PrimeGenerator.class, new NamedPrimeGenerator("Jenny"));
+        serverTransport2.start();
     }
 
     @Test

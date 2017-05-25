@@ -85,28 +85,28 @@ public abstract class AbstractTransport {
         registeredEndpointInterfaces.add(reg);
     }
 
-    public final <T> T createClientProxy(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
+    public final <T> T createClientProxy(final EndpointName endpointName, final Class<T> interfaceClass, final long defaultMethodTimeoutMilliseconds) {
         // TODO validate for nulls
-        logger.info("Creating client proxy of " + endpointName + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
+        logger.info("Creating client proxy of " + endpointName + " with interface " + interfaceClass.getName() + " with default method timeout " + defaultMethodTimeoutMilliseconds + "ms");
         clientInterfaceValidator.validateClientInterface(interfaceClass);
         registerClientEndpointInterface(endpointName, interfaceClass);
 
-        final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(endpointName, interfaceClass, methodTimeoutMilliseconds);
-        final CompletionInvocationHandler cih = new CompletionInvocationHandler(timeoutScheduler, endpointName, interfaceClass, transportInvocationHandler, methodTimeoutMilliseconds);
+        final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(endpointName, interfaceClass, defaultMethodTimeoutMilliseconds);
+        final CompletionInvocationHandler cih = new CompletionInvocationHandler(timeoutScheduler, endpointName, interfaceClass, transportInvocationHandler, defaultMethodTimeoutMilliseconds);
         return (T) Proxy.newProxyInstance(interfaceClass.getClassLoader(),
                 new Class<?>[]{interfaceClass},
                 cih);
     }
 
     // TODO can have client proxy or multiple return, but not both at the moment. because of the exception in registerClientEndpointInterface
-    public <T> MultipleReturnInvoker<T> createClientMultipleReturnInvoker(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
+    public <T> MultipleReturnInvoker<T> createClientMultipleReturnInvoker(final EndpointName endpointName, final Class<T> interfaceClass, final long defaultMethodTimeoutMilliseconds) {
         // TODO validate for nulls
-        logger.info("Creating client multiple return invoker for " + endpointName + " with interface " + interfaceClass.getName() + " with method timeout " + methodTimeoutMilliseconds);
+        logger.info("Creating client multiple return invoker for " + endpointName + " with interface " + interfaceClass.getName() + " with default method timeout " + defaultMethodTimeoutMilliseconds + "ms");
         clientInterfaceValidator.validateClientInterface(interfaceClass);
         registerClientEndpointInterface(endpointName, interfaceClass);
 
-        final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(endpointName, interfaceClass, methodTimeoutMilliseconds);
-        return new CompletionMultipleReturnInvoker(timeoutScheduler, endpointName, interfaceClass, transportInvocationHandler, methodTimeoutMilliseconds);
+        final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(endpointName, interfaceClass, defaultMethodTimeoutMilliseconds);
+        return new CompletionMultipleReturnInvoker(timeoutScheduler, endpointName, interfaceClass, transportInvocationHandler, defaultMethodTimeoutMilliseconds);
     }
 
 
