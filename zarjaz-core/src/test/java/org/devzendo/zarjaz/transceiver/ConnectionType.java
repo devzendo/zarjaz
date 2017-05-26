@@ -1,11 +1,5 @@
 package org.devzendo.zarjaz.transceiver;
 
-import org.devzendo.zarjaz.nio.ReadableByteBuffer;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.List;
-
 /**
  * Copyright (C) 2008-2016 Matt Gumbley, DevZendo.org http://devzendo.org
  * <p>
@@ -21,21 +15,6 @@ import java.util.List;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public interface Transceiver extends Closeable {
-    public interface BufferWriter {
-        void writeBuffer(List<ReadableByteBuffer> data) throws IOException;
-    }
-
-    public interface ObservableTransceiverEnd {
-        void addTransceiverObserver(TransceiverObserver observer);
-        void removeTransceiverObserver(TransceiverObserver observer);
-    }
-
-    void open() throws IOException;
-
-    ObservableTransceiverEnd getClientEnd();
-    ObservableTransceiverEnd getServerEnd();
-    BufferWriter getServerWriter();
-
-    boolean supportsMultipleReturn();
+public enum ConnectionType {
+    NULL, TCP, UDP, UDP_BROADCAST
 }

@@ -3,6 +3,7 @@ package org.devzendo.zarjaz.transceiver;
 import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.nio.ReadableByteBuffer;
+import org.devzendo.zarjaz.util.BroadcastAddressHelper;
 import org.devzendo.zarjaz.util.BufferDumper;
 import org.junit.*;
 import org.junit.rules.ExpectedException;
@@ -12,10 +13,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.ConnectException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Collection;
-import java.util.Enumeration;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -49,29 +52,18 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
 
     @BeforeClass
     public static void getBroadcastAddress() throws SocketException {
-
         setupLoggingStatically();
 
+        broadcastAddress = BroadcastAddressHelper.getBroadcastAddress();
         // logging in here comes out at the end of the tests when run in intellij.
-        final Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-        while (networkInterfaces.hasMoreElements()) {
-            final NetworkInterface networkInterface = networkInterfaces.nextElement();
-            final List<InterfaceAddress> interfaceAddresses = networkInterface.getInterfaceAddresses();
-            for (final InterfaceAddress interfaceAddress : interfaceAddresses) {
-                final InetAddress broadcast = interfaceAddress.getBroadcast();
-                if (broadcast != null)
-                {
-                    logger.info("Using broadcast address " + broadcast);
-                    broadcastAddress = broadcast;
-                    return;
-                }
-            }
+        if (broadcastAddress == null) {
+            logger.info("No broadcast address available");
+        } else {
+            logger.info("Using broadcast address " + broadcastAddress);
         }
-        logger.info("No broadcast address available");
     }
     private static InetAddress broadcastAddress = null;
 
-    private enum ConnectionType {NULL, TCP, UDP, UDP_BROADCAST}
     private final ConnectionType connectionType;
 
     @Rule
@@ -79,6 +71,8 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
 
     private Transceiver serverTransceiver;
     private Transceiver clientTransceiver;
+    private String expectedName;
+    private boolean expectedMultipleReturnSupport;
 
     @Parameterized.Parameters
     public static Collection<ConnectionType> data() {
@@ -97,19 +91,27 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
             case NULL:
                 serverTransceiver = new NullTransceiver();
                 clientTransceiver = serverTransceiver;
+                expectedName = "NullTransceiver";
+                expectedMultipleReturnSupport = true;
                 break;
             case UDP:
                 serverTransceiver = UDPTransceiver.createServer(new InetSocketAddress(9876));
                 clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(9876), false);
+                expectedName = "Non-Broadcast UDPTransceiver";
+                expectedMultipleReturnSupport = false;
                 break;
             case TCP:
                 serverTransceiver = TCPTransceiver.createServer(new InetSocketAddress(9876));
                 clientTransceiver = TCPTransceiver.createClient(new InetSocketAddress(9876));
+                expectedName = "TCPTransceiver";
+                expectedMultipleReturnSupport = false;
                 break;
             case UDP_BROADCAST:
                 assumeNotNull(broadcastAddress);
                 serverTransceiver = UDPTransceiver.createServer(new InetSocketAddress(9876));
                 clientTransceiver = UDPTransceiver.createClient(new InetSocketAddress(broadcastAddress,9876), true);
+                expectedName = "Broadcast UDPTransceiver";
+                expectedMultipleReturnSupport = true;
                 break;
         }
         logger.debug("<<<<< BEFORE ***** end of setupTransceiver *****");
@@ -125,6 +127,16 @@ public class TestTransceivers extends ConsoleLoggingUnittestCase {
             clientTransceiver.close();
         }
         logger.debug("<<<<< AFTER ***** end of setupTransceiver ******");
+    }
+
+    @Test
+    public void toStringMatchesExpectedName() {
+        assertThat(clientTransceiver.toString(), equalTo(expectedName));
+    }
+
+    @Test
+    public void supportsMultipleReturnIsAsExpected() {
+        assertThat(clientTransceiver.supportsMultipleReturn(), equalTo(expectedMultipleReturnSupport));
     }
 
     @Test

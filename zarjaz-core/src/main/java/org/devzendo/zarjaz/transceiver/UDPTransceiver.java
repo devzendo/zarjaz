@@ -41,6 +41,7 @@ public class UDPTransceiver implements Transceiver {
 
     private final Optional<SocketAddress> remote;
     private final DatagramChannel channel;
+    private final boolean broadcast;
     private volatile ServerObservableTransceiverEnd serverEnd;
     private volatile ClientObservableTransceiverEnd clientEnd;
     private volatile boolean active = false;
@@ -48,11 +49,13 @@ public class UDPTransceiver implements Transceiver {
     public UDPTransceiver(final SocketAddress remote) throws IOException {
         this.channel = DatagramChannel.open();
         this.remote = Optional.of(remote);
+        this.broadcast = false;
     }
 
     public UDPTransceiver(final DatagramChannel channel) {
         this.channel = channel;
         this.remote = Optional.empty();
+        this.broadcast = false;
     }
 
     public static UDPTransceiver createServer(final SocketAddress remote) throws IOException {
@@ -62,7 +65,7 @@ public class UDPTransceiver implements Transceiver {
         final DatagramChannel channel = DatagramChannel.open();
         final DatagramSocket socket = channel.socket();
         socket.bind(remote);
-        return new UDPTransceiver(remote, channel);
+        return new UDPTransceiver(remote, channel, false);
     }
 
     public static UDPTransceiver createClient(final SocketAddress remote, final boolean broadcast) throws IOException {
@@ -75,12 +78,18 @@ public class UDPTransceiver implements Transceiver {
         if (!broadcast) {
             socket.connect(remote);
         }
-        return new UDPTransceiver(remote, channel);
+        return new UDPTransceiver(remote, channel, broadcast);
     }
 
-    public UDPTransceiver(final SocketAddress remote, final DatagramChannel channel) {
+    public UDPTransceiver(final SocketAddress remote, final DatagramChannel channel, final boolean broadcast) {
         this.remote = Optional.of(remote);
         this.channel = channel;
+        this.broadcast = broadcast;
+    }
+
+    @Override
+    public String toString() {
+        return (broadcast ? "Broadcast" : "Non-Broadcast") + " UDPTransceiver";
     }
 
     @Override
@@ -116,6 +125,12 @@ public class UDPTransceiver implements Transceiver {
             throw new IllegalStateException("No endpoint to which to write");
         }
         return new RemoteBufferWriter(() -> active, remote.get(), channel);
+    }
+
+    @Override
+    public boolean supportsMultipleReturn() {
+        // Multiple return is only supported for UDP broadcast.
+        return broadcast;
     }
 
     @Override

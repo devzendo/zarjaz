@@ -290,6 +290,13 @@ public class TransceiverTransport extends AbstractTransport implements Transport
     }
 
     @Override
+    protected void validateMultipleReturn() {
+        if (!transceiver.supportsMultipleReturn()) {
+            throw new IllegalStateException("The " + transceiver + " does not support multiple return invocation");
+        }
+    }
+
+    @Override
     protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
         registerHashes(endpointName, interfaceClass);
 

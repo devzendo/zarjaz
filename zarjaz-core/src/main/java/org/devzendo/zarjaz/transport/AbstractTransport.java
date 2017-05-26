@@ -89,6 +89,7 @@ public abstract class AbstractTransport {
         // TODO validate for nulls
         logger.info("Creating client proxy of " + endpointName + " with interface " + interfaceClass.getName() + " with default method timeout " + defaultMethodTimeoutMilliseconds + "ms");
         clientInterfaceValidator.validateClientInterface(interfaceClass);
+
         registerClientEndpointInterface(endpointName, interfaceClass);
 
         final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(endpointName, interfaceClass, defaultMethodTimeoutMilliseconds);
@@ -103,12 +104,15 @@ public abstract class AbstractTransport {
         // TODO validate for nulls
         logger.info("Creating client multiple return invoker for " + endpointName + " with interface " + interfaceClass.getName() + " with default method timeout " + defaultMethodTimeoutMilliseconds + "ms");
         clientInterfaceValidator.validateClientInterface(interfaceClass);
+        validateMultipleReturn();
+
         registerClientEndpointInterface(endpointName, interfaceClass);
 
         final TransportInvocationHandler transportInvocationHandler = createTransportInvocationHandler(endpointName, interfaceClass, defaultMethodTimeoutMilliseconds);
         return new CompletionMultipleReturnInvoker(timeoutScheduler, endpointName, interfaceClass, transportInvocationHandler, defaultMethodTimeoutMilliseconds);
     }
 
+    protected abstract void validateMultipleReturn();
 
     protected abstract <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds);
 

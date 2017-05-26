@@ -95,6 +95,11 @@ public class TCPTransceiver implements Transceiver {
     }
 
     @Override
+    public String toString() {
+        return "TCPTransceiver";
+    }
+
+    @Override
     public void open() throws IOException {
         if (logger.isDebugEnabled()) {
             logger.debug("Opening TCPTransceiver");
@@ -136,6 +141,11 @@ public class TCPTransceiver implements Transceiver {
             throw new IllegalStateException("No endpoint to which to write");
         }
         return new RemoteBufferWriter(() -> active, address, clientChannel.get());
+    }
+
+    @Override
+    public boolean supportsMultipleReturn() {
+        return false;
     }
 
     @Override

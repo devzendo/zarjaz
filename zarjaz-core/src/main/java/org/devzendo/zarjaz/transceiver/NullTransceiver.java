@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 
@@ -27,6 +26,11 @@ import java.util.concurrent.ArrayBlockingQueue;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/**
+ * The NullTransceiver is an in-process transceiver that provides all the semantics of other transceivers, including
+ * multiple return and timeout management. Especially useful in tests.
+ */
 public class NullTransceiver implements Transceiver {
     private static final Logger logger = LoggerFactory.getLogger(NullTransceiver.class);
 
@@ -36,6 +40,7 @@ public class NullTransceiver implements Transceiver {
 
     private final NullBufferWriter sendToServer;
     private final NullBufferWriter sendToClient;
+
     private class NullBufferWriter implements BufferWriter {
 
         private final NullObservableTransceiverEnd sendToEnd;
@@ -57,7 +62,7 @@ public class NullTransceiver implements Transceiver {
                 throw new IllegalStateException("Transceiver not open");
             }
             logger.debug("Queueing ByteBuffer for sending to observers");
-            for (ReadableByteBuffer buffer: data) {
+            for (final ReadableByteBuffer buffer : data) {
                 if (buffer.remaining() == 0) {
                     throw new IOException("RemoteBufferWriter has been given pre-flipped ByteBuffers");
                 }
@@ -74,6 +79,7 @@ public class NullTransceiver implements Transceiver {
 
     private final NullObservableTransceiverEnd serverObservableEnd;
     private final NullObservableTransceiverEnd clientObservableEnd;
+
     private class NullObservableTransceiverEnd implements ObservableTransceiverEnd {
 
         private final ObserverList<TransceiverObservableEvent> observers = new ObserverList<>();
@@ -88,7 +94,7 @@ public class NullTransceiver implements Transceiver {
         }
 
         @Override
-        public void removeTransceiverObserver(TransceiverObserver observer) {
+        public void removeTransceiverObserver(final TransceiverObserver observer) {
             // TODO rename removeListener in common code to removeObserver
             observers.removeListener(observer);
         }
@@ -107,7 +113,7 @@ public class NullTransceiver implements Transceiver {
                         logger.debug("Run");
                     }
                     logger.info("Dispatch thread ended");
-                } catch (InterruptedException e) {
+                } catch (final InterruptedException e) {
                     logger.warn("Dispatch thread interrupted");
                     active = false;
                 }
@@ -123,6 +129,11 @@ public class NullTransceiver implements Transceiver {
         sendToServer = new NullBufferWriter(serverObservableEnd, "server");
         sendToClient.setOtherEnd(sendToServer);
         sendToServer.setOtherEnd(sendToClient);
+    }
+
+    @Override
+    public String toString() {
+        return "NullTransceiver";
     }
 
     @Override
@@ -158,5 +169,12 @@ public class NullTransceiver implements Transceiver {
     @Override
     public BufferWriter getServerWriter() {
         return sendToServer;
+    }
+
+    @Override
+    public boolean supportsMultipleReturn() {
+        // You can attach multiple transports to the same NullTransceiver, and they will all receive incoming requests,
+        // and are able to reply - so this transceiver supports multiple return.
+        return true;
     }
 }

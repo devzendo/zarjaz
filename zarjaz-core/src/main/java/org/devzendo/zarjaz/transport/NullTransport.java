@@ -123,6 +123,11 @@ class NullTransport extends AbstractTransport implements Transport {
         // Nothing is needed here in the NullTransport.
     }
 
+    @Override
+    protected void validateMultipleReturn() {
+        throw new IllegalStateException("The NullTransport does not support multiple return invocation");
+    }
+
     // The TransportInvocationHandler is the client-side part that varies between transports.
     @Override
     protected <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds) {
