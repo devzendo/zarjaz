@@ -41,7 +41,17 @@
             <email>matt.gumbley@devzendo.org</email>
         </developer>
     </developers>
-    
+
+    <parent>
+        <groupId>org.devzendo</groupId>
+        <artifactId>group-parent</artifactId>
+        <version>1.1.1</version>
+    </parent>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
     <modules>
         <module>zarjaz-api</module>
         <module>zarjaz-core</module>
