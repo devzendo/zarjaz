@@ -33,7 +33,7 @@ public class BufferDumper {
             array[j] = buffer.get(i);
         }
         final String[] strings = HexDump.hexDump(array);
-        for (String string: strings) {
+        for (final String string: strings) {
             logger.debug(string);
         }
         logger.debug(" ---");
@@ -42,7 +42,6 @@ public class BufferDumper {
     public static void equalData(final String thisCaption, final ByteBuffer thisbuf, final String thatCaption, final ByteBuffer thatbuf) {
         logger.debug(" === " + thisCaption + " bytebuffer of position " + thisbuf.position() + " limit " + thisbuf.limit() + " remaining " + thisbuf.remaining() + " ===");
         logger.debug(" === " + thatCaption + " bytebuffer of position " + thatbuf.position() + " limit " + thatbuf.limit() + " remaining " + thatbuf.remaining() + " ===");
-        int p = thisbuf.position();
         for (int i = thisbuf.position(), j = thatbuf.position(); i < thisbuf.limit(); i++, j++) {
             final byte thisbyte = thisbuf.get(i);
             final byte thatbyte = thatbuf.get(j);
@@ -58,7 +57,7 @@ public class BufferDumper {
     public static void dumpBuffers(final List<ReadableByteBuffer> buffers) {
         logger.debug(" --- There are " + buffers.size() + " buffer(s) ---");
         int count = 0;
-        for (ReadableByteBuffer buffer: buffers) {
+        for (final ReadableByteBuffer buffer: buffers) {
             dumpBuffer(" --- buffer # " + (count++), buffer.raw());
         }
         logger.debug(" ---");

@@ -70,10 +70,13 @@ public class OutstandingMethodCalls {
 
     public int put(final OutstandingMethodCall outstandingMethodCall) {
         outstandingMethodCallsLock.lock();
-        final int seq = sequence.incrementAndGet();
-        outstandingMethodCalls.put(seq, outstandingMethodCall);
-        outstandingMethodCallsLock.unlock();
-        return seq;
+        try {
+            final int seq = sequence.incrementAndGet();
+            outstandingMethodCalls.put(seq, outstandingMethodCall);
+            return seq;
+        } finally {
+            outstandingMethodCallsLock.unlock();
+        }
     }
 
     public boolean containsSequence(final int sequence) {

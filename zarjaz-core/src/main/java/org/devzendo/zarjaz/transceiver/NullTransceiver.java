@@ -25,16 +25,15 @@ import java.util.concurrent.ArrayBlockingQueue;
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
-
-/**
+ *
+ * --
  * The NullTransceiver is an in-process transceiver that provides all the semantics of other transceivers, including
  * multiple return and timeout management. Especially useful in tests.
  */
 public class NullTransceiver implements Transceiver {
     private static final Logger logger = LoggerFactory.getLogger(NullTransceiver.class);
 
-    private final ArrayBlockingQueue<Runnable> queue = new ArrayBlockingQueue<Runnable>(10);
+    private final ArrayBlockingQueue<Runnable> queue = new ArrayBlockingQueue<>(10);
     private final Thread dispatchThread;
     private volatile boolean active = false;
 
@@ -80,7 +79,7 @@ public class NullTransceiver implements Transceiver {
     private final NullObservableTransceiverEnd serverObservableEnd;
     private final NullObservableTransceiverEnd clientObservableEnd;
 
-    private class NullObservableTransceiverEnd implements ObservableTransceiverEnd {
+    private static class NullObservableTransceiverEnd implements ObservableTransceiverEnd {
 
         private final ObserverList<TransceiverObservableEvent> observers = new ObserverList<>();
 
@@ -101,22 +100,19 @@ public class NullTransceiver implements Transceiver {
     }
 
     public NullTransceiver() {
-        dispatchThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    while (active) {
-                        logger.debug("Waiting for Runnable");
-                        final Runnable runnable = queue.take();
-                        logger.debug("Running queued Runnable");
-                        runnable.run();
-                        logger.debug("Run");
-                    }
-                    logger.info("Dispatch thread ended");
-                } catch (final InterruptedException e) {
-                    logger.warn("Dispatch thread interrupted");
-                    active = false;
+        dispatchThread = new Thread(() -> {
+            try {
+                while (active) {
+                    logger.debug("Waiting for Runnable");
+                    final Runnable runnable = queue.take();
+                    logger.debug("Running queued Runnable");
+                    runnable.run();
+                    logger.debug("Run");
                 }
+                logger.info("Dispatch thread ended");
+            } catch (final InterruptedException e) {
+                logger.warn("Dispatch thread interrupted");
+                active = false;
             }
         });
         dispatchThread.setDaemon(true);

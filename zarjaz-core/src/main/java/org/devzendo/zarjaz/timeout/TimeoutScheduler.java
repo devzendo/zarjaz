@@ -48,14 +48,11 @@ public class TimeoutScheduler {
 
         final long thisTimeoutId = timeoutIdCount.incrementAndGet();
         final TimeoutId timeoutId = new TimeoutId(thisTimeoutId);
-        final Runnable exceptionLoggingRunnable = new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    runnable.run();
-                } catch (final Exception e) {
-                    logger.warn("Timeout handler threw " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
-                }
+        final Runnable exceptionLoggingRunnable = () -> {
+            try {
+                runnable.run();
+            } catch (final Exception e) {
+                logger.warn("Timeout handler threw " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
             }
         };
         final ScheduledFuture<?> schedule = executor.schedule(exceptionLoggingRunnable, millisecondsFromNow, TimeUnit.MILLISECONDS);
@@ -69,10 +66,7 @@ public class TimeoutScheduler {
         }
 
         final ScheduledFuture<?> schedule = activeTimeouts.remove(timeoutId);
-        if (schedule == null) {
-            return false;
-        }
-        return schedule.cancel(false); // not sure whether to interrupt or not.
+        return schedule != null && schedule.cancel(false);
     }
 
     public void start() {
@@ -83,16 +77,14 @@ public class TimeoutScheduler {
         return usageCount.get() > 0;
     }
 
-    public void stop() {
-        synchronized (usageCount) {
-            if (usageCount.get() == 0) {
-                throw new IllegalStateException("Cannot stop scheduler if it has not been started");
-            }
+    public synchronized void stop() {
+        if (usageCount.get() == 0) {
+            throw new IllegalStateException("Cannot stop scheduler if it has not been started");
+        }
 
-            final int count = usageCount.decrementAndGet();
-            if (count == 0) {
-                executor.shutdown();
-            }
+        final int count = usageCount.decrementAndGet();
+        if (count == 0) {
+            executor.shutdown();
         }
     }
 }

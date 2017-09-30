@@ -39,4 +39,15 @@ public class EndpointName extends RepresentationType<String> {
             throw new EndpointNameValidationException("EndpointName '" + name + "' is not allowed");
         }
     }
+
+    // Intentionally just use the base type's equals and hashcode.
+    @Override
+    public boolean equals(final Object obj) {
+        return super.equals(obj);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
 }
