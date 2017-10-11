@@ -21,7 +21,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static org.devzendo.zarjaz.logging.IsLoggingEvent.loggingEvent;
+import static org.devzendo.commoncode.logging.IsLoggingEvent.loggingEvent;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 

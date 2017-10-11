@@ -28,7 +28,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.devzendo.commoncode.concurrency.ThreadUtils.waitNoInterruption;
-import static org.devzendo.zarjaz.logging.IsLoggingEvent.loggingEvent;
+import static org.devzendo.commoncode.logging.IsLoggingEvent.loggingEvent;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertTrue;
