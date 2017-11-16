@@ -2,7 +2,7 @@ package org.devzendo.zarjaz.reflect;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.spi.LoggingEvent;
-import org.devzendo.zarjaz.logging.LoggingUnittestCase;
+import org.devzendo.commoncode.logging.LogCapturingUnittestHelper;
 import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transport.EndpointName;
 import org.devzendo.zarjaz.transport.TransportInvocationHandler;
@@ -40,7 +40,7 @@ import static org.hamcrest.Matchers.*;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class TestCompletionMultipleReturnInvoker extends LoggingUnittestCase {
+public class TestCompletionMultipleReturnInvoker extends LogCapturingUnittestHelper {
     private static final Logger logger = LoggerFactory.getLogger(TestCompletionMultipleReturnInvoker.class);
     private TimeoutScheduler timeoutScheduler;
 

@@ -1,7 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
 import org.devzendo.commoncode.concurrency.ThreadUtils;
-import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
+import org.devzendo.commoncode.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.sample.primes.DefaultPrimeGenerator;

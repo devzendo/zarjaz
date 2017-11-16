@@ -3,7 +3,7 @@ package org.devzendo.zarjaz.timeout;
 import org.apache.log4j.Level;
 import org.apache.log4j.spi.LoggingEvent;
 import org.devzendo.commoncode.concurrency.ThreadUtils;
-import org.devzendo.zarjaz.logging.LoggingUnittestCase;
+import org.devzendo.commoncode.logging.LogCapturingUnittestHelper;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Rule;
@@ -35,7 +35,7 @@ import static org.hamcrest.Matchers.*;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class TestTimeoutScheduler extends LoggingUnittestCase {
+public class TestTimeoutScheduler extends LogCapturingUnittestHelper {
     private static final Logger logger = LoggerFactory.getLogger(TestTimeoutScheduler.class);
 
     private final TimeoutScheduler ts = new TimeoutScheduler();

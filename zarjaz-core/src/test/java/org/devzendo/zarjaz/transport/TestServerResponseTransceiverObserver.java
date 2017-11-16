@@ -1,7 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
 import org.apache.log4j.spi.LoggingEvent;
-import org.devzendo.zarjaz.logging.LoggingUnittestCase;
+import org.devzendo.commoncode.logging.LogCapturingUnittestHelper;
 import org.devzendo.zarjaz.protocol.ByteBufferEncoder;
 import org.devzendo.zarjaz.protocol.Protocol;
 import org.devzendo.zarjaz.reflect.MethodReturnTypeResolver;
@@ -31,7 +31,7 @@ import static org.hamcrest.Matchers.*;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-public class TestServerResponseTransceiverObserver extends LoggingUnittestCase {
+public class TestServerResponseTransceiverObserver extends LogCapturingUnittestHelper {
     private static final int SEQUENCE = 69;
 
     private final ByteBufferEncoder encoder = new ByteBufferEncoder();

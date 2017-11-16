@@ -1,7 +1,7 @@
 package org.devzendo.zarjaz.transceiver;
 
 import org.devzendo.commoncode.concurrency.ThreadUtils;
-import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
+import org.devzendo.commoncode.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.util.BroadcastAddressHelper;
 import org.devzendo.zarjaz.util.BufferDumper;

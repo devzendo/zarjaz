@@ -1,7 +1,7 @@
 package org.devzendo.zarjaz.protocol;
 
 import org.devzendo.commoncode.string.HexDump;
-import org.devzendo.zarjaz.logging.ConsoleLoggingUnittestCase;
+import org.devzendo.commoncode.logging.ConsoleLoggingUnittestCase;
 import org.devzendo.zarjaz.nio.DefaultWritableByteBuffer;
 import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.nio.WritableByteBuffer;
