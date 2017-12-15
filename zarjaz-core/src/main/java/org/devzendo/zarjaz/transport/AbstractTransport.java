@@ -48,7 +48,7 @@ public abstract class AbstractTransport {
         this.clientInterfaceValidator = clientInterfaceValidator;
         this.timeoutScheduler = timeoutScheduler;
         this.executor = new ThreadPoolExecutor(5, 10, 2000L, TimeUnit.MILLISECONDS,
-                new ArrayBlockingQueue<Runnable>(10),
+                new ArrayBlockingQueue<>(10),
                 new DaemonThreadFactory("zarjaz-" + transportName + "-transport-invoker-thread-"));
     }
 
@@ -77,7 +77,7 @@ public abstract class AbstractTransport {
 
     protected abstract <T> void registerTransportRequestDispatcher(final EndpointName endpointName, final Class<T> interfaceClass);
 
-    private final <T> void registerClientEndpointInterface(final EndpointName endpointName, final Class<T> interfaceClass) {
+    private <T> void registerClientEndpointInterface(final EndpointName endpointName, final Class<T> interfaceClass) {
         final NamedInterface reg = new NamedInterface(endpointName, interfaceClass);
         synchronized (registeredEndpointInterfaces) {
             if (registeredEndpointInterfaces.contains(reg)) {
