@@ -79,10 +79,12 @@ public abstract class AbstractTransport {
 
     private final <T> void registerClientEndpointInterface(final EndpointName endpointName, final Class<T> interfaceClass) {
         final NamedInterface reg = new NamedInterface(endpointName, interfaceClass);
-        if (registeredEndpointInterfaces.contains(reg)) {
-            return;
+        synchronized (registeredEndpointInterfaces) {
+            if (registeredEndpointInterfaces.contains(reg)) {
+                return;
+            }
+            registeredEndpointInterfaces.add(reg);
         }
-        registeredEndpointInterfaces.add(reg);
     }
 
     public final <T> T createClientProxy(final EndpointName endpointName, final Class<T> interfaceClass, final long defaultMethodTimeoutMilliseconds) {
@@ -117,7 +119,9 @@ public abstract class AbstractTransport {
     protected abstract <T> TransportInvocationHandler createTransportInvocationHandler(final EndpointName endpointName, final Class<T> interfaceClass, final long methodTimeoutMilliseconds);
 
     protected boolean hasClientProxiesBound() {
-        return registeredEndpointInterfaces.size() != 0;
+        synchronized (registeredEndpointInterfaces) {
+            return registeredEndpointInterfaces.size() != 0;
+        }
     }
 
     protected boolean hasServerImplementationsBound() {
