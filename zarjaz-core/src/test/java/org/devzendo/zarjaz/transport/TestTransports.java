@@ -2,13 +2,13 @@ package org.devzendo.zarjaz.transport;
 
 import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.commoncode.logging.ConsoleLoggingUnittestCase;
+import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.sample.primes.DefaultPrimeGenerator;
 import org.devzendo.zarjaz.sample.primes.PrimeGenerator;
 import org.devzendo.zarjaz.sample.timeout.DefaultTimeoutGenerator;
 import org.devzendo.zarjaz.sample.timeout.TimeoutGenerator;
-import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.NullTransceiver;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;

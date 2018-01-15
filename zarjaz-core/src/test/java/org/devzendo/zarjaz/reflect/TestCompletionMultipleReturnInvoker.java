@@ -3,7 +3,7 @@ package org.devzendo.zarjaz.reflect;
 import org.apache.log4j.Level;
 import org.apache.log4j.spi.LoggingEvent;
 import org.devzendo.commoncode.logging.LogCapturingUnittestHelper;
-import org.devzendo.zarjaz.timeout.TimeoutScheduler;
+import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transport.EndpointName;
 import org.devzendo.zarjaz.transport.TransportInvocationHandler;
 import org.hamcrest.Matchers;

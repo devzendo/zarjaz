@@ -1,9 +1,9 @@
 package org.devzendo.zarjaz.transport;
 
-import org.devzendo.zarjaz.concurrency.DaemonThreadFactory;
+import org.devzendo.commoncode.concurrency.DaemonThreadFactory;
+import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.reflect.CompletionInvocationHandler;
 import org.devzendo.zarjaz.reflect.CompletionMultipleReturnInvoker;
-import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.slf4j.Logger;

@@ -1,7 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.reflect.MethodCallTimeoutHandlers;
-import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
 import org.devzendo.zarjaz.validation.ServerImplementationValidator;
 import org.slf4j.Logger;

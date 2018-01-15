@@ -1,10 +1,10 @@
 package org.devzendo.zarjaz.transport;
 
 import org.devzendo.commoncode.logging.ConsoleLoggingUnittestCase;
+import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
 import org.devzendo.zarjaz.sample.primes.PrimeGenerator;
-import org.devzendo.zarjaz.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transceiver.*;
 import org.devzendo.zarjaz.util.BroadcastAddressHelper;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;

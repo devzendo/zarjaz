@@ -1,6 +1,6 @@
 package org.devzendo.zarjaz.reflect;
 
-import org.devzendo.zarjaz.timeout.TimeoutScheduler;
+import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transport.EndpointName;
 import org.devzendo.zarjaz.transport.MethodInvocationTimeoutException;
 import org.devzendo.zarjaz.transport.TransportInvocationHandler;
