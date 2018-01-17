@@ -2,6 +2,7 @@ package org.devzendo.zarjaz.transport;
 
 import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.commoncode.logging.ConsoleLoggingUnittestCase;
+import org.devzendo.commoncode.timeout.DefaultTimeoutScheduler;
 import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.nio.ReadableByteBuffer;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
@@ -67,7 +68,7 @@ public class TestTransceiverTransport extends ConsoleLoggingUnittestCase {
     private final List<TransceiverObservableEvent> clientToServerTransceiverObservableEvents = new ArrayList<>();
     private final DefaultServerImplementationValidator serverImplementationValidator = new DefaultServerImplementationValidator();
     private final DefaultClientInterfaceValidator clientInterfaceValidator = new DefaultClientInterfaceValidator();
-    private final TimeoutScheduler timeoutScheduler = new TimeoutScheduler();
+    private final TimeoutScheduler timeoutScheduler = new DefaultTimeoutScheduler();
     private final InvocationCodec invocationCodec = new DefaultInvocationCodec();
     private final EndpointName endpointName = new EndpointName("MyEndpoint");
     private final InvocationHashGenerator invocationHashGenerator = new DefaultInvocationHashGenerator();

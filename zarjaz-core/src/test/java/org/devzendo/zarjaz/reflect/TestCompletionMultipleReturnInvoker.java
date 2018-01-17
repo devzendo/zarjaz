@@ -3,6 +3,7 @@ package org.devzendo.zarjaz.reflect;
 import org.apache.log4j.Level;
 import org.apache.log4j.spi.LoggingEvent;
 import org.devzendo.commoncode.logging.LogCapturingUnittestHelper;
+import org.devzendo.commoncode.timeout.DefaultTimeoutScheduler;
 import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.transport.EndpointName;
 import org.devzendo.zarjaz.transport.TransportInvocationHandler;
@@ -71,7 +72,7 @@ public class TestCompletionMultipleReturnInvoker extends LogCapturingUnittestHel
     @Before
     public void reflectOnThingsAndStartScheduler() throws NoSuchMethodException {
         getNameMethod = SampleInterface.class.getMethod("getName");
-        timeoutScheduler = new TimeoutScheduler();
+        timeoutScheduler = new DefaultTimeoutScheduler();
         timeoutScheduler.start();
     }
 

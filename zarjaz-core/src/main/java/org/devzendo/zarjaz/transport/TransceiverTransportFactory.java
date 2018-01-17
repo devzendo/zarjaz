@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.commoncode.timeout.DefaultTimeoutScheduler;
 import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.protocol.InvocationCodec;
@@ -28,7 +29,7 @@ public class TransceiverTransportFactory implements TransportFactory {
 
     private final DefaultServerImplementationValidator serverImplementationValidator = new DefaultServerImplementationValidator();
     private final DefaultClientInterfaceValidator clientInterfaceValidator = new DefaultClientInterfaceValidator();
-    private final TimeoutScheduler timeoutScheduler = new TimeoutScheduler();
+    private final TimeoutScheduler timeoutScheduler = new DefaultTimeoutScheduler();
     private final InvocationCodec invocationCodec = new DefaultInvocationCodec();
     private final InvocationHashGenerator invocationHashGenerator = new DefaultInvocationHashGenerator();
 

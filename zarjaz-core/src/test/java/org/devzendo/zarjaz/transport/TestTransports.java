@@ -2,6 +2,7 @@ package org.devzendo.zarjaz.transport;
 
 import org.devzendo.commoncode.concurrency.ThreadUtils;
 import org.devzendo.commoncode.logging.ConsoleLoggingUnittestCase;
+import org.devzendo.commoncode.timeout.DefaultTimeoutScheduler;
 import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
@@ -89,7 +90,7 @@ public class TestTransports extends ConsoleLoggingUnittestCase {
 
     @Before
     public void setUp() throws IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException {
-        timeoutScheduler = new TimeoutScheduler();
+        timeoutScheduler = new DefaultTimeoutScheduler();
         clientTransport = createTransport();
         serverTransport = clientTransport;
     }

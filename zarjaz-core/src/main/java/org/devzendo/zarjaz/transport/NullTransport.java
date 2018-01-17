@@ -1,5 +1,6 @@
 package org.devzendo.zarjaz.transport;
 
+import org.devzendo.commoncode.timeout.DefaultTimeoutScheduler;
 import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.reflect.MethodCallTimeoutHandlers;
 import org.devzendo.zarjaz.validation.ClientInterfaceValidator;
@@ -39,7 +40,7 @@ class NullTransport extends AbstractTransport implements Transport {
 
     // TODO not sure this ctor is needed - need one with everything supplied, and with nothing supplied?
     public NullTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator) {
-        this(serverImplementationValidator, clientInterfaceValidator, new TimeoutScheduler());
+        this(serverImplementationValidator, clientInterfaceValidator, new DefaultTimeoutScheduler());
     }
 
     public NullTransport(final ServerImplementationValidator serverImplementationValidator, final ClientInterfaceValidator clientInterfaceValidator, final TimeoutScheduler timeoutScheduler) {

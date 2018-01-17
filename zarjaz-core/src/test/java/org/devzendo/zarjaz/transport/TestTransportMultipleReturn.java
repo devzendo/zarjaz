@@ -1,6 +1,7 @@
 package org.devzendo.zarjaz.transport;
 
 import org.devzendo.commoncode.logging.ConsoleLoggingUnittestCase;
+import org.devzendo.commoncode.timeout.DefaultTimeoutScheduler;
 import org.devzendo.commoncode.timeout.TimeoutScheduler;
 import org.devzendo.zarjaz.protocol.DefaultInvocationCodec;
 import org.devzendo.zarjaz.reflect.DefaultInvocationHashGenerator;
@@ -69,7 +70,7 @@ public class TestTransportMultipleReturn extends ConsoleLoggingUnittestCase {
 
     @Before
     public void setUp() throws NoSuchMethodException {
-        final TimeoutScheduler timeoutScheduler = new TimeoutScheduler();
+        final TimeoutScheduler timeoutScheduler = new DefaultTimeoutScheduler();
         final DefaultInvocationCodec invocationCodec = new DefaultInvocationCodec();
         final DefaultInvocationHashGenerator invocationHashGenerator = new DefaultInvocationHashGenerator();
 
