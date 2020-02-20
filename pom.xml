@@ -29,9 +29,9 @@
     </licenses>
 
     <scm>
-        <url>https://bitbucket.org/devzendo/zarjaz</url>
-        <connection>scm:hg:https://bitbucket.org/devzendo/zarjaz</connection>
-        <developerConnection>scm:hg:https://bitbucket.org/devzendo/zarjaz</developerConnection>
+        <url>https://github.com/devzendo/zarjaz.git</url>
+        <connection>scm:git:https://github.com/devzendo/zarjaz.git</connection>
+        <developerConnection>scm:git:git@github.com:devzendo/zarjaz.git</developerConnection>
     </scm>
 
     <developers>
